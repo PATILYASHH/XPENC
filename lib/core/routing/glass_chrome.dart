@@ -570,6 +570,7 @@ class _LiquidTabBar extends StatefulWidget {
     required this.showLabels,
     required this.onSelect,
     required this.add,
+    this.onHoldEdit,
   });
 
   static const double height = kGlassBarHeight;
@@ -580,6 +581,10 @@ class _LiquidTabBar extends StatefulWidget {
   final bool showLabels;
   final ValueChanged<int> onSelect;
   final Widget add;
+
+  /// Holding the capsule opens the bar editor (see `nav_editor.dart`) with
+  /// the capsule's rect and its tabs' rects. Null: no editing.
+  final void Function(Rect bar, List<Rect> slots)? onHoldEdit;
 
   @override
   State<_LiquidTabBar> createState() => _LiquidTabBarState();
@@ -736,35 +741,51 @@ class _LiquidTabBarState extends State<_LiquidTabBar>
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       Expanded(
-                        child: SizedBox(
-                          height: height,
-                          child: ownGlass <= 0
-                              ? body
-                              : Opacity(
-                                  opacity: ownGlass,
-                                  // Opening into the picker, the clear lens of
-                                  // the bar thickens into a sheet's frost — the
-                                  // month grid is something to read, and through
-                                  // clear glass the page behind read through it.
-                                  child: LiquidGlass(
-                                    borderRadius: BorderRadius.circular(
-                                      32 - 4 * open,
-                                    ),
-                                    frost: Color.lerp(
-                                      tone.barFrost,
-                                      tone.sheetFrost,
-                                      open,
-                                    ),
-                                    blur:
-                                        GlassStyle.barBlur +
-                                        (24 - GlassStyle.barBlur) * open,
-                                    refraction: open > 0.95
-                                        ? 0
-                                        : 18 * (1 - open),
-                                    light: (1 - open / 0.85).clamp(0.0, 1.0),
-                                    child: body,
-                                  ),
+                        child: _NavHoldToEdit(
+                          // Not while the bar is the month picker or a sheet.
+                          enabled: widget.onHoldEdit != null && away <= 0,
+                          onTriggered: (bar) {
+                            final w = bar.width / widget.tabs.length;
+                            widget.onHoldEdit!(bar, [
+                              for (var i = 0; i < widget.tabs.length; i++)
+                                Rect.fromLTWH(
+                                  bar.left + w * i,
+                                  bar.top,
+                                  w,
+                                  bar.height,
                                 ),
+                            ]);
+                          },
+                          child: SizedBox(
+                            height: height,
+                            child: ownGlass <= 0
+                                ? body
+                                : Opacity(
+                                    opacity: ownGlass,
+                                    // Opening into the picker, the clear lens of
+                                    // the bar thickens into a sheet's frost — the
+                                    // month grid is something to read, and through
+                                    // clear glass the page behind read through it.
+                                    child: LiquidGlass(
+                                      borderRadius: BorderRadius.circular(
+                                        32 - 4 * open,
+                                      ),
+                                      frost: Color.lerp(
+                                        tone.barFrost,
+                                        tone.sheetFrost,
+                                        open,
+                                      ),
+                                      blur:
+                                          GlassStyle.barBlur +
+                                          (24 - GlassStyle.barBlur) * open,
+                                      refraction: open > 0.95
+                                          ? 0
+                                          : 18 * (1 - open),
+                                      light: (1 - open / 0.85).clamp(0.0, 1.0),
+                                      child: body,
+                                    ),
+                                  ),
+                          ),
                         ),
                       ),
                       // The ➕ slides away while the bar is the picker or a sheet.

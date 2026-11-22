@@ -1439,10 +1439,10 @@ class Settings extends Table {
   /// should still be hidden the next time the app opens, not reset.
   BoolColumn get hideAmounts => boolean().withDefault(const Constant(false))();
 
-  /// Which of the 7 catalog destinations occupy the two configurable
-  /// bottom-nav slots flanking the ➕ button — left, then right. Dashboard
-  /// and More are pinned and never appear here (see `AppShell`'s
-  /// `BottomNavCatalog`). GitHub #70.
+  /// The bottom bar's tabs, comma-joined: four ids left to right (see
+  /// `bottom_nav_layout.dart`), or — as older builds wrote it, and as the
+  /// default still reads — just the two middle slots, with Dashboard and
+  /// More at the ends. GitHub #70.
   TextColumn get bottomNavSlots =>
       text().withDefault(const Constant('transactions,persons'))();
 

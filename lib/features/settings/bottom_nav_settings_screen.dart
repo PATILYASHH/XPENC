@@ -1,50 +1,57 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/routing/app_router.dart' show appRouter;
-import '../../core/routing/app_shell.dart'
-    show basicModeHiddenCatalogIds, bottomNavCatalogLabels;
+import '../../core/routing/app_shell.dart' show basicModeHiddenCatalogIds;
+import '../../core/routing/bottom_nav_layout.dart';
 import '../../core/widgets/app_surfaces.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart' show AppMode;
 import '../../core/l10n/l10n.dart';
 
-/// Pick which of the 7 catalog destinations occupy the two configurable
-/// bottom-nav slots flanking the ➕ button — GitHub #70. Dashboard and More
-/// are pinned and don't appear here at all.
+/// Pick what goes in each of the bottom bar's four tab slots — GitHub #70.
+/// Same rules as holding the bar to edit it (see `nav_editor.dart`): each
+/// module once (picking one that's already there swaps the two), and More
+/// always stays on the bar.
 class BottomNavSettingsScreen extends ConsumerWidget {
   const BottomNavSettingsScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final raw =
-        ref.watch(settingsProvider).valueOrNull?.bottomNavSlots ??
-        'transactions,persons';
-    final parts = raw.split(',');
-    final leftId = parts.length == 2 ? parts[0] : 'transactions';
-    final rightId = parts.length == 2 ? parts[1] : 'persons';
+    final basic = ref.watch(appModeProvider) == AppMode.basic;
+    final layout = resolveBottomNavLayout(
+      ref.watch(settingsProvider).valueOrNull?.bottomNavSlots,
+      basic: basic,
+    );
     final showLabels = ref.watch(showBottomNavLabelsProvider);
     final extraBottomInset = ref.watch(extraBottomInsetProvider);
 
-    Future<void> pick(bool isLeft) async {
-      final excluded = {isLeft ? rightId : leftId};
+    Future<void> pick(int slot) async {
       final chosen = await showAppSheet<String>(
         context: context,
         showDragHandle: true,
-        builder: (_) => _CatalogPickerSheet(excluded: excluded),
+        builder: (_) => _CatalogPickerSheet(current: layout[slot]),
       );
-      if (chosen == null) return;
-      final db = ref.read(dbProvider);
-      await db.setBottomNavSlots(
-        isLeft ? chosen : leftId,
-        isLeft ? rightId : chosen,
-      );
-      // `appRouter.go` (the GoRouter instance directly, not `context.go`) so
-      // this works even in a widget test that pumps this screen standalone,
-      // with no GoRouter ancestor in the tree.
-      appRouter.go('/dashboard');
+      if (chosen == null || !context.mounted) return;
+      final next = pickBottomNavModule(layout, slot, chosen);
+      if (next == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              tr('More stays on the bar. Move it by picking it in another slot.'),
+            ),
+          ),
+        );
+        return;
+      }
+      await ref.read(dbProvider).setBottomNavLayout(next);
     }
+
+    Widget slot(int i) => _SlotTile(
+      label: tr(bottomNavModuleLabels[layout[i]]!),
+      locked: layout[i] == bottomNavRequiredId,
+      onTap: () => pick(i),
+    );
 
     return Scaffold(
       appBar: AppTopBar(title: const Tr('Customize bottom nav')),
@@ -58,28 +65,31 @@ class BottomNavSettingsScreen extends ConsumerWidget {
         ),
         children: [
           Tr(
-            'Dashboard and More always stay put. Pick what goes in the two '
-            'slots next to the ➕ button.',
+            'Pick what goes in each tab. Picking one that\'s already on the '
+            'bar swaps the two. More always stays, since Settings lives '
+            'there.',
             style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
-          const SizedBox(height: 20),
-          _PinnedRow(label: tr('Dashboard')),
           const SizedBox(height: 8),
-          _SlotTile(
-            label: bottomNavCatalogLabels[leftId]!,
-            onTap: () => pick(true),
+          Tr(
+            'Tip: hold the bottom bar for a second to edit it right there.',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.secondary,
+              fontWeight: FontWeight.w600,
+            ),
           ),
+          const SizedBox(height: 20),
+          slot(0),
+          const SizedBox(height: 8),
+          slot(1),
           const SizedBox(height: 8),
           const _AddButtonRow(),
           const SizedBox(height: 8),
-          _SlotTile(
-            label: bottomNavCatalogLabels[rightId]!,
-            onTap: () => pick(false),
-          ),
+          slot(2),
           const SizedBox(height: 8),
-          _PinnedRow(label: tr('More')),
+          slot(3),
           const SizedBox(height: 20),
           AppCard(
             margin: EdgeInsets.zero,
@@ -163,39 +173,6 @@ class BottomNavSettingsScreen extends ConsumerWidget {
   }
 }
 
-class _PinnedRow extends StatelessWidget {
-  const _PinnedRow({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: BoxDecoration(
-        color: cs.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        children: [
-          AppIcon(Icons.push_pin_outlined, size: 18, color: cs.onSurfaceVariant),
-          const SizedBox(width: 10),
-          Text(label, style: TextStyle(color: cs.onSurfaceVariant)),
-          const Spacer(),
-          Tr(
-            'Fixed',
-            style: TextStyle(
-              color: cs.onSurfaceVariant,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _AddButtonRow extends StatelessWidget {
   const _AddButtonRow();
 
@@ -214,10 +191,15 @@ class _AddButtonRow extends StatelessWidget {
 }
 
 class _SlotTile extends StatelessWidget {
-  const _SlotTile({required this.label, required this.onTap});
+  const _SlotTile({
+    required this.label,
+    required this.onTap,
+    this.locked = false,
+  });
 
   final String label;
   final VoidCallback onTap;
+  final bool locked;
 
   @override
   Widget build(BuildContext context) {
@@ -228,8 +210,8 @@ class _SlotTile extends StatelessWidget {
         title: Text(label),
         trailing: const AppIcon(Icons.chevron_right_rounded),
         onTap: onTap,
-        subtitle: Tr(
-          'Tap to change',
+        subtitle: Text(
+          locked ? tr('Always on the bar · tap to move') : tr('Tap to change'),
           style: theme.textTheme.bodySmall?.copyWith(
             color: theme.colorScheme.onSurfaceVariant,
           ),
@@ -240,32 +222,35 @@ class _SlotTile extends StatelessWidget {
 }
 
 class _CatalogPickerSheet extends ConsumerWidget {
-  const _CatalogPickerSheet({required this.excluded});
+  const _CatalogPickerSheet({required this.current});
 
-  /// Ids already used by the *other* slot(s) — omitted so the result is
-  /// always distinct from them, with no dedup logic needed by the caller.
-  final Set<String> excluded;
+  /// What the slot holds now — ticked.
+  final String current;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     // Basic mode has no budgets and no net worth — offering a slot for
     // either here would let a user pick a destination the bar then refuses
-    // to show (see AppShell._slotIds).
+    // to show (see resolveBottomNavLayout).
     final basic = ref.watch(appModeProvider) == AppMode.basic;
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(4, 8, 4, 8),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            for (final entry in bottomNavCatalogLabels.entries)
-              if (!excluded.contains(entry.key) &&
-                  !(basic && basicModeHiddenCatalogIds.contains(entry.key)))
-                AppListTile(
-                  title: Text(entry.value),
-                  onTap: () => Navigator.of(context).pop(entry.key),
-                ),
-          ],
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (final id in bottomNavModuleIds)
+                if (!(basic && basicModeHiddenCatalogIds.contains(id)))
+                  AppListTile(
+                    title: Text(tr(bottomNavModuleLabels[id]!)),
+                    trailing: id == current
+                        ? const AppIcon(Icons.check_rounded)
+                        : null,
+                    onTap: () => Navigator.of(context).pop(id),
+                  ),
+            ],
+          ),
         ),
       ),
     );

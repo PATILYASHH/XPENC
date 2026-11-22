@@ -3,6 +3,7 @@ import 'package:drift_flutter/drift_flutter.dart';
 import 'package:flutter/foundation.dart' show visibleForTesting;
 
 import '../core/budget_cycle.dart';
+import '../core/routing/bottom_nav_layout.dart';
 import '../core/connector/shared/shared_merge.dart';
 import '../core/connector/shared/shared_snapshot.dart';
 import '../core/currency.dart';
@@ -7561,6 +7562,18 @@ class AppDatabase extends _$AppDatabase {
     await update(
       settings,
     ).write(SettingsCompanion(bottomNavSlots: Value('$left,$right')));
+  }
+
+  /// All four bottom-bar tab slots, left to right — see
+  /// `bottom_nav_layout.dart`. Each id once, More always among them.
+  Future<void> setBottomNavLayout(List<String> ids) async {
+    final problem = bottomNavLayoutProblem(ids);
+    if (problem != null) {
+      throw ArgumentError(tr('Unknown bottom-nav item.'));
+    }
+    await update(
+      settings,
+    ).write(SettingsCompanion(bottomNavSlots: Value(ids.join(','))));
   }
 
   /// The Dashboard's widget order and visibility, already encoded — see

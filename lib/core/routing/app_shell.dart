@@ -3,6 +3,7 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart' show LongPressGestureRecognizer;
 import 'package:flutter/material.dart';
 import 'package:flutter/physics.dart';
 import 'package:flutter/scheduler.dart';
@@ -17,6 +18,7 @@ import '../../data/tables.dart' show AppMode;
 import '../widgets/app_surfaces.dart';
 import '../widgets/glass_sheet.dart';
 import '../widgets/motion.dart';
+import 'bottom_nav_layout.dart';
 import 'hold_menu_geometry.dart';
 import 'quick_actions.dart';
 import '../../features/add_transaction/add_transaction_choice_sheet.dart';
@@ -36,6 +38,7 @@ import '../widgets/nav_bar_inset.dart';
 import '../../core/l10n/l10n.dart';
 
 part 'glass_chrome.dart';
+part 'nav_editor.dart';
 
 /// `Dashboard · slotLeft · ➕ · slotRight · More`
 ///
@@ -112,6 +115,26 @@ class AppShell extends ConsumerWidget {
     ),
   };
 
+  /// Every module a tab slot can hold, by `bottom_nav_layout.dart` id.
+  static const _modules = <String, _TabSpec>{
+    'dashboard': _dashboard,
+    ..._catalog,
+    'more': _more,
+  };
+
+  /// The bar's four tab ids, or null while a focused mode (a trip) picks
+  /// its own two middle tabs — the editor is for the everyday bar.
+  static List<String>? _layoutIds(WidgetRef ref) {
+    final modeSlots = ref.watch(focusedModeProvider)?.navSlots;
+    if (ref.watch(focusedModeProvider) != null && modeSlots != null) {
+      return null;
+    }
+    return resolveBottomNavLayout(
+      ref.watch(settingsProvider).valueOrNull?.bottomNavSlots,
+      basic: ref.watch(appModeProvider) == AppMode.basic,
+    );
+  }
+
   static (String, String) _slotIds(WidgetRef ref) {
     final basic = ref.watch(appModeProvider) == AppMode.basic;
     // A mode (a trip) that's the focus may pick its own two tabs.
@@ -161,18 +184,39 @@ class AppShell extends ConsumerWidget {
     final theme = Theme.of(context);
     final border = theme.colorScheme.outline;
     final glass = AppSurface.of(context).isGlass;
-    final (leftId, rightId) = _slotIds(ref);
-    final left = _catalog[leftId]!;
-    final right = _catalog[rightId]!;
-    // A focused mode's home is its first tab, under its name.
-    final home = ref.watch(focusedModeProvider) == null
-        ? _dashboard
-        : _TabSpec(
-            0,
-            Icons.luggage_outlined,
-            Icons.luggage_rounded,
-            ref.watch(focusedModeProvider)!.name,
-          );
+    final focused = ref.watch(focusedModeProvider);
+    final layoutIds = _layoutIds(ref);
+    final List<_TabSpec> tabs;
+    if (focused == null) {
+      tabs = [
+        for (final id in layoutIds ?? defaultBottomNavLayout) _modules[id]!,
+      ];
+    } else {
+      // A focused mode's home is its first tab, under its name.
+      final (leftId, rightId) = _slotIds(ref);
+      tabs = [
+        _TabSpec(
+          0,
+          Icons.luggage_outlined,
+          Icons.luggage_rounded,
+          focused.name,
+        ),
+        _catalog[leftId]!,
+        _catalog[rightId]!,
+        _more,
+      ];
+    }
+    // Hold the bar to edit it — the everyday bar only.
+    void Function(Rect bar, List<Rect> slots)? editFrom;
+    if (focused == null && layoutIds != null) {
+      editFrom = (bar, slots) => _openNavEditor(
+        context,
+        layout: layoutIds,
+        slots: slots,
+        bar: bar,
+        glass: glass,
+      );
+    }
 
     final add = _AddButton(
       holdEnabled: ref.watch(holdMenuEnabledProvider),
@@ -256,7 +300,8 @@ class AppShell extends ConsumerWidget {
               ? null
               : glass
               ? _LiquidTabBar(
-                  tabs: [home, left, right, _more],
+                  tabs: tabs,
+                  onHoldEdit: editFrom,
                   currentBranch: navigationShell.currentIndex,
                   showLabels: ref.watch(showBottomNavLabelsProvider),
                   onSelect: (branch) => _goBranch(ref, branch),
@@ -270,14 +315,30 @@ class AppShell extends ConsumerWidget {
                     top: false,
                     child: SizedBox(
                       height: 68,
-                      child: Row(
-                        children: [
-                          _navItem(context, ref, home),
-                          _navItem(context, ref, left),
-                          add,
-                          _navItem(context, ref, right),
-                          _navItem(context, ref, _more),
-                        ],
+                      child: _NavHoldToEdit(
+                        enabled: editFrom != null,
+                        // Five equal columns, the ➕ in the middle one.
+                        onTriggered: (bar) {
+                          final w = bar.width / 5;
+                          editFrom!(bar, [
+                            for (final i in [0, 1, 3, 4])
+                              Rect.fromLTWH(
+                                bar.left + w * i,
+                                bar.top,
+                                w,
+                                bar.height,
+                              ),
+                          ]);
+                        },
+                        child: Row(
+                          children: [
+                            _navItem(context, ref, tabs[0]),
+                            _navItem(context, ref, tabs[1]),
+                            add,
+                            _navItem(context, ref, tabs[2]),
+                            _navItem(context, ref, tabs[3]),
+                          ],
+                        ),
                       ),
                     ),
                   ),
