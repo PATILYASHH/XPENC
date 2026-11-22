@@ -629,81 +629,90 @@ class _XpencAppState extends ConsumerState<XpencApp>
               bottom: mq.viewPadding.bottom + extraBottomInset,
             ),
           ),
-          child: L10nScope(
-            code: _language ?? 'en',
-            child: CurrencyScope(
-              currency: currency,
-              showSymbol: showSymbol,
-              child: AmountVisibilityScope(
-                hidden: hideAmounts,
-                child: switch (ready) {
-                  AsyncError(:final error) => _FatalError(
-                    error: error,
-                    onRetry: () => ref.invalidate(databaseReadyProvider),
-                  ),
-                  // The router's subtree stays mounted underneath even while
-                  // locked — only stacked, opaque `LockScreen` sits on top of
-                  // it — or every relock (immediate, on every backgrounding)
-                  // would silently drop whatever the user was in the middle of
-                  // doing: a half-typed transaction, a scroll position,
-                  // anything not yet saved.
-                  AsyncData() =>
-                    !_passcodeKnown
-                        ? const _LaunchSplash()
-                        : _language == null
-                        ? const _LaunchSplash()
-                        : Stack(
-                            children: [
-                              // On a PC-sized screen, a sidebar beside every
-                              // page — see `DesktopFrame`.
-                              if (child != null) DesktopFrame(child: child),
-                              // Opt-in (GitHub #90) — someone who deliberately
-                              // leaves screenshot-blocking off made that choice
-                              // on purpose and shouldn't be nagged about it
-                              // unless they ask to be. Never over the lock
-                              // screen either: nothing sensitive is on it.
-                              if (!_locked &&
-                                  !ref.watch(preventScreenshotsProvider) &&
-                                  ref.watch(screenshotReminderEnabledProvider))
-                                const Positioned(
-                                  right: 12,
-                                  bottom: 84,
-                                  child: _ScreenshotAllowedTag(),
-                                ),
-                              if (_locked)
-                                Positioned.fill(
-                                  // `LockScreen` sits here as a sibling of the
-                                  // routed `child` above, not a descendant of
-                                  // it — the app's real `Navigator` lives
-                                  // inside `child`, built by go_router, so
-                                  // `LockScreen`'s own context would otherwise
-                                  // have no `Navigator` ancestor at all. That
-                                  // silently broke "Try another method"'s
-                                  // `showModalBottomSheet` (GitHub #127): it
-                                  // threw on tap with no visible feedback,
-                                  // since only 2+ ready unlock methods ever
-                                  // show that button in the first place. A
-                                  // small nested `Navigator` — never touched by
-                                  // the app's own routing — gives it one.
-                                  // `HeroControllerScope.none`: a bare
-                                  // `Navigator` otherwise inherits the
-                                  // ambient `HeroController` `MaterialApp
-                                  // .router` provides, which throws once two
-                                  // Navigators (this one and go_router's,
-                                  // inside `child`) end up sharing it.
-                                  child: HeroControllerScope.none(
-                                    child: Navigator(
-                                      onGenerateRoute: (_) => MaterialPageRoute(
-                                        builder: (_) =>
-                                            LockScreen(onUnlocked: _unlocked),
+          // Arabic and other right-to-left packs mirror the layout. Set
+          // here, over the router, so pages, dialogs and sheets all follow.
+          child: Directionality(
+            textDirection: L10n.textDirection(_language ?? 'en'),
+            child: L10nScope(
+              code: _language ?? 'en',
+              child: CurrencyScope(
+                currency: currency,
+                showSymbol: showSymbol,
+                child: AmountVisibilityScope(
+                  hidden: hideAmounts,
+                  child: switch (ready) {
+                    AsyncError(:final error) => _FatalError(
+                      error: error,
+                      onRetry: () => ref.invalidate(databaseReadyProvider),
+                    ),
+                    // The router's subtree stays mounted underneath even while
+                    // locked — only stacked, opaque `LockScreen` sits on top of
+                    // it — or every relock (immediate, on every backgrounding)
+                    // would silently drop whatever the user was in the middle of
+                    // doing: a half-typed transaction, a scroll position,
+                    // anything not yet saved.
+                    AsyncData() =>
+                      !_passcodeKnown
+                          ? const _LaunchSplash()
+                          : _language == null
+                          ? const _LaunchSplash()
+                          : Stack(
+                              children: [
+                                // On a PC-sized screen, a sidebar beside every
+                                // page — see `DesktopFrame`.
+                                if (child != null) DesktopFrame(child: child),
+                                // Opt-in (GitHub #90) — someone who deliberately
+                                // leaves screenshot-blocking off made that choice
+                                // on purpose and shouldn't be nagged about it
+                                // unless they ask to be. Never over the lock
+                                // screen either: nothing sensitive is on it.
+                                if (!_locked &&
+                                    !ref.watch(preventScreenshotsProvider) &&
+                                    ref.watch(
+                                      screenshotReminderEnabledProvider,
+                                    ))
+                                  const Positioned(
+                                    right: 12,
+                                    bottom: 84,
+                                    child: _ScreenshotAllowedTag(),
+                                  ),
+                                if (_locked)
+                                  Positioned.fill(
+                                    // `LockScreen` sits here as a sibling of the
+                                    // routed `child` above, not a descendant of
+                                    // it — the app's real `Navigator` lives
+                                    // inside `child`, built by go_router, so
+                                    // `LockScreen`'s own context would otherwise
+                                    // have no `Navigator` ancestor at all. That
+                                    // silently broke "Try another method"'s
+                                    // `showModalBottomSheet` (GitHub #127): it
+                                    // threw on tap with no visible feedback,
+                                    // since only 2+ ready unlock methods ever
+                                    // show that button in the first place. A
+                                    // small nested `Navigator` — never touched by
+                                    // the app's own routing — gives it one.
+                                    // `HeroControllerScope.none`: a bare
+                                    // `Navigator` otherwise inherits the
+                                    // ambient `HeroController` `MaterialApp
+                                    // .router` provides, which throws once two
+                                    // Navigators (this one and go_router's,
+                                    // inside `child`) end up sharing it.
+                                    child: HeroControllerScope.none(
+                                      child: Navigator(
+                                        onGenerateRoute: (_) =>
+                                            MaterialPageRoute(
+                                              builder: (_) => LockScreen(
+                                                onUnlocked: _unlocked,
+                                              ),
+                                            ),
                                       ),
                                     ),
                                   ),
-                                ),
-                            ],
-                          ),
-                  _ => child ?? const SizedBox.shrink(),
-                },
+                              ],
+                            ),
+                    _ => child ?? const SizedBox.shrink(),
+                  },
+                ),
               ),
             ),
           ),

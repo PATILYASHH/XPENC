@@ -48,6 +48,7 @@ const packNames = {
   'fr': ('French', 'Français'),
   'it': ('Italian', 'Italiano'),
   'pt': ('Portuguese', 'Português'),
+  'ar': ('Arabic', 'العربية'),
 };
 
 void main() {

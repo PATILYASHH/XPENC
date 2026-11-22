@@ -472,6 +472,7 @@
       const text = el('span', 'row-text');
       const title = el('span', 'row-title', l.nativeName);
       title.lang = l.code;
+      title.dir = 'auto'; // Arabic and other right-to-left names
       text.append(title);
       const sub = [];
       if (l.nativeName !== l.englishName) sub.push(l.englishName);

@@ -2,7 +2,7 @@
  "format": "xpenc-language-index",
  "version": 1,
  "minAppVersion": "1.6.6",
- "strings": 3233,
+ "strings": 3331,
  "languages": [
   {
    "code": "en",
@@ -16,38 +16,48 @@
    "englishName": "Hindi",
    "nativeName": "हिन्दी",
    "builtIn": true,
-   "coverage": 99
+   "coverage": 96
   },
   {
    "code": "de",
    "englishName": "German",
    "nativeName": "Deutsch",
    "builtIn": true,
-   "coverage": 99
+   "coverage": 96
   },
   {
    "code": "ja",
    "englishName": "Japanese",
    "nativeName": "日本語",
    "builtIn": true,
-   "coverage": 99
+   "coverage": 96
   },
   {
    "code": "ru",
    "englishName": "Russian",
    "nativeName": "Русский",
    "builtIn": true,
-   "coverage": 99
+   "coverage": 96
+  },
+  {
+   "code": "ar",
+   "englishName": "Arabic",
+   "nativeName": "العربية",
+   "builtIn": false,
+   "coverage": 100,
+   "strings": 3306,
+   "file": "packs/xpenc-language-ar.json",
+   "bytes": 354273
   },
   {
    "code": "bn",
    "englishName": "Bengali",
    "nativeName": "বাংলা",
    "builtIn": false,
-   "coverage": 99,
-   "strings": 3200,
+   "coverage": 96,
+   "strings": 3192,
    "file": "packs/xpenc-language-bn.json",
-   "bytes": 453041
+   "bytes": 452413
   },
   {
    "code": "fr",

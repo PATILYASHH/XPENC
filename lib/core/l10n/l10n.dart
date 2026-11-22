@@ -39,9 +39,8 @@ class AppLanguage {
 }
 
 /// The interface languages XPENC ships, English first. Any other language
-/// comes as an imported pack (see `LanguagePack`). Left-to-right scripts
-/// only for now: a right-to-left one (Arabic, Urdu) also needs the layout
-/// mirrored.
+/// comes as an imported pack (see `LanguagePack`) — a right-to-left one
+/// (Arabic, Urdu, …) mirrors the layout, see [L10n.textDirection].
 const appLanguages = <AppLanguage>[
   AppLanguage('en', 'English', 'English'),
   AppLanguage('hi', 'Hindi', 'हिन्दी'),
@@ -88,6 +87,13 @@ abstract final class L10n {
 
   /// The language currently shown, e.g. `hi`.
   static String get code => _code;
+
+  /// Languages written right to left — the whole layout mirrors for them.
+  static const _rtl = {'ar', 'fa', 'he', 'ur', 'ps', 'sd', 'ckb', 'yi'};
+
+  /// Which way [code] (default: the current language) reads.
+  static TextDirection textDirection([String? code]) =>
+      _rtl.contains(code ?? _code) ? TextDirection.rtl : TextDirection.ltr;
 
   /// The phone's own language when XPENC has it, else English — what
   /// "Phone's language" in Settings resolves to.
