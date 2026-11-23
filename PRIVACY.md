@@ -53,14 +53,14 @@ same way.
 | `RECEIVE_BOOT_COMPLETED` | To re-schedule your local reminders after the phone restarts. |
 | `CAMERA` (optional, asked at runtime) | Only if you tap "Take photo" when attaching a receipt to a transaction. The photo is copied straight into the app's own private storage and never leaves the device. If you deny it, or just attach from your gallery instead, the app works normally — nothing about the camera is used anywhere else. |
 | `READ_CONTACTS` (optional, asked at runtime) | Only if you tap "Pick from contacts" when adding a person, to bring in that contact's name, phone number and photo. If you deny it, or turn it off later, XPENC never opens your contacts and hides every "from contacts" button — you type names and numbers by hand instead. Nothing from your address book is read except the one contact you explicitly pick, and it's copied into the app's own private storage, never transmitted anywhere. |
-| `RECORD_AUDIO` (optional, asked at runtime) | Only for Local AI voice input, and only the first time you tap 🎤 in Ask Exo. While you speak, the sound is held in the phone's memory, turned into text by the speech model on the phone, and then thrown away — it is never saved to storage and never sent anywhere. If you deny it, or never use voice input, nothing else changes. |
+| `RECORD_AUDIO` (optional, asked at runtime) | Only for voice input, and only the first time you use it: 🎤 in Ask Exo (Local AI), or voice add (double-tap ➕, India only for now). Ask Exo's sound is held in the phone's memory, turned into text by the speech model on the phone, and then thrown away. Voice add uses Android's **on-device** speech recognizer only (Android 12+) — XPENC never falls back to an online one, so the audio stays on the phone. Neither is ever saved to storage or sent anywhere by XPENC. If you deny it, or never use voice input, nothing else changes. |
 | `USE_BIOMETRIC` | Only if you turn on fingerprint/face unlock for the app lock. The app never sees your biometric data — Android only tells it whether the check passed. |
 
 You can review each permission, and turn the optional ones on or off, in
 **Settings → Permissions** inside the app.
 
 XPENC requests **no** SMS, location, storage, or internet permission. The
-microphone is used for nothing but the optional voice input above. (The final app package also contains `VIBRATE`,
+microphone is used for nothing but the optional voice input above (Ask Exo and voice add). (The final app package also contains `VIBRATE`,
 `WAKE_LOCK` and `FOREGROUND_SERVICE` — standard, install-time permissions the
 notifications library uses to deliver reminders on time — and an internal
 Android-library permission scoped to the app itself. None of them gives access

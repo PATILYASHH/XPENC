@@ -178,6 +178,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       // needs a choice — the null check is only belt and braces.
       final choice = _currencyChoice;
       if (choice != null) await db.setCurrencyCode(choice.currency.code);
+      // The country itself, too — it picks which country-specific features
+      // start on (UPI for India, Venmo for the US…; see setCountry).
+      final country = choice?.country;
+      if (country != null) await db.setCountry(country.code);
       await db.markOnboarded();
       // Old-user path already got its tier from the `from < 72` migration
       // backfill (Pro if any account was already in Envelope Mode, else

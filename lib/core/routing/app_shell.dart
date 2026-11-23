@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 
@@ -30,6 +31,8 @@ import '../../data/mode_providers.dart';
 import '../../features/persons/persons_screen.dart' show showAddPersonDialog;
 import '../../features/persons/settled_prompt_listener.dart';
 import '../../features/transactions/transaction_filters.dart';
+import '../../features/voice_add/voice_add_bar.dart';
+import '../../features/voice_add/voice_add_controller.dart';
 import '../branding/app_info.dart';
 import '../branding/brand_mark.dart';
 import '../budget_cycle.dart';
@@ -249,6 +252,7 @@ class AppShell extends ConsumerWidget {
       );
     }
 
+    final voice = ref.watch(voiceAddProvider) != null;
     final add = _AddButton(
       holdEnabled: ref.watch(holdMenuEnabledProvider),
       actions: ref.watch(holdMenuActionsProvider),
@@ -269,7 +273,13 @@ class AppShell extends ConsumerWidget {
       );
     }
 
-    return SettledPromptListener(
+    // Back while voice add is open closes it, not the app.
+    return PopScope(
+      canPop: !voice,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) ref.read(voiceAddProvider.notifier).close();
+      },
+      child: SettledPromptListener(
       // A sheet opened from anywhere in here grows out of the Glass tab bar.
       child: GlassBarScope(
         active: glass,
@@ -337,6 +347,7 @@ class AppShell extends ConsumerWidget {
                   showLabels: ref.watch(showBottomNavLabelsProvider),
                   onSelect: (branch) => _goBranch(ref, branch),
                   add: add,
+                  voice: voice ? const VoiceAddBar() : null,
                 )
               : DecoratedBox(
                   decoration: BoxDecoration(
@@ -346,7 +357,17 @@ class AppShell extends ConsumerWidget {
                     top: false,
                     child: SizedBox(
                       height: 68,
-                      child: _NavHoldToEdit(
+                      child: voice
+                          // Voice add: the words in place of the tabs, the
+                          // ➕ — now Continue — at the end.
+                          ? Row(
+                              children: [
+                                const Expanded(child: VoiceAddBar()),
+                                add,
+                                const SizedBox(width: 12),
+                              ],
+                            )
+                          : _NavHoldToEdit(
                         enabled: editFrom != null,
                         // Five equal columns, the ➕ in the middle one.
                         onTriggered: (bar) {
@@ -375,6 +396,7 @@ class AppShell extends ConsumerWidget {
                   ),
                 ),
         ),
+      ),
       ),
     );
   }
@@ -510,7 +532,7 @@ class _ProfileButton extends ConsumerWidget {
 /// releasing without moving (or after drifting back) is a cancel. Actions
 /// always push their full route, never `navigationShell.goBranch` — see
 /// `QuickActionSpec`. Off by default — see `Settings.holdMenuEnabled`.
-class _AddButton extends StatefulWidget {
+class _AddButton extends ConsumerStatefulWidget {
   const _AddButton({
     required this.holdEnabled,
     required this.actions,
@@ -533,10 +555,38 @@ class _AddButton extends StatefulWidget {
   final bool hasTemplates;
 
   @override
-  State<_AddButton> createState() => _AddButtonState();
+  ConsumerState<_AddButton> createState() => _AddButtonState();
 }
 
-class _AddButtonState extends State<_AddButton> {
+class _AddButtonState extends ConsumerState<_AddButton> {
+  /// How long a first tap waits for a second before it opens Add — only
+  /// where voice add is on (double-tap starts it), so everyone else's ➕
+  /// opens at once.
+  static const _doubleTapWindow = Duration(milliseconds: 260);
+  Timer? _tapTimer;
+
+  /// A tap: Continue while voice add is open; otherwise open Add, or —
+  /// on a second tap within [_doubleTapWindow] — start voice add.
+  void _onTap() {
+    if (ref.read(voiceAddProvider) != null) {
+      HapticFeedback.lightImpact();
+      continueVoiceAdd(context, ref);
+      return;
+    }
+    if (!ref.read(voiceAddAvailableProvider)) {
+      _open();
+      return;
+    }
+    if (_tapTimer?.isActive ?? false) {
+      _tapTimer!.cancel();
+      HapticFeedback.mediumImpact();
+      ref.read(voiceAddProvider.notifier).open();
+      return;
+    }
+    _tapTimer = Timer(_doubleTapWindow, () {
+      if (mounted) _open();
+    });
+  }
   /// How far the finger has to move from where it went down before a
   /// direction counts. Kept small: the ➕ sits at the very bottom of the
   /// screen, so the three downward slots only have a few dozen pixels of
@@ -707,6 +757,7 @@ class _AddButtonState extends State<_AddButton> {
 
   @override
   void dispose() {
+    _tapTimer?.cancel();
     _overlayEntry?.remove();
     _hoveredIndex.dispose();
     super.dispose();
@@ -763,8 +814,53 @@ class _AddButtonState extends State<_AddButton> {
           child: button,
         );
 
+  /// Voice add's send button: the ➕'s place, Continue's job.
+  Widget _send(BuildContext context) {
+    final color = Theme.of(context).colorScheme.secondary;
+    if (widget.glass) {
+      return GlassButton(
+        size: _LiquidTabBar.height,
+        backdrop: false,
+        tint: color,
+        tooltip: tr('Continue'),
+        semanticLabel: tr('Continue'),
+        onPressed: _onTap,
+        child: const AppIcon(Icons.send_rounded, color: Colors.white, size: 24),
+      );
+    }
+    return SpringBounce(
+      pressedScale: 0.92,
+      child: Material(
+        color: color,
+        shape: const StadiumBorder(),
+        child: InkWell(
+          customBorder: const StadiumBorder(),
+          onTap: _onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  tr('Continue'),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                const AppIcon(Icons.send_rounded, color: Colors.white, size: 20),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (ref.watch(voiceAddProvider) != null) return _send(context);
     if (widget.glass) {
       return _withHold(
         GlassButton(
@@ -775,7 +871,7 @@ class _AddButtonState extends State<_AddButton> {
           // A tooltip would claim the long press (radial menu or search).
           tooltip: null,
           semanticLabel: tr('Add'),
-          onPressed: _open,
+          onPressed: _onTap,
           onLongPress: _holdOpensSearch ? _openSearch : null,
           child: const AppIcon(
             CupertinoIcons.add,
@@ -792,7 +888,7 @@ class _AddButtonState extends State<_AddButton> {
         shape: const CircleBorder(),
         child: InkWell(
           customBorder: const CircleBorder(),
-          onTap: _open,
+          onTap: _onTap,
           onLongPress: _holdOpensSearch ? _openSearch : null,
           child: const SizedBox(
             width: 52,

@@ -108,6 +108,8 @@ class MainActivity : FlutterFragmentActivity() {
             .attach(flutterEngine.dartExecutor.binaryMessenger)
         VoiceChannel(applicationContext)
             .attach(flutterEngine.dartExecutor.binaryMessenger)
+        SpeechChannel(applicationContext)
+            .attach(flutterEngine.dartExecutor.binaryMessenger)
         MethodChannel(
             flutterEngine.dartExecutor.binaryMessenger,
             SCREEN_SECURITY_CHANNEL,

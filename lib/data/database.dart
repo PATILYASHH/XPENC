@@ -6,6 +6,7 @@ import '../core/budget_cycle.dart';
 import '../core/routing/bottom_nav_layout.dart';
 import '../core/connector/shared/shared_merge.dart';
 import '../core/connector/shared/shared_snapshot.dart';
+import '../core/country_features.dart';
 import '../core/currency.dart';
 import '../core/group_split_math.dart';
 import '../core/loan_amortization.dart';
@@ -187,6 +188,25 @@ String? _statementNote(TransactionRow t, String? personName) {
   return note;
 }
 
+/// The levels a budget alerts at (GitHub #186) — see [Budgets.alertLevels].
+extension BudgetAlertLevels on BudgetRow {
+  /// Ascending percents; a budget from before #186 has its one level.
+  List<int> get alertLevelsPct =>
+      parseBudgetAlertLevels(alertLevels) ?? [alertThresholdPct];
+}
+
+/// [Budgets.alertLevels] as numbers: null when not stored, dropping anything
+/// that isn't a percent from 1 to 100.
+List<int>? parseBudgetAlertLevels(String? stored) {
+  if (stored == null) return null;
+  final levels = <int>{};
+  for (final part in stored.split(',')) {
+    final level = int.tryParse(part.trim());
+    if (level != null && level >= 1 && level <= 100) levels.add(level);
+  }
+  return levels.toList()..sort();
+}
+
 @DriftDatabase(
   tables: [
     Accounts,
@@ -237,25 +257,6 @@ String? _statementNote(TransactionRow t, String? personName) {
     AiMemories,
   ],
 )
-/// The levels a budget alerts at (GitHub #186) — see [Budgets.alertLevels].
-extension BudgetAlertLevels on BudgetRow {
-  /// Ascending percents; a budget from before #186 has its one level.
-  List<int> get alertLevelsPct =>
-      parseBudgetAlertLevels(alertLevels) ?? [alertThresholdPct];
-}
-
-/// [Budgets.alertLevels] as numbers: null when not stored, dropping anything
-/// that isn't a percent from 1 to 100.
-List<int>? parseBudgetAlertLevels(String? stored) {
-  if (stored == null) return null;
-  final levels = <int>{};
-  for (final part in stored.split(',')) {
-    final level = int.tryParse(part.trim());
-    if (level != null && level >= 1 && level <= 100) levels.add(level);
-  }
-  return levels.toList()..sort();
-}
-
 class AppDatabase extends _$AppDatabase {
   // The SQLite filename, NOT a brand. It survived the rename to XPENC on
   // purpose: it is a persistence key no user ever sees, and renaming it would
@@ -286,7 +287,7 @@ class AppDatabase extends _$AppDatabase {
       );
 
   @override
-  int get schemaVersion => 99;
+  int get schemaVersion => 100;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -958,6 +959,10 @@ class AppDatabase extends _$AppDatabase {
           settings,
           settings.dashboardWidgetOptions,
         );
+      }
+      if (from < 100) {
+        // Where the user lives — country-specific defaults and voice add.
+        await _addColumnIfMissing(m, settings, settings.countryCode);
       }
     },
     beforeOpen: (details) async {
@@ -7574,6 +7579,25 @@ class AppDatabase extends _$AppDatabase {
 
   /// Sets the interface language (GitHub #191) — an `AppLanguage.code`, or
   /// null to follow the phone's own language.
+  /// Sets where the user lives and turns each country-specific payment
+  /// method on or off to suit it ([paymentDefaultsFor]) — UPI in India,
+  /// Venmo and Cash App in the US, and so on. The user can still flip any
+  /// of them afterwards in Settings → Payment methods. The parent currency
+  /// is left alone: changing it is its own step, with its own rates.
+  Future<void> setCountry(String code) {
+    final d = paymentDefaultsFor(code);
+    return update(settings).write(
+      SettingsCompanion(
+        countryCode: Value(code.toUpperCase()),
+        upiEnabled: Value(d.upi),
+        paypalEnabled: Value(d.paypal),
+        venmoEnabled: Value(d.venmo),
+        cashappEnabled: Value(d.cashapp),
+        revolutEnabled: Value(d.revolut),
+      ),
+    );
+  }
+
   Future<void> setLanguageCode(String? code) =>
       update(settings).write(SettingsCompanion(languageCode: Value(code)));
 

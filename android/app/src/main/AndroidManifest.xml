@@ -206,5 +206,9 @@
             <action android:name="android.intent.action.SENDTO"/>
             <data android:scheme="smsto"/>
         </intent>
+        <!-- Voice add (SpeechChannel.kt): the phone's speech recognizer. -->
+        <intent>
+            <action android:name="android.speech.RecognitionService"/>
+        </intent>
     </queries>
 </manifest>

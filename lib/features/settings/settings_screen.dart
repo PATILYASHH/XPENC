@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/branding/app_info.dart';
 import '../../core/branding/brand_mark.dart';
 import '../../core/connector/connector_platform.dart';
+import '../../core/countries.dart';
+import '../../data/providers.dart';
 import '../../core/platform/distribution.dart';
 import '../../core/platform/platform_features.dart';
 import '../../core/widgets/app_surfaces.dart';
@@ -14,11 +17,12 @@ import '../../core/l10n/l10n.dart';
 /// this way (instead of one long scrolling list of every toggle) keeps each
 /// page short enough to scan and keeps this menu itself from growing every
 /// time a new setting is added.
-class SettingsScreen extends StatelessWidget {
+class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final country = countryForCode(ref.watch(homeCountryProvider));
     return Scaffold(
       appBar: AppTopBar(title: const Tr('Settings')),
       body: ListView(
@@ -42,6 +46,14 @@ class SettingsScreen extends StatelessWidget {
                   : '${tr('Language')} · Language',
               subtitle: appLanguageFor(L10n.code)?.nativeName ?? L10n.code,
               onTap: () => context.push('/more/settings/language'),
+            ),
+            _ModuleTile(
+              icon: Icons.public_rounded,
+              title: tr('Country'),
+              subtitle: country == null
+                  ? tr('Not set')
+                  : '${country.flag}  ${country.name}',
+              onTap: () => context.push('/more/settings/country'),
             ),
           ]),
           _ModuleGroup(title: tr('Appearance'), [

@@ -13,6 +13,7 @@ import '../core/routing/quick_actions.dart';
 import '../core/security/unlock_method.dart';
 import '../core/theme/font_options.dart';
 import '../core/theme/theme_preset.dart';
+import '../core/country_features.dart';
 import '../features/calculators/calculator_kind.dart' show indiaToolsFor;
 import '../features/data_export/backup_password.dart';
 import '../features/data_export/backup_service.dart';
@@ -1195,10 +1196,30 @@ final currencyProvider = Provider<Currency>((ref) {
   return currencyForCode(code);
 });
 
+/// Where the user lives (`Settings.countryCode`), as an ISO code. Before a
+/// country was ever stored (databases from older versions), it falls back
+/// to the parent currency's home when that's unambiguous — ₹ means India.
+/// Null when neither says.
+final homeCountryProvider = Provider<String?>((ref) {
+  final stored = ref.watch(settingsProvider).valueOrNull?.countryCode;
+  if (stored != null && stored.isNotEmpty) return stored.toUpperCase();
+  return ref.watch(currencyProvider).code == 'INR' ? 'IN' : null;
+});
+
 /// Whether India-only tools (India's income tax, GST, PPF) are offered —
-/// the parent currency is ₹. See `indiaToolsFor`.
+/// the user lives in India. Before a country was stored, ₹ stands for
+/// India (see [homeCountryProvider] and `indiaToolsFor`).
 final indiaToolsProvider = Provider<bool>((ref) {
+  final country = ref.watch(settingsProvider).valueOrNull?.countryCode;
+  if (country != null && country.isNotEmpty) return isIndia(country);
   return indiaToolsFor(ref.watch(currencyProvider).code);
+});
+
+/// Whether double-tapping ➕ starts voice add: it understands this
+/// country's phrases ([voiceAddCountries]) and the phone can listen.
+final voiceAddAvailableProvider = Provider<bool>((ref) {
+  final country = ref.watch(homeCountryProvider);
+  return PlatformFeatures.voiceAdd && voiceAddCountries.contains(country);
 });
 
 /// Whether to draw the currency symbol. Defaults to shown while settings load.

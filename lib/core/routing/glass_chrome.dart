@@ -586,6 +586,7 @@ class _LiquidTabBar extends StatefulWidget {
     required this.onSelect,
     required this.add,
     this.onHoldEdit,
+    this.voice,
   });
 
   static const double height = kGlassBarHeight;
@@ -596,6 +597,9 @@ class _LiquidTabBar extends StatefulWidget {
   final bool showLabels;
   final ValueChanged<int> onSelect;
   final Widget add;
+
+  /// Voice add's bar ([VoiceAddBar]) in place of the tabs while it's open.
+  final Widget? voice;
 
   /// Holding the capsule opens the bar editor (see `nav_editor.dart`) with
   /// the capsule's rect and its tabs' rects. Null: no editing.
@@ -731,7 +735,8 @@ class _LiquidTabBarState extends State<_LiquidTabBar>
                             opacity: 1 - tabsOut,
                             child: Transform.scale(
                               scale: 1 - 0.18 * tabsOut,
-                              child: _tabs(context, selected),
+                              child:
+                                  widget.voice ?? _tabs(context, selected),
                             ),
                           ),
                         ),
@@ -758,7 +763,10 @@ class _LiquidTabBarState extends State<_LiquidTabBar>
                       Expanded(
                         child: _NavHoldToEdit(
                           // Not while the bar is the month picker or a sheet.
-                          enabled: widget.onHoldEdit != null && away <= 0,
+                          enabled:
+                              widget.onHoldEdit != null &&
+                              widget.voice == null &&
+                              away <= 0,
                           onTriggered: (bar) {
                             final w = bar.width / widget.tabs.length;
                             widget.onHoldEdit!(bar, [

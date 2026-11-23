@@ -36,6 +36,10 @@ abstract final class PlatformFeatures {
   /// On-device text recognition — the Tesseract plugin is Android-only.
   static bool get ocr => _android;
 
+  /// Voice add (double-tap ➕): Android's own speech recognizer, kept
+  /// on-device (`SpeechChannel.kt`). Not part of Local AI — no model needed.
+  static bool get voiceAdd => _android;
+
   /// Local AI (Ask Exo, voice input) — the llama.cpp / whisper.cpp
   /// library ships for Android only, for now.
   static bool get localAi => _android;

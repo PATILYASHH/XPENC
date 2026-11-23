@@ -26,6 +26,7 @@ import '../../features/calculators/calculator_screen.dart';
 import '../../features/calculators/calculations_screen.dart';
 import '../../features/categories/archived_categories_screen.dart';
 import '../../features/tags/tag_detail_screen.dart';
+import '../../features/settings/country_settings_screen.dart';
 import '../../features/categories/categories_screen.dart';
 import '../../features/categories/category_detail_screen.dart';
 import '../../features/modes/mode_detail_screen.dart';
@@ -316,6 +317,11 @@ final appRouter = GoRouter(
                       path: 'language',
                       parentNavigatorKey: _rootKey,
                       builder: (_, _) => const LanguageSettingsScreen(),
+                    ),
+                    GoRoute(
+                      path: 'country',
+                      parentNavigatorKey: _rootKey,
+                      builder: (_, _) => const CountrySettingsScreen(),
                     ),
                     GoRoute(
                       path: 'local-ai',
@@ -720,6 +726,10 @@ final appRouter = GoRouter(
           // The calendar's ➕ for a picked day, as yyyy-MM-dd.
           initialDate: DateTime.tryParse(
             state.uri.queryParameters['date'] ?? '',
+          ),
+          // Voice add's guess.
+          initialCategoryId: int.tryParse(
+            state.uri.queryParameters['category'] ?? '',
           ),
         );
       },

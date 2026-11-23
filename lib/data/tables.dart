@@ -1502,6 +1502,14 @@ class Settings extends Table {
   /// language (GitHub #191).
   TextColumn get languageCode => text().nullable()();
 
+  /// Where the user lives, as an ISO 3166-1 alpha-2 code (`IN`, `US`) —
+  /// picked on onboarding's country step or in Settings → Country. It
+  /// decides which country-specific features are on by default (UPI and
+  /// India's tools for `IN`, Venmo for `US`…) and which voice-add phrases
+  /// apply. Null on databases from before it existed: `homeCountryProvider`
+  /// then falls back to the parent currency (₹ → India).
+  TextColumn get countryCode => text().nullable()();
+
   /// Extra logical pixels of bottom clearance added app-wide, on top of
   /// whatever the OS reports as the system nav bar's safe-area inset — a
   /// manual escape hatch for OEM devices that misreport (or don't report at

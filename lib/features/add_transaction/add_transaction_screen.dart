@@ -108,6 +108,7 @@ class AddTransactionScreen extends ConsumerStatefulWidget {
     this.initialToAccountId,
     this.plannedCostId,
     this.initialDate,
+    this.initialCategoryId,
     super.key,
   });
 
@@ -146,6 +147,11 @@ class AddTransactionScreen extends ConsumerStatefulWidget {
   /// time stays the current time, editable as usual. Ignored like the
   /// fields above once an existing transaction is loaded.
   final DateTime? initialDate;
+
+  /// Prefills the category — voice add's guess from what was said. Must be
+  /// of [initialType]'s kind. Ignored like the fields above once an
+  /// existing transaction is loaded.
+  final int? initialCategoryId;
 
   @override
   ConsumerState<AddTransactionScreen> createState() =>
@@ -414,6 +420,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
         _dateChosen = true;
       }
       _accountId = widget.initialAccountId;
+      if (_type != TxType.transfer) _categoryId = widget.initialCategoryId;
       if (_type == TxType.transfer) _toAccountId = widget.initialToAccountId;
       // Pre-select the last-used account on a brand-new transaction, once the
       // one-shot query resolves. Still freely changeable via "Paid via", and

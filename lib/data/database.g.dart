@@ -207,9 +207,6 @@ class $AccountsTable extends Accounts
   static const VerificationMeta _showTransferOutMeta = const VerificationMeta(
     'showTransferOut',
   );
-  static const VerificationMeta _showOnAddPageMeta = const VerificationMeta(
-    'showOnAddPage',
-  );
   @override
   late final GeneratedColumn<bool> showTransferOut = GeneratedColumn<bool>(
     'show_transfer_out',
@@ -221,6 +218,9 @@ class $AccountsTable extends Accounts
       'CHECK ("show_transfer_out" IN (0, 1))',
     ),
     defaultValue: const Constant(true),
+  );
+  static const VerificationMeta _showOnAddPageMeta = const VerificationMeta(
+    'showOnAddPage',
   );
   @override
   late final GeneratedColumn<bool> showOnAddPage = GeneratedColumn<bool>(
@@ -602,6 +602,11 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
   /// money that can't leave, like a vending machine's prepaid balance
   /// (GitHub #199). On by default.
   final bool showTransferOut;
+
+  /// Whether this account has a card in Add Transaction's account strip.
+  /// Off = taken off the strip by holding it ("Remove from here") — still
+  /// pickable from the strip's "More" card, and put back from the strip's
+  /// edit mode. On by default.
   final bool showOnAddPage;
 
   /// Whether this account's balance counts toward Net Worth (dashboard,
@@ -8384,19 +8389,28 @@ class $PersonEntriesTable extends PersonEntries
     if (data.containsKey('remote_entry_id')) {
       context.handle(
         _remoteEntryIdMeta,
-        remoteEntryId.isAcceptableOrUnknown(data['remote_entry_id']!, _remoteEntryIdMeta),
+        remoteEntryId.isAcceptableOrUnknown(
+          data['remote_entry_id']!,
+          _remoteEntryIdMeta,
+        ),
       );
     }
     if (data.containsKey('shared_status')) {
       context.handle(
         _sharedStatusMeta,
-        sharedStatus.isAcceptableOrUnknown(data['shared_status']!, _sharedStatusMeta),
+        sharedStatus.isAcceptableOrUnknown(
+          data['shared_status']!,
+          _sharedStatusMeta,
+        ),
       );
     }
     if (data.containsKey('shared_account')) {
       context.handle(
         _sharedAccountMeta,
-        sharedAccount.isAcceptableOrUnknown(data['shared_account']!, _sharedAccountMeta),
+        sharedAccount.isAcceptableOrUnknown(
+          data['shared_account']!,
+          _sharedAccountMeta,
+        ),
       );
     }
     return context;
@@ -8519,9 +8533,27 @@ class PersonEntryRow extends DataClass implements Insertable<PersonEntryRow> {
   /// balance counts only these; everywhere else they count like any other.
   final int? modeId;
   final DateTime createdAt;
+
+  /// This phone's own id for an entry it shared (the server's `client_ref`):
+  /// how edits and deletes name it, and how the server's copy is matched
+  /// back to it. Unique where set (`person_entries_shared_ref`).
   final String? sharedRef;
+
+  /// The server's id for the entry, once known. Unique where set
+  /// (`person_entries_remote_entry_id`). An entry a friend shared and this
+  /// phone accepted has this and no [sharedRef].
   final String? remoteEntryId;
+
+  /// Where it stands with the friend — `SharedStatus`'s names: sending,
+  /// pending, accepted, rejected, failed (all for an entry made here), or
+  /// received (a friend's, accepted here). Accepted and received entries
+  /// are the same on both sides, so their amount, date, direction and note
+  /// can't change any more.
   final String? sharedStatus;
+
+  /// The Connector account it was shared under. A different account
+  /// signed in on Connector later doesn't see it — which mustn't read as
+  /// "unfriended".
   final String? sharedAccount;
   const PersonEntryRow({
     required this.id,
@@ -8714,9 +8746,13 @@ class PersonEntryRow extends DataClass implements Insertable<PersonEntryRow> {
     modeId: modeId.present ? modeId.value : this.modeId,
     createdAt: createdAt ?? this.createdAt,
     sharedRef: sharedRef.present ? sharedRef.value : this.sharedRef,
-    remoteEntryId: remoteEntryId.present ? remoteEntryId.value : this.remoteEntryId,
+    remoteEntryId: remoteEntryId.present
+        ? remoteEntryId.value
+        : this.remoteEntryId,
     sharedStatus: sharedStatus.present ? sharedStatus.value : this.sharedStatus,
-    sharedAccount: sharedAccount.present ? sharedAccount.value : this.sharedAccount,
+    sharedAccount: sharedAccount.present
+        ? sharedAccount.value
+        : this.sharedAccount,
   );
   PersonEntryRow copyWithCompanion(PersonEntriesCompanion data) {
     return PersonEntryRow(
@@ -8737,9 +8773,15 @@ class PersonEntryRow extends DataClass implements Insertable<PersonEntryRow> {
       modeId: data.modeId.present ? data.modeId.value : this.modeId,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       sharedRef: data.sharedRef.present ? data.sharedRef.value : this.sharedRef,
-      remoteEntryId: data.remoteEntryId.present ? data.remoteEntryId.value : this.remoteEntryId,
-      sharedStatus: data.sharedStatus.present ? data.sharedStatus.value : this.sharedStatus,
-      sharedAccount: data.sharedAccount.present ? data.sharedAccount.value : this.sharedAccount,
+      remoteEntryId: data.remoteEntryId.present
+          ? data.remoteEntryId.value
+          : this.remoteEntryId,
+      sharedStatus: data.sharedStatus.present
+          ? data.sharedStatus.value
+          : this.sharedStatus,
+      sharedAccount: data.sharedAccount.present
+          ? data.sharedAccount.value
+          : this.sharedAccount,
     );
   }
 
@@ -12163,6 +12205,17 @@ class $SettingsTable extends Settings
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _countryCodeMeta = const VerificationMeta(
+    'countryCode',
+  );
+  @override
+  late final GeneratedColumn<String> countryCode = GeneratedColumn<String>(
+    'country_code',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _extraBottomInsetMeta = const VerificationMeta(
     'extraBottomInset',
   );
@@ -12190,8 +12243,6 @@ class $SettingsTable extends Settings
   static const VerificationMeta _dashboardLayoutMeta = const VerificationMeta(
     'dashboardLayout',
   );
-  static const VerificationMeta _dashboardWidgetOptionsMeta =
-      const VerificationMeta('dashboardWidgetOptions');
   @override
   late final GeneratedColumn<String> dashboardLayout = GeneratedColumn<String>(
     'dashboard_layout',
@@ -12201,16 +12252,6 @@ class $SettingsTable extends Settings
     requiredDuringInsert: false,
     defaultValue: const Constant(''),
   );
-  @override
-  late final GeneratedColumn<String> dashboardWidgetOptions =
-      GeneratedColumn<String>(
-        'dashboard_widget_options',
-        aliasedName,
-        false,
-        type: DriftSqlType.string,
-        requiredDuringInsert: false,
-        defaultValue: const Constant(''),
-      );
   @override
   late final GeneratedColumnWithTypeConverter<DashboardAccountsStyle, String>
   dashboardAccountsStyle =
@@ -12223,6 +12264,18 @@ class $SettingsTable extends Settings
         defaultValue: const Constant('slider'),
       ).withConverter<DashboardAccountsStyle>(
         $SettingsTable.$converterdashboardAccountsStyle,
+      );
+  static const VerificationMeta _dashboardWidgetOptionsMeta =
+      const VerificationMeta('dashboardWidgetOptions');
+  @override
+  late final GeneratedColumn<String> dashboardWidgetOptions =
+      GeneratedColumn<String>(
+        'dashboard_widget_options',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+        defaultValue: const Constant(''),
       );
   static const VerificationMeta _incomeColorMeta = const VerificationMeta(
     'incomeColor',
@@ -12421,11 +12474,12 @@ class $SettingsTable extends Settings
     fontWeightDelta,
     fontFamily,
     languageCode,
+    countryCode,
     extraBottomInset,
     frequentIconKeys,
     dashboardLayout,
-    dashboardWidgetOptions,
     dashboardAccountsStyle,
+    dashboardWidgetOptions,
     incomeColor,
     expenseColor,
     transferColor,
@@ -12969,7 +13023,19 @@ class $SettingsTable extends Settings
     if (data.containsKey('language_code')) {
       context.handle(
         _languageCodeMeta,
-        languageCode.isAcceptableOrUnknown(data['language_code']!, _languageCodeMeta),
+        languageCode.isAcceptableOrUnknown(
+          data['language_code']!,
+          _languageCodeMeta,
+        ),
+      );
+    }
+    if (data.containsKey('country_code')) {
+      context.handle(
+        _countryCodeMeta,
+        countryCode.isAcceptableOrUnknown(
+          data['country_code']!,
+          _countryCodeMeta,
+        ),
       );
     }
     if (data.containsKey('extra_bottom_inset')) {
@@ -13383,6 +13449,10 @@ class $SettingsTable extends Settings
         DriftSqlType.string,
         data['${effectivePrefix}language_code'],
       ),
+      countryCode: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}country_code'],
+      ),
       extraBottomInset: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}extra_bottom_inset'],
@@ -13395,10 +13465,6 @@ class $SettingsTable extends Settings
         DriftSqlType.string,
         data['${effectivePrefix}dashboard_layout'],
       )!,
-      dashboardWidgetOptions: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}dashboard_widget_options'],
-      )!,
       dashboardAccountsStyle: $SettingsTable.$converterdashboardAccountsStyle
           .fromSql(
             attachedDatabase.typeMapping.read(
@@ -13406,6 +13472,10 @@ class $SettingsTable extends Settings
               data['${effectivePrefix}dashboard_accounts_style'],
             )!,
           ),
+      dashboardWidgetOptions: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}dashboard_widget_options'],
+      )!,
       incomeColor: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}income_color'],
@@ -13791,10 +13861,10 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
   /// should still be hidden the next time the app opens, not reset.
   final bool hideAmounts;
 
-  /// Which of the 7 catalog destinations occupy the two configurable
-  /// bottom-nav slots flanking the ➕ button — left, then right. Dashboard
-  /// and More are pinned and never appear here (see `AppShell`'s
-  /// `BottomNavCatalog`). GitHub #70.
+  /// The bottom bar's tabs, comma-joined: four ids left to right (see
+  /// `bottom_nav_layout.dart`), or — as older builds wrote it, and as the
+  /// default still reads — just the two middle slots, with Dashboard and
+  /// More at the ends. GitHub #70.
   final String bottomNavSlots;
 
   /// Whether each bottom-nav item shows its small text label under the icon.
@@ -13841,6 +13911,14 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
   /// language (GitHub #191).
   final String? languageCode;
 
+  /// Where the user lives, as an ISO 3166-1 alpha-2 code (`IN`, `US`) —
+  /// picked on onboarding's country step or in Settings → Country. It
+  /// decides which country-specific features are on by default (UPI and
+  /// India's tools for `IN`, Venmo for `US`…) and which voice-add phrases
+  /// apply. Null on databases from before it existed: `homeCountryProvider`
+  /// then falls back to the parent currency (₹ → India).
+  final String? countryCode;
+
   /// Extra logical pixels of bottom clearance added app-wide, on top of
   /// whatever the OS reports as the system nav bar's safe-area inset — a
   /// manual escape hatch for OEM devices that misreport (or don't report at
@@ -13864,13 +13942,16 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
   /// later version is told apart from one the user removed.
   final String dashboardLayout;
 
-  /// Each Dashboard widget's own options — see `dashboard_layout.dart`.
-  final String dashboardWidgetOptions;
-
   /// How the Dashboard's Accounts widget lays out — see
   /// [DashboardAccountsStyle]. Defaults to `slider`, the original layout, so
   /// nobody's dashboard changes until they pick the other one.
   final DashboardAccountsStyle dashboardAccountsStyle;
+
+  /// Each Dashboard widget's own options, comma-joined `widget.key=value`
+  /// (e.g. `recent.count=10,people.filter=owesYou`) — see
+  /// `DashboardWidgetX.options` in `dashboard_layout.dart`. Only choices
+  /// that differ from the default are kept; `''` is every widget as built.
+  final String dashboardWidgetOptions;
 
   /// Settings → Colours (GitHub #156): the person's pick for each money
   /// direction, as ARGB. Null keeps the built-in colour (`AppColors`'
@@ -13977,11 +14058,12 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     required this.fontWeightDelta,
     this.fontFamily,
     this.languageCode,
+    this.countryCode,
     required this.extraBottomInset,
     required this.frequentIconKeys,
     required this.dashboardLayout,
-    required this.dashboardWidgetOptions,
     required this.dashboardAccountsStyle,
+    required this.dashboardWidgetOptions,
     this.incomeColor,
     this.expenseColor,
     this.transferColor,
@@ -14141,10 +14223,12 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     if (!nullToAbsent || languageCode != null) {
       map['language_code'] = Variable<String>(languageCode);
     }
+    if (!nullToAbsent || countryCode != null) {
+      map['country_code'] = Variable<String>(countryCode);
+    }
     map['extra_bottom_inset'] = Variable<int>(extraBottomInset);
     map['frequent_icon_keys'] = Variable<String>(frequentIconKeys);
     map['dashboard_layout'] = Variable<String>(dashboardLayout);
-    map['dashboard_widget_options'] = Variable<String>(dashboardWidgetOptions);
     {
       map['dashboard_accounts_style'] = Variable<String>(
         $SettingsTable.$converterdashboardAccountsStyle.toSql(
@@ -14152,6 +14236,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
         ),
       );
     }
+    map['dashboard_widget_options'] = Variable<String>(dashboardWidgetOptions);
     if (!nullToAbsent || incomeColor != null) {
       map['income_color'] = Variable<int>(incomeColor);
     }
@@ -14296,11 +14381,14 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       languageCode: languageCode == null && nullToAbsent
           ? const Value.absent()
           : Value(languageCode),
+      countryCode: countryCode == null && nullToAbsent
+          ? const Value.absent()
+          : Value(countryCode),
       extraBottomInset: Value(extraBottomInset),
       frequentIconKeys: Value(frequentIconKeys),
       dashboardLayout: Value(dashboardLayout),
-      dashboardWidgetOptions: Value(dashboardWidgetOptions),
       dashboardAccountsStyle: Value(dashboardAccountsStyle),
+      dashboardWidgetOptions: Value(dashboardWidgetOptions),
       incomeColor: incomeColor == null && nullToAbsent
           ? const Value.absent()
           : Value(incomeColor),
@@ -14457,16 +14545,17 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       fontWeightDelta: serializer.fromJson<int>(json['fontWeightDelta']),
       fontFamily: serializer.fromJson<String?>(json['fontFamily']),
       languageCode: serializer.fromJson<String?>(json['languageCode']),
+      countryCode: serializer.fromJson<String?>(json['countryCode']),
       extraBottomInset: serializer.fromJson<int>(json['extraBottomInset']),
       frequentIconKeys: serializer.fromJson<String>(json['frequentIconKeys']),
       dashboardLayout: serializer.fromJson<String>(json['dashboardLayout']),
-      dashboardWidgetOptions: serializer.fromJson<String>(
-        json['dashboardWidgetOptions'],
-      ),
       dashboardAccountsStyle: $SettingsTable.$converterdashboardAccountsStyle
           .fromJson(
             serializer.fromJson<String>(json['dashboardAccountsStyle']),
           ),
+      dashboardWidgetOptions: serializer.fromJson<String>(
+        json['dashboardWidgetOptions'],
+      ),
       incomeColor: serializer.fromJson<int?>(json['incomeColor']),
       expenseColor: serializer.fromJson<int?>(json['expenseColor']),
       transferColor: serializer.fromJson<int?>(json['transferColor']),
@@ -14594,16 +14683,17 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       'fontWeightDelta': serializer.toJson<int>(fontWeightDelta),
       'fontFamily': serializer.toJson<String?>(fontFamily),
       'languageCode': serializer.toJson<String?>(languageCode),
+      'countryCode': serializer.toJson<String?>(countryCode),
       'extraBottomInset': serializer.toJson<int>(extraBottomInset),
       'frequentIconKeys': serializer.toJson<String>(frequentIconKeys),
       'dashboardLayout': serializer.toJson<String>(dashboardLayout),
-      'dashboardWidgetOptions': serializer.toJson<String>(
-        dashboardWidgetOptions,
-      ),
       'dashboardAccountsStyle': serializer.toJson<String>(
         $SettingsTable.$converterdashboardAccountsStyle.toJson(
           dashboardAccountsStyle,
         ),
+      ),
+      'dashboardWidgetOptions': serializer.toJson<String>(
+        dashboardWidgetOptions,
       ),
       'incomeColor': serializer.toJson<int?>(incomeColor),
       'expenseColor': serializer.toJson<int?>(expenseColor),
@@ -14698,11 +14788,12 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     int? fontWeightDelta,
     Value<String?> fontFamily = const Value.absent(),
     Value<String?> languageCode = const Value.absent(),
+    Value<String?> countryCode = const Value.absent(),
     int? extraBottomInset,
     String? frequentIconKeys,
     String? dashboardLayout,
-    String? dashboardWidgetOptions,
     DashboardAccountsStyle? dashboardAccountsStyle,
+    String? dashboardWidgetOptions,
     Value<int?> incomeColor = const Value.absent(),
     Value<int?> expenseColor = const Value.absent(),
     Value<int?> transferColor = const Value.absent(),
@@ -14806,13 +14897,14 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     fontWeightDelta: fontWeightDelta ?? this.fontWeightDelta,
     fontFamily: fontFamily.present ? fontFamily.value : this.fontFamily,
     languageCode: languageCode.present ? languageCode.value : this.languageCode,
+    countryCode: countryCode.present ? countryCode.value : this.countryCode,
     extraBottomInset: extraBottomInset ?? this.extraBottomInset,
     frequentIconKeys: frequentIconKeys ?? this.frequentIconKeys,
     dashboardLayout: dashboardLayout ?? this.dashboardLayout,
-    dashboardWidgetOptions:
-        dashboardWidgetOptions ?? this.dashboardWidgetOptions,
     dashboardAccountsStyle:
         dashboardAccountsStyle ?? this.dashboardAccountsStyle,
+    dashboardWidgetOptions:
+        dashboardWidgetOptions ?? this.dashboardWidgetOptions,
     incomeColor: incomeColor.present ? incomeColor.value : this.incomeColor,
     expenseColor: expenseColor.present ? expenseColor.value : this.expenseColor,
     transferColor: transferColor.present
@@ -15020,6 +15112,9 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       languageCode: data.languageCode.present
           ? data.languageCode.value
           : this.languageCode,
+      countryCode: data.countryCode.present
+          ? data.countryCode.value
+          : this.countryCode,
       extraBottomInset: data.extraBottomInset.present
           ? data.extraBottomInset.value
           : this.extraBottomInset,
@@ -15029,12 +15124,12 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       dashboardLayout: data.dashboardLayout.present
           ? data.dashboardLayout.value
           : this.dashboardLayout,
-      dashboardWidgetOptions: data.dashboardWidgetOptions.present
-          ? data.dashboardWidgetOptions.value
-          : this.dashboardWidgetOptions,
       dashboardAccountsStyle: data.dashboardAccountsStyle.present
           ? data.dashboardAccountsStyle.value
           : this.dashboardAccountsStyle,
+      dashboardWidgetOptions: data.dashboardWidgetOptions.present
+          ? data.dashboardWidgetOptions.value
+          : this.dashboardWidgetOptions,
       incomeColor: data.incomeColor.present
           ? data.incomeColor.value
           : this.incomeColor,
@@ -15146,11 +15241,12 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
           ..write('fontWeightDelta: $fontWeightDelta, ')
           ..write('fontFamily: $fontFamily, ')
           ..write('languageCode: $languageCode, ')
+          ..write('countryCode: $countryCode, ')
           ..write('extraBottomInset: $extraBottomInset, ')
           ..write('frequentIconKeys: $frequentIconKeys, ')
           ..write('dashboardLayout: $dashboardLayout, ')
-          ..write('dashboardWidgetOptions: $dashboardWidgetOptions, ')
           ..write('dashboardAccountsStyle: $dashboardAccountsStyle, ')
+          ..write('dashboardWidgetOptions: $dashboardWidgetOptions, ')
           ..write('incomeColor: $incomeColor, ')
           ..write('expenseColor: $expenseColor, ')
           ..write('transferColor: $transferColor, ')
@@ -15238,11 +15334,12 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     fontWeightDelta,
     fontFamily,
     languageCode,
+    countryCode,
     extraBottomInset,
     frequentIconKeys,
     dashboardLayout,
-    dashboardWidgetOptions,
     dashboardAccountsStyle,
+    dashboardWidgetOptions,
     incomeColor,
     expenseColor,
     transferColor,
@@ -15332,11 +15429,12 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
           other.fontWeightDelta == this.fontWeightDelta &&
           other.fontFamily == this.fontFamily &&
           other.languageCode == this.languageCode &&
+          other.countryCode == this.countryCode &&
           other.extraBottomInset == this.extraBottomInset &&
           other.frequentIconKeys == this.frequentIconKeys &&
           other.dashboardLayout == this.dashboardLayout &&
-          other.dashboardWidgetOptions == this.dashboardWidgetOptions &&
           other.dashboardAccountsStyle == this.dashboardAccountsStyle &&
+          other.dashboardWidgetOptions == this.dashboardWidgetOptions &&
           other.incomeColor == this.incomeColor &&
           other.expenseColor == this.expenseColor &&
           other.transferColor == this.transferColor &&
@@ -15420,16 +15518,13 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
   final Value<int> fontScalePercent;
   final Value<int> fontWeightDelta;
   final Value<String?> fontFamily;
-
-  /// The interface language picked in Settings → Language, as an
-  /// `AppLanguage.code` (e.g. `hi`), or null to follow the phone's own
-  /// language (GitHub #191).
   final Value<String?> languageCode;
+  final Value<String?> countryCode;
   final Value<int> extraBottomInset;
   final Value<String> frequentIconKeys;
   final Value<String> dashboardLayout;
-  final Value<String> dashboardWidgetOptions;
   final Value<DashboardAccountsStyle> dashboardAccountsStyle;
+  final Value<String> dashboardWidgetOptions;
   final Value<int?> incomeColor;
   final Value<int?> expenseColor;
   final Value<int?> transferColor;
@@ -15512,11 +15607,12 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     this.fontWeightDelta = const Value.absent(),
     this.fontFamily = const Value.absent(),
     this.languageCode = const Value.absent(),
+    this.countryCode = const Value.absent(),
     this.extraBottomInset = const Value.absent(),
     this.frequentIconKeys = const Value.absent(),
     this.dashboardLayout = const Value.absent(),
-    this.dashboardWidgetOptions = const Value.absent(),
     this.dashboardAccountsStyle = const Value.absent(),
+    this.dashboardWidgetOptions = const Value.absent(),
     this.incomeColor = const Value.absent(),
     this.expenseColor = const Value.absent(),
     this.transferColor = const Value.absent(),
@@ -15600,11 +15696,12 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     this.fontWeightDelta = const Value.absent(),
     this.fontFamily = const Value.absent(),
     this.languageCode = const Value.absent(),
+    this.countryCode = const Value.absent(),
     this.extraBottomInset = const Value.absent(),
     this.frequentIconKeys = const Value.absent(),
     this.dashboardLayout = const Value.absent(),
-    this.dashboardWidgetOptions = const Value.absent(),
     this.dashboardAccountsStyle = const Value.absent(),
+    this.dashboardWidgetOptions = const Value.absent(),
     this.incomeColor = const Value.absent(),
     this.expenseColor = const Value.absent(),
     this.transferColor = const Value.absent(),
@@ -15688,11 +15785,12 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     Expression<int>? fontWeightDelta,
     Expression<String>? fontFamily,
     Expression<String>? languageCode,
+    Expression<String>? countryCode,
     Expression<int>? extraBottomInset,
     Expression<String>? frequentIconKeys,
     Expression<String>? dashboardLayout,
-    Expression<String>? dashboardWidgetOptions,
     Expression<String>? dashboardAccountsStyle,
+    Expression<String>? dashboardWidgetOptions,
     Expression<int>? incomeColor,
     Expression<int>? expenseColor,
     Expression<int>? transferColor,
@@ -15799,13 +15897,14 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
       if (fontWeightDelta != null) 'font_weight_delta': fontWeightDelta,
       if (fontFamily != null) 'font_family': fontFamily,
       if (languageCode != null) 'language_code': languageCode,
+      if (countryCode != null) 'country_code': countryCode,
       if (extraBottomInset != null) 'extra_bottom_inset': extraBottomInset,
       if (frequentIconKeys != null) 'frequent_icon_keys': frequentIconKeys,
       if (dashboardLayout != null) 'dashboard_layout': dashboardLayout,
-      if (dashboardWidgetOptions != null)
-        'dashboard_widget_options': dashboardWidgetOptions,
       if (dashboardAccountsStyle != null)
         'dashboard_accounts_style': dashboardAccountsStyle,
+      if (dashboardWidgetOptions != null)
+        'dashboard_widget_options': dashboardWidgetOptions,
       if (incomeColor != null) 'income_color': incomeColor,
       if (expenseColor != null) 'expense_color': expenseColor,
       if (transferColor != null) 'transfer_color': transferColor,
@@ -15893,11 +15992,12 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     Value<int>? fontWeightDelta,
     Value<String?>? fontFamily,
     Value<String?>? languageCode,
+    Value<String?>? countryCode,
     Value<int>? extraBottomInset,
     Value<String>? frequentIconKeys,
     Value<String>? dashboardLayout,
-    Value<String>? dashboardWidgetOptions,
     Value<DashboardAccountsStyle>? dashboardAccountsStyle,
+    Value<String>? dashboardWidgetOptions,
     Value<int?>? incomeColor,
     Value<int?>? expenseColor,
     Value<int?>? transferColor,
@@ -15994,13 +16094,14 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
       fontWeightDelta: fontWeightDelta ?? this.fontWeightDelta,
       fontFamily: fontFamily ?? this.fontFamily,
       languageCode: languageCode ?? this.languageCode,
+      countryCode: countryCode ?? this.countryCode,
       extraBottomInset: extraBottomInset ?? this.extraBottomInset,
       frequentIconKeys: frequentIconKeys ?? this.frequentIconKeys,
       dashboardLayout: dashboardLayout ?? this.dashboardLayout,
-      dashboardWidgetOptions:
-          dashboardWidgetOptions ?? this.dashboardWidgetOptions,
       dashboardAccountsStyle:
           dashboardAccountsStyle ?? this.dashboardAccountsStyle,
+      dashboardWidgetOptions:
+          dashboardWidgetOptions ?? this.dashboardWidgetOptions,
       incomeColor: incomeColor ?? this.incomeColor,
       expenseColor: expenseColor ?? this.expenseColor,
       transferColor: transferColor ?? this.transferColor,
@@ -16277,6 +16378,9 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     if (languageCode.present) {
       map['language_code'] = Variable<String>(languageCode.value);
     }
+    if (countryCode.present) {
+      map['country_code'] = Variable<String>(countryCode.value);
+    }
     if (extraBottomInset.present) {
       map['extra_bottom_inset'] = Variable<int>(extraBottomInset.value);
     }
@@ -16286,16 +16390,16 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     if (dashboardLayout.present) {
       map['dashboard_layout'] = Variable<String>(dashboardLayout.value);
     }
-    if (dashboardWidgetOptions.present) {
-      map['dashboard_widget_options'] = Variable<String>(
-        dashboardWidgetOptions.value,
-      );
-    }
     if (dashboardAccountsStyle.present) {
       map['dashboard_accounts_style'] = Variable<String>(
         $SettingsTable.$converterdashboardAccountsStyle.toSql(
           dashboardAccountsStyle.value,
         ),
+      );
+    }
+    if (dashboardWidgetOptions.present) {
+      map['dashboard_widget_options'] = Variable<String>(
+        dashboardWidgetOptions.value,
       );
     }
     if (incomeColor.present) {
@@ -16419,11 +16523,12 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
           ..write('fontWeightDelta: $fontWeightDelta, ')
           ..write('fontFamily: $fontFamily, ')
           ..write('languageCode: $languageCode, ')
+          ..write('countryCode: $countryCode, ')
           ..write('extraBottomInset: $extraBottomInset, ')
           ..write('frequentIconKeys: $frequentIconKeys, ')
           ..write('dashboardLayout: $dashboardLayout, ')
-          ..write('dashboardWidgetOptions: $dashboardWidgetOptions, ')
           ..write('dashboardAccountsStyle: $dashboardAccountsStyle, ')
+          ..write('dashboardWidgetOptions: $dashboardWidgetOptions, ')
           ..write('incomeColor: $incomeColor, ')
           ..write('expenseColor: $expenseColor, ')
           ..write('transferColor: $transferColor, ')
@@ -16982,6 +17087,9 @@ class PendingTxnRow extends DataClass implements Insertable<PendingTxnRow> {
   /// attached receipt lives in, so an approved card needs no second copy:
   /// this path is used directly as the new transaction's `imagePath`.
   final String? sourceImagePath;
+
+  /// Read by Local AI, because the built-in parser couldn't make it out.
+  /// Shown on the card as something to check, and never auto-posted.
   final bool aiRead;
   const PendingTxnRow({
     required this.id,
@@ -23279,8 +23387,9 @@ class LoanDetailRow extends DataClass implements Insertable<LoanDetailRow> {
   final int? tenureMonths;
 
   /// When repayment began — needed to know how many installments have
-  /// already elapsed for the prepayment-savings projection. Defaults to the
-  /// loan's creation date when a rate is set; otherwise unused.
+  /// already elapsed for the prepayment-savings projection (rate-based
+  /// loans) and for the XPENC Score. Saved with or without a rate; null only
+  /// on loans saved before that, which fall back to their creation date.
   final DateTime? startDate;
   const LoanDetailRow({
     required this.accountId,
@@ -28431,8 +28540,8 @@ class $AiMemoriesTable extends AiMemories
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
-  String get actualTableName => $content;
-  static const String $content = 'ai_memories';
+  String get actualTableName => $name;
+  static const String $name = 'ai_memories';
   @override
   VerificationContext validateIntegrity(
     Insertable<AiMemoryRow> instance, {
@@ -28534,15 +28643,12 @@ class AiMemoryRow extends DataClass implements Insertable<AiMemoryRow> {
     };
   }
 
-  AiMemoryRow copyWith({
-    int? id,
-    String? content,
-    DateTime? createdAt,
-  }) => AiMemoryRow(
-    id: id ?? this.id,
-    content: content ?? this.content,
-    createdAt: createdAt ?? this.createdAt,
-  );
+  AiMemoryRow copyWith({int? id, String? content, DateTime? createdAt}) =>
+      AiMemoryRow(
+        id: id ?? this.id,
+        content: content ?? this.content,
+        createdAt: createdAt ?? this.createdAt,
+      );
   AiMemoryRow copyWithCompanion(AiMemoriesCompanion data) {
     return AiMemoryRow(
       id: data.id.present ? data.id.value : this.id,
@@ -29140,14 +29246,17 @@ class $$AccountsTableFilterComposer
     column: $table.envelopeMode,
     builder: (column) => ColumnFilters(column),
   );
+
   ColumnFilters<bool> get showTransferIn => $composableBuilder(
     column: $table.showTransferIn,
     builder: (column) => ColumnFilters(column),
   );
+
   ColumnFilters<bool> get showTransferOut => $composableBuilder(
     column: $table.showTransferOut,
     builder: (column) => ColumnFilters(column),
   );
+
   ColumnFilters<bool> get showOnAddPage => $composableBuilder(
     column: $table.showOnAddPage,
     builder: (column) => ColumnFilters(column),
@@ -29546,14 +29655,17 @@ class $$AccountsTableOrderingComposer
     column: $table.envelopeMode,
     builder: (column) => ColumnOrderings(column),
   );
+
   ColumnOrderings<bool> get showTransferIn => $composableBuilder(
     column: $table.showTransferIn,
     builder: (column) => ColumnOrderings(column),
   );
+
   ColumnOrderings<bool> get showTransferOut => $composableBuilder(
     column: $table.showTransferOut,
     builder: (column) => ColumnOrderings(column),
   );
+
   ColumnOrderings<bool> get showOnAddPage => $composableBuilder(
     column: $table.showOnAddPage,
     builder: (column) => ColumnOrderings(column),
@@ -29660,14 +29772,17 @@ class $$AccountsTableAnnotationComposer
     column: $table.envelopeMode,
     builder: (column) => column,
   );
+
   GeneratedColumn<bool> get showTransferIn => $composableBuilder(
     column: $table.showTransferIn,
     builder: (column) => column,
   );
+
   GeneratedColumn<bool> get showTransferOut => $composableBuilder(
     column: $table.showTransferOut,
     builder: (column) => column,
   );
+
   GeneratedColumn<bool> get showOnAddPage => $composableBuilder(
     column: $table.showOnAddPage,
     builder: (column) => column,
@@ -39218,6 +39333,10 @@ typedef $$PersonEntriesTableCreateCompanionBuilder =
       Value<int?> categoryId,
       Value<int?> modeId,
       Value<DateTime> createdAt,
+      Value<String?> sharedRef,
+      Value<String?> remoteEntryId,
+      Value<String?> sharedStatus,
+      Value<String?> sharedAccount,
     });
 typedef $$PersonEntriesTableUpdateCompanionBuilder =
     PersonEntriesCompanion Function({
@@ -39233,6 +39352,10 @@ typedef $$PersonEntriesTableUpdateCompanionBuilder =
       Value<int?> categoryId,
       Value<int?> modeId,
       Value<DateTime> createdAt,
+      Value<String?> sharedRef,
+      Value<String?> remoteEntryId,
+      Value<String?> sharedStatus,
+      Value<String?> sharedAccount,
     });
 
 final class $$PersonEntriesTableReferences
@@ -39434,6 +39557,26 @@ class $$PersonEntriesTableFilterComposer
 
   ColumnFilters<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get sharedRef => $composableBuilder(
+    column: $table.sharedRef,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get remoteEntryId => $composableBuilder(
+    column: $table.remoteEntryId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get sharedStatus => $composableBuilder(
+    column: $table.sharedStatus,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get sharedAccount => $composableBuilder(
+    column: $table.sharedAccount,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -39647,6 +39790,26 @@ class $$PersonEntriesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get sharedRef => $composableBuilder(
+    column: $table.sharedRef,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get remoteEntryId => $composableBuilder(
+    column: $table.remoteEntryId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get sharedStatus => $composableBuilder(
+    column: $table.sharedStatus,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get sharedAccount => $composableBuilder(
+    column: $table.sharedAccount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$PersonsTableOrderingComposer get personId {
     final $$PersonsTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -39792,6 +39955,24 @@ class $$PersonEntriesTableAnnotationComposer
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<String> get sharedRef =>
+      $composableBuilder(column: $table.sharedRef, builder: (column) => column);
+
+  GeneratedColumn<String> get remoteEntryId => $composableBuilder(
+    column: $table.remoteEntryId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get sharedStatus => $composableBuilder(
+    column: $table.sharedStatus,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get sharedAccount => $composableBuilder(
+    column: $table.sharedAccount,
+    builder: (column) => column,
+  );
 
   $$PersonsTableAnnotationComposer get personId {
     final $$PersonsTableAnnotationComposer composer = $composerBuilder(
@@ -40008,6 +40189,10 @@ class $$PersonEntriesTableTableManager
                 Value<int?> categoryId = const Value.absent(),
                 Value<int?> modeId = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
+                Value<String?> sharedRef = const Value.absent(),
+                Value<String?> remoteEntryId = const Value.absent(),
+                Value<String?> sharedStatus = const Value.absent(),
+                Value<String?> sharedAccount = const Value.absent(),
               }) => PersonEntriesCompanion(
                 id: id,
                 personId: personId,
@@ -40021,6 +40206,10 @@ class $$PersonEntriesTableTableManager
                 categoryId: categoryId,
                 modeId: modeId,
                 createdAt: createdAt,
+                sharedRef: sharedRef,
+                remoteEntryId: remoteEntryId,
+                sharedStatus: sharedStatus,
+                sharedAccount: sharedAccount,
               ),
           createCompanionCallback:
               ({
@@ -40036,6 +40225,10 @@ class $$PersonEntriesTableTableManager
                 Value<int?> categoryId = const Value.absent(),
                 Value<int?> modeId = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
+                Value<String?> sharedRef = const Value.absent(),
+                Value<String?> remoteEntryId = const Value.absent(),
+                Value<String?> sharedStatus = const Value.absent(),
+                Value<String?> sharedAccount = const Value.absent(),
               }) => PersonEntriesCompanion.insert(
                 id: id,
                 personId: personId,
@@ -40049,6 +40242,10 @@ class $$PersonEntriesTableTableManager
                 categoryId: categoryId,
                 modeId: modeId,
                 createdAt: createdAt,
+                sharedRef: sharedRef,
+                remoteEntryId: remoteEntryId,
+                sharedStatus: sharedStatus,
+                sharedAccount: sharedAccount,
               ),
           withReferenceMapper: (p0) => p0
               .map(
@@ -42919,11 +43116,12 @@ typedef $$SettingsTableCreateCompanionBuilder =
       Value<int> fontWeightDelta,
       Value<String?> fontFamily,
       Value<String?> languageCode,
+      Value<String?> countryCode,
       Value<int> extraBottomInset,
       Value<String> frequentIconKeys,
       Value<String> dashboardLayout,
-      Value<String> dashboardWidgetOptions,
       Value<DashboardAccountsStyle> dashboardAccountsStyle,
+      Value<String> dashboardWidgetOptions,
       Value<int?> incomeColor,
       Value<int?> expenseColor,
       Value<int?> transferColor,
@@ -43008,11 +43206,12 @@ typedef $$SettingsTableUpdateCompanionBuilder =
       Value<int> fontWeightDelta,
       Value<String?> fontFamily,
       Value<String?> languageCode,
+      Value<String?> countryCode,
       Value<int> extraBottomInset,
       Value<String> frequentIconKeys,
       Value<String> dashboardLayout,
-      Value<String> dashboardWidgetOptions,
       Value<DashboardAccountsStyle> dashboardAccountsStyle,
+      Value<String> dashboardWidgetOptions,
       Value<int?> incomeColor,
       Value<int?> expenseColor,
       Value<int?> transferColor,
@@ -43413,8 +43612,14 @@ class $$SettingsTableFilterComposer
     column: $table.fontFamily,
     builder: (column) => ColumnFilters(column),
   );
+
   ColumnFilters<String> get languageCode => $composableBuilder(
     column: $table.languageCode,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get countryCode => $composableBuilder(
+    column: $table.countryCode,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -43433,11 +43638,6 @@ class $$SettingsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<String> get dashboardWidgetOptions => $composableBuilder(
-    column: $table.dashboardWidgetOptions,
-    builder: (column) => ColumnFilters(column),
-  );
-
   ColumnWithTypeConverterFilters<
     DashboardAccountsStyle,
     DashboardAccountsStyle,
@@ -43446,6 +43646,11 @@ class $$SettingsTableFilterComposer
   get dashboardAccountsStyle => $composableBuilder(
     column: $table.dashboardAccountsStyle,
     builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
+  ColumnFilters<String> get dashboardWidgetOptions => $composableBuilder(
+    column: $table.dashboardWidgetOptions,
+    builder: (column) => ColumnFilters(column),
   );
 
   ColumnFilters<int> get incomeColor => $composableBuilder(
@@ -43878,8 +44083,14 @@ class $$SettingsTableOrderingComposer
     column: $table.fontFamily,
     builder: (column) => ColumnOrderings(column),
   );
+
   ColumnOrderings<String> get languageCode => $composableBuilder(
     column: $table.languageCode,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get countryCode => $composableBuilder(
+    column: $table.countryCode,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -43898,13 +44109,13 @@ class $$SettingsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get dashboardWidgetOptions => $composableBuilder(
-    column: $table.dashboardWidgetOptions,
+  ColumnOrderings<String> get dashboardAccountsStyle => $composableBuilder(
+    column: $table.dashboardAccountsStyle,
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get dashboardAccountsStyle => $composableBuilder(
-    column: $table.dashboardAccountsStyle,
+  ColumnOrderings<String> get dashboardWidgetOptions => $composableBuilder(
+    column: $table.dashboardWidgetOptions,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -44321,8 +44532,14 @@ class $$SettingsTableAnnotationComposer
     column: $table.fontFamily,
     builder: (column) => column,
   );
+
   GeneratedColumn<String> get languageCode => $composableBuilder(
     column: $table.languageCode,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get countryCode => $composableBuilder(
+    column: $table.countryCode,
     builder: (column) => column,
   );
 
@@ -44341,14 +44558,14 @@ class $$SettingsTableAnnotationComposer
     builder: (column) => column,
   );
 
-  GeneratedColumn<String> get dashboardWidgetOptions => $composableBuilder(
-    column: $table.dashboardWidgetOptions,
-    builder: (column) => column,
-  );
-
   GeneratedColumnWithTypeConverter<DashboardAccountsStyle, String>
   get dashboardAccountsStyle => $composableBuilder(
     column: $table.dashboardAccountsStyle,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get dashboardWidgetOptions => $composableBuilder(
+    column: $table.dashboardWidgetOptions,
     builder: (column) => column,
   );
 
@@ -44532,12 +44749,13 @@ class $$SettingsTableTableManager
                 Value<int> fontWeightDelta = const Value.absent(),
                 Value<String?> fontFamily = const Value.absent(),
                 Value<String?> languageCode = const Value.absent(),
+                Value<String?> countryCode = const Value.absent(),
                 Value<int> extraBottomInset = const Value.absent(),
                 Value<String> frequentIconKeys = const Value.absent(),
                 Value<String> dashboardLayout = const Value.absent(),
-                Value<String> dashboardWidgetOptions = const Value.absent(),
                 Value<DashboardAccountsStyle> dashboardAccountsStyle =
                     const Value.absent(),
+                Value<String> dashboardWidgetOptions = const Value.absent(),
                 Value<int?> incomeColor = const Value.absent(),
                 Value<int?> expenseColor = const Value.absent(),
                 Value<int?> transferColor = const Value.absent(),
@@ -44620,11 +44838,12 @@ class $$SettingsTableTableManager
                 fontWeightDelta: fontWeightDelta,
                 fontFamily: fontFamily,
                 languageCode: languageCode,
+                countryCode: countryCode,
                 extraBottomInset: extraBottomInset,
                 frequentIconKeys: frequentIconKeys,
                 dashboardLayout: dashboardLayout,
-                dashboardWidgetOptions: dashboardWidgetOptions,
                 dashboardAccountsStyle: dashboardAccountsStyle,
+                dashboardWidgetOptions: dashboardWidgetOptions,
                 incomeColor: incomeColor,
                 expenseColor: expenseColor,
                 transferColor: transferColor,
@@ -44712,12 +44931,13 @@ class $$SettingsTableTableManager
                 Value<int> fontWeightDelta = const Value.absent(),
                 Value<String?> fontFamily = const Value.absent(),
                 Value<String?> languageCode = const Value.absent(),
+                Value<String?> countryCode = const Value.absent(),
                 Value<int> extraBottomInset = const Value.absent(),
                 Value<String> frequentIconKeys = const Value.absent(),
                 Value<String> dashboardLayout = const Value.absent(),
-                Value<String> dashboardWidgetOptions = const Value.absent(),
                 Value<DashboardAccountsStyle> dashboardAccountsStyle =
                     const Value.absent(),
+                Value<String> dashboardWidgetOptions = const Value.absent(),
                 Value<int?> incomeColor = const Value.absent(),
                 Value<int?> expenseColor = const Value.absent(),
                 Value<int?> transferColor = const Value.absent(),
@@ -44800,11 +45020,12 @@ class $$SettingsTableTableManager
                 fontWeightDelta: fontWeightDelta,
                 fontFamily: fontFamily,
                 languageCode: languageCode,
+                countryCode: countryCode,
                 extraBottomInset: extraBottomInset,
                 frequentIconKeys: frequentIconKeys,
                 dashboardLayout: dashboardLayout,
-                dashboardWidgetOptions: dashboardWidgetOptions,
                 dashboardAccountsStyle: dashboardAccountsStyle,
+                dashboardWidgetOptions: dashboardWidgetOptions,
                 incomeColor: incomeColor,
                 expenseColor: expenseColor,
                 transferColor: transferColor,
@@ -44905,6 +45126,7 @@ typedef $$PendingTxnsTableCreateCompanionBuilder =
       required String dedupeKey,
       Value<DateTime> createdAt,
       Value<String?> sourceImagePath,
+      Value<bool> aiRead,
     });
 typedef $$PendingTxnsTableUpdateCompanionBuilder =
     PendingTxnsCompanion Function({
@@ -44927,6 +45149,7 @@ typedef $$PendingTxnsTableUpdateCompanionBuilder =
       Value<String> dedupeKey,
       Value<DateTime> createdAt,
       Value<String?> sourceImagePath,
+      Value<bool> aiRead,
     });
 
 final class $$PendingTxnsTableReferences
@@ -45076,6 +45299,11 @@ class $$PendingTxnsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<bool> get aiRead => $composableBuilder(
+    column: $table.aiRead,
+    builder: (column) => ColumnFilters(column),
+  );
+
   $$AccountsTableFilterComposer get matchedAccountId {
     final $$AccountsTableFilterComposer composer = $composerBuilder(
       composer: this,
@@ -45217,6 +45445,11 @@ class $$PendingTxnsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get aiRead => $composableBuilder(
+    column: $table.aiRead,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$AccountsTableOrderingComposer get matchedAccountId {
     final $$AccountsTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -45345,6 +45578,9 @@ class $$PendingTxnsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<bool> get aiRead =>
+      $composableBuilder(column: $table.aiRead, builder: (column) => column);
+
   $$AccountsTableAnnotationComposer get matchedAccountId {
     final $$AccountsTableAnnotationComposer composer = $composerBuilder(
       composer: this,
@@ -45442,6 +45678,7 @@ class $$PendingTxnsTableTableManager
                 Value<String> dedupeKey = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<String?> sourceImagePath = const Value.absent(),
+                Value<bool> aiRead = const Value.absent(),
               }) => PendingTxnsCompanion(
                 id: id,
                 source: source,
@@ -45462,6 +45699,7 @@ class $$PendingTxnsTableTableManager
                 dedupeKey: dedupeKey,
                 createdAt: createdAt,
                 sourceImagePath: sourceImagePath,
+                aiRead: aiRead,
               ),
           createCompanionCallback:
               ({
@@ -45484,6 +45722,7 @@ class $$PendingTxnsTableTableManager
                 required String dedupeKey,
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<String?> sourceImagePath = const Value.absent(),
+                Value<bool> aiRead = const Value.absent(),
               }) => PendingTxnsCompanion.insert(
                 id: id,
                 source: source,
@@ -45504,6 +45743,7 @@ class $$PendingTxnsTableTableManager
                 dedupeKey: dedupeKey,
                 createdAt: createdAt,
                 sourceImagePath: sourceImagePath,
+                aiRead: aiRead,
               ),
           withReferenceMapper: (p0) => p0
               .map(
@@ -57059,6 +57299,162 @@ typedef $$TransactionTemplateTagsTableProcessedTableManager =
       TransactionTemplateTagRow,
       PrefetchHooks Function({bool templateId, bool tagId})
     >;
+typedef $$AiMemoriesTableCreateCompanionBuilder =
+    AiMemoriesCompanion Function({
+      Value<int> id,
+      required String content,
+      Value<DateTime> createdAt,
+    });
+typedef $$AiMemoriesTableUpdateCompanionBuilder =
+    AiMemoriesCompanion Function({
+      Value<int> id,
+      Value<String> content,
+      Value<DateTime> createdAt,
+    });
+
+class $$AiMemoriesTableFilterComposer
+    extends Composer<_$AppDatabase, $AiMemoriesTable> {
+  $$AiMemoriesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get content => $composableBuilder(
+    column: $table.content,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$AiMemoriesTableOrderingComposer
+    extends Composer<_$AppDatabase, $AiMemoriesTable> {
+  $$AiMemoriesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get content => $composableBuilder(
+    column: $table.content,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$AiMemoriesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $AiMemoriesTable> {
+  $$AiMemoriesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get content =>
+      $composableBuilder(column: $table.content, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+}
+
+class $$AiMemoriesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $AiMemoriesTable,
+          AiMemoryRow,
+          $$AiMemoriesTableFilterComposer,
+          $$AiMemoriesTableOrderingComposer,
+          $$AiMemoriesTableAnnotationComposer,
+          $$AiMemoriesTableCreateCompanionBuilder,
+          $$AiMemoriesTableUpdateCompanionBuilder,
+          (
+            AiMemoryRow,
+            BaseReferences<_$AppDatabase, $AiMemoriesTable, AiMemoryRow>,
+          ),
+          AiMemoryRow,
+          PrefetchHooks Function()
+        > {
+  $$AiMemoriesTableTableManager(_$AppDatabase db, $AiMemoriesTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$AiMemoriesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$AiMemoriesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$AiMemoriesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> content = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => AiMemoriesCompanion(
+                id: id,
+                content: content,
+                createdAt: createdAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String content,
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => AiMemoriesCompanion.insert(
+                id: id,
+                content: content,
+                createdAt: createdAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$AiMemoriesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $AiMemoriesTable,
+      AiMemoryRow,
+      $$AiMemoriesTableFilterComposer,
+      $$AiMemoriesTableOrderingComposer,
+      $$AiMemoriesTableAnnotationComposer,
+      $$AiMemoriesTableCreateCompanionBuilder,
+      $$AiMemoriesTableUpdateCompanionBuilder,
+      (
+        AiMemoryRow,
+        BaseReferences<_$AppDatabase, $AiMemoriesTable, AiMemoryRow>,
+      ),
+      AiMemoryRow,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -57155,4 +57551,6 @@ class $AppDatabaseManager {
         _db,
         _db.transactionTemplateTags,
       );
+  $$AiMemoriesTableTableManager get aiMemories =>
+      $$AiMemoriesTableTableManager(_db, _db.aiMemories);
 }
