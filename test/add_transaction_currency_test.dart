@@ -81,10 +81,55 @@ void main() {
     },
   );
 
+  final globe = find.byKey(const Key('foreignCurrencyButton'));
+
+  /// Someone with another currency to pay in: a saved rate for it.
+  Future<void> addRate(WidgetTester tester, String code) => tester.runAsync(
+    () => db.addCurrencyRate(
+      currencyCode: code,
+      rateToBaseMicros: 300000,
+      effectiveAt: DateTime(2026, 1, 1),
+    ),
+  );
+
   testWidgets(
-    "the #85 'Foreign currency' toggle is hidden once the account has its "
+    'the 🌐 beside the amount is offered only once another currency exists',
+    (tester) async {
+      await pump(tester, initialType: TxType.expense);
+      expect(globe, findsNothing);
+      await unmount(tester);
+
+      await addRate(tester, 'USD');
+      await pump(tester, initialType: TxType.expense);
+      expect(globe, findsOneWidget);
+      // On the amount's own row, just to its right.
+      final amount = tester.getRect(find.byKey(const Key('amountDisplay')));
+      final button = tester.getRect(globe);
+      expect(button.center.dy, closeTo(amount.center.dy, 24));
+      expect(button.left, greaterThanOrEqualTo(amount.right - 1));
+      // It opens the foreign amount, and closes it again.
+      final editors = find.byType(AmountKeypadDisplayBox);
+      final before = editors.evaluate().length;
+      await tester.tap(globe);
+      await tester.pump();
+      expect(editors, findsNWidgets(before + 1));
+      await tester.tap(globe);
+      await tester.pump();
+      expect(editors, findsNWidgets(before));
+      // Not for a transfer.
+      await tester.tap(find.text('Transfer'));
+      await tester.pump();
+      expect(globe, findsNothing);
+
+      await unmount(tester);
+    },
+  );
+
+  testWidgets(
+    "the #85 foreign currency button is hidden once the account has its "
     'own currency',
     (tester) async {
+      await addRate(tester, 'USD');
       await db.addAccount(
         name: 'Home wallet',
         type: AccountType.cash,
@@ -104,7 +149,7 @@ void main() {
       await pump(tester, initialType: TxType.expense);
 
       await pickAccount(tester, 'Home wallet');
-      expect(find.text('Foreign currency'), findsOneWidget);
+      expect(globe, findsOneWidget);
 
       await tester.tap(find.text('Home wallet'));
       await tester.pump();
@@ -113,7 +158,7 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
 
-      expect(find.text('Foreign currency'), findsNothing);
+      expect(globe, findsNothing);
 
       await unmount(tester);
     },
@@ -131,8 +176,7 @@ void main() {
       await pump(tester, initialType: TxType.expense);
       await pickAccount(tester, 'Home wallet');
 
-      await tester.ensureVisible(find.text('Foreign currency'));
-      await tester.tap(find.text('Foreign currency'));
+      await tester.tap(globe);
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
 
@@ -224,6 +268,8 @@ void main() {
     testWidgets('with no saved rate, nothing is filled in and it says why', (
       tester,
     ) async {
+      // Another currency exists (so the 🌐 is there), just not MYR.
+      await addRate(tester, 'USD');
       await openForeignMyr(tester);
       await typeKeys(tester, '100');
 

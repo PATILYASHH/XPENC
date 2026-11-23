@@ -246,8 +246,12 @@ void main() {
           initialAmount: Money.fromRupees(90),
         ),
       );
+      // The THB amount opens first, right under the amount; the account
+      // strip is below it.
+      await tester.ensureVisible(find.text('Select account').first);
       await tester.tap(find.text('Select account').first);
       await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Cash').last);
       await tester.tap(find.text('Cash').last);
       await tester.pumpAndSettle();
       expect(find.textContaining('THB'), findsWidgets);

@@ -2,6 +2,7 @@ import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:intl/intl.dart';
 import 'package:xpenc/core/money.dart';
 import 'package:xpenc/core/theme/app_theme.dart';
 import 'package:xpenc/data/database.dart';
@@ -9,9 +10,10 @@ import 'package:xpenc/data/providers.dart';
 import 'package:xpenc/data/tables.dart';
 import 'package:xpenc/features/add_transaction/add_transaction_screen.dart';
 
-/// GitHub #124: the Date card now always shows the exact time alongside the
-/// date, and carries a separate clock icon to adjust just the time without
-/// disturbing the date. The date/time-combining logic itself is covered
+/// When an entry happened: a small `23 NOV 2:17 PM` at the amount's
+/// bottom-left, which opens the date and the time together in one sheet
+/// (GitHub #124: picking one never disturbs the other). Untouched, a new
+/// entry is simply *now*. The date/time-combining logic itself is covered
 /// (fast, no widget tree) in date_time_combine_test.dart — these just prove
 /// the screen renders and wires it correctly.
 void main() {
@@ -48,71 +50,110 @@ void main() {
       .firstWhere((a) => a.type == AccountType.cash)
       .id;
 
-  testWidgets(
-    'the Date card shows the exact time and a clock icon to change it',
-    (tester) async {
-      final id = await tester.runAsync(() async {
-        return db.addTransaction(
-          type: TxType.expense,
-          amount: Money.fromRupees(200),
-          accountId: await cashId(),
-          date: DateTime(2026, 7, 8, 15, 44),
-        );
-      });
+  final label = find.byKey(const Key('whenLabel'));
+  String labelText(WidgetTester tester) => tester
+      .widget<Text>(find.descendant(of: label, matching: find.byType(Text)))
+      .data!;
 
-      await pump(tester, AddTransactionScreen(transactionId: id));
-      expect(tester.takeException(), isNull);
+  testWidgets('an edited entry shows its own date and time, small, under '
+      'the amount — no Date card', (tester) async {
+    final id = await tester.runAsync(() async {
+      return db.addTransaction(
+        type: TxType.expense,
+        amount: Money.fromRupees(200),
+        accountId: await cashId(),
+        date: DateTime(2020, 7, 8, 15, 44),
+      );
+    });
 
-      expect(find.text('8 Jul 2026, 3:44 PM'), findsOneWidget);
-      expect(find.byIcon(Icons.access_time_rounded), findsOneWidget);
-      await unmount(tester);
-    },
-  );
+    await pump(tester, AddTransactionScreen(transactionId: id));
+    expect(tester.takeException(), isNull);
 
-  testWidgets('a day handed in by the calendar is the new entry\'s date', (
+    // Not this year, so the year shows.
+    expect(labelText(tester), '8 JUL 2020 3:44 PM');
+    final amount = tester.getRect(find.byKey(const Key('amountDisplay')));
+    final when = tester.getRect(label);
+    expect(when.top, greaterThanOrEqualTo(amount.bottom - 1));
+    expect(when.left, lessThan(amount.left));
+    // Above "Paid via".
+    expect(when.bottom, lessThan(tester.getTopLeft(find.text('Paid via')).dy));
+    expect(find.byIcon(Icons.event_outlined), findsNothing);
+    await unmount(tester);
+  });
+
+  testWidgets('a new entry is now, this year shown without the year', (
+    tester,
+  ) async {
+    await pump(tester, const AddTransactionScreen(initialType: TxType.expense));
+    final now = DateTime.now();
+    expect(
+      labelText(tester),
+      startsWith(DateFormat('d MMM ').format(now).toUpperCase()),
+    );
+    expect(labelText(tester), isNot(contains('${now.year}')));
+    await unmount(tester);
+  });
+
+  testWidgets("a day handed in by the calendar is the new entry's date", (
     tester,
   ) async {
     await pump(
       tester,
       AddTransactionScreen(
         initialType: TxType.income,
-        initialDate: DateTime(2026, 7, 8),
+        initialDate: DateTime(2020, 7, 8),
       ),
     );
     expect(tester.takeException(), isNull);
 
-    expect(find.textContaining('8 Jul 2026, '), findsOneWidget);
+    expect(labelText(tester), startsWith('8 JUL 2020 '));
     await unmount(tester);
   });
 
-  testWidgets(
-    'tapping the clock icon opens a time picker without touching the date',
-    (tester) async {
-      final id = await tester.runAsync(() async {
-        return db.addTransaction(
-          type: TxType.expense,
-          amount: Money.fromRupees(200),
-          accountId: await cashId(),
-          date: DateTime(2026, 7, 8, 15, 44),
-        );
-      });
+  testWidgets('the label opens the date and time together; a new day keeps '
+      'the time, and a cancelled time keeps both', (tester) async {
+    final id = await tester.runAsync(() async {
+      return db.addTransaction(
+        type: TxType.expense,
+        amount: Money.fromRupees(200),
+        accountId: await cashId(),
+        date: DateTime(2020, 7, 8, 15, 44),
+      );
+    });
 
-      await pump(tester, AddTransactionScreen(transactionId: id));
-      expect(tester.takeException(), isNull);
+    await pump(tester, AddTransactionScreen(transactionId: id));
+    await tester.tap(label);
+    await tester.pumpAndSettle();
+    expect(find.byType(CalendarDatePicker), findsOneWidget);
 
-      await tester.ensureVisible(find.byIcon(Icons.access_time_rounded));
-      await tester.tap(find.byIcon(Icons.access_time_rounded));
-      await tester.pumpAndSettle();
+    // The time, on its own picker, cancelled: nothing moves.
+    await tester.tap(find.byKey(const Key('whenTime')));
+    await tester.pumpAndSettle();
+    expect(find.byType(TimePickerDialog), findsOneWidget);
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
 
-      expect(find.byType(TimePickerDialog), findsOneWidget);
+    // Yesterday, at the same time.
+    await tester.tap(find.text('Yesterday'));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('whenDone')));
+    await tester.pumpAndSettle();
+    final yesterday = DateTime.now().subtract(const Duration(days: 1));
+    final dayPattern = yesterday.year == DateTime.now().year
+        ? 'd MMM'
+        : 'd MMM yyyy';
+    final day = DateFormat(dayPattern).format(yesterday).toUpperCase();
+    expect(labelText(tester), '$day 3:44 PM');
 
-      // Dismiss without changing anything — the date/time shown underneath
-      // must be exactly what it was before.
-      await tester.tap(find.text('Cancel'));
-      await tester.pumpAndSettle();
-
-      expect(find.text('8 Jul 2026, 3:44 PM'), findsOneWidget);
-      await unmount(tester);
-    },
-  );
+    // "Now" gives the entry back to the clock.
+    await tester.tap(label);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('whenNow')));
+    await tester.pumpAndSettle();
+    expect(
+      labelText(tester),
+      startsWith(DateFormat('d MMM ').format(DateTime.now()).toUpperCase()),
+    );
+    await unmount(tester);
+  });
 }

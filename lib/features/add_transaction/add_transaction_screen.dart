@@ -172,6 +172,15 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
   int? _categoryId; // income/expense only.
   DateTime _date = DateTime.now();
 
+  /// Whether [_date] was set — picked, handed in, or an edited entry's own.
+  /// Until then the entry is simply *now*: the label under the amount
+  /// follows the clock, and Save stamps the moment it's tapped, not the
+  /// moment the screen opened.
+  bool _dateChosen = false;
+
+  /// [_date], or now while nobody has chosen one.
+  DateTime get _when => _dateChosen ? _date : DateTime.now();
+
   final _noteController = TextEditingController();
   final _noteFocus = FocusNode();
 
@@ -402,6 +411,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
       }
       if (widget.initialDate != null) {
         _date = combineDateAndTime(widget.initialDate!, TimeOfDay.now());
+        _dateChosen = true;
       }
       _accountId = widget.initialAccountId;
       if (_type == TxType.transfer) _toAccountId = widget.initialToAccountId;
@@ -618,6 +628,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
       _toAccountId = row.toAccountId;
       _categoryId = row.categoryId;
       _date = row.date;
+      _dateChosen = true;
       _noteController.text = row.note ?? '';
       _payeeController.text = row.payee ?? '';
       _payeePersonId = row.type.isIncomeOrExpense ? row.personId : null;
@@ -1112,29 +1123,20 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     return (account?.envelopeMode ?? false) ? _accountId : null;
   }
 
-  Future<void> _pickDate() async {
-    final picked = await showDatePicker(
+  /// The date and the time together, in one sheet (GitHub #124: picking
+  /// one never resets the other). "Now" hands the entry back to the clock.
+  Future<void> _pickWhen() async {
+    final picked = await showAppSheet<({DateTime at, bool now})>(
       context: context,
-      initialDate: _date,
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2100),
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (_) => _WhenSheet(initial: _when, isNow: !_dateChosen),
     );
     if (picked == null || !mounted) return;
-    setState(
-      () => _date = combineDateAndTime(picked, TimeOfDay.fromDateTime(_date)),
-    );
-  }
-
-  /// Optional — most transactions never need this touched at all. Lets
-  /// someone correct the exact time when they log an expense later than it
-  /// actually happened (GitHub #124), without needing to re-pick the date.
-  Future<void> _pickTime() async {
-    final picked = await showTimePicker(
-      context: context,
-      initialTime: TimeOfDay.fromDateTime(_date),
-    );
-    if (picked == null || !mounted) return;
-    setState(() => _date = combineDateAndTime(_date, picked));
+    setState(() {
+      _dateChosen = !picked.now;
+      _date = picked.at;
+    });
   }
 
   // ── Custom icon / emoji ──────────────────────────────────────────────────
@@ -1805,28 +1807,48 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     });
   }
 
-  Widget _foreignToggleTile() {
-    final theme = Theme.of(context);
-    return AppCard(
-      margin: EdgeInsets.zero,
-      clipBehavior: Clip.antiAlias,
-      child: AppSwitchListTile(
-        value: _hasForeignCurrency,
-        onChanged: (v) => setState(() {
-          _hasForeignCurrency = v;
-          if (v) {
-            _isHybridPayment = false;
-            _hasChange = false;
-          }
-        }),
-        secondary: AppIcon(
-          Icons.public_rounded,
-          color: theme.colorScheme.onSurfaceVariant,
-        ),
-        title: const Tr('Foreign currency'),
-        subtitle: _hasForeignCurrency
-            ? null
-            : const Tr('Record what this cost in another currency'),
+  /// Whether the 🌐 beside the amount is offered: only to someone who has
+  /// another currency to pay in — a rate or a custom currency in Settings ›
+  /// Currency — and only for an income or expense out of an account in the
+  /// parent currency (one in its own currency is natively foreign already,
+  /// so a second annotation on top would be redundant and confusing).
+  /// Once foreign currency is on — an edited entry that has one, a trip's
+  /// currency — it stays, so there's always a way to turn it off.
+  bool _offersForeignCurrency(Map<int, AccountRow> accountMap) {
+    if (_isEditingTemplate) return false;
+    if (_type != TxType.income && _type != TxType.expense) return false;
+    if (_currencyForAccount(_accountId, accountMap) != null) return false;
+    if (_hasForeignCurrency) return true;
+    final parent = MoneyFormat.currency.code;
+    final rates = ref.watch(currencyRatesProvider).valueOrNull ?? const [];
+    final custom = ref.watch(customCurrenciesProvider).valueOrNull ?? const [];
+    return rates.any((r) => r.currencyCode != parent) ||
+        custom.any((c) => c.code != parent);
+  }
+
+  /// The 🌐 at the amount's side: turns foreign currency on — its editor
+  /// opening just below the amount — and off again.
+  Widget _foreignCurrencyButton() {
+    final cs = Theme.of(context).colorScheme;
+    final on = _hasForeignCurrency;
+    return IconButton(
+      key: const Key('foreignCurrencyButton'),
+      tooltip: on ? tr('Remove foreign currency') : tr('Foreign currency'),
+      isSelected: on,
+      style: IconButton.styleFrom(
+        backgroundColor: on ? cs.secondary.withValues(alpha: 0.14) : null,
+      ),
+      onPressed: () => setState(() {
+        _hasForeignCurrency = !on;
+        if (!on) {
+          _isHybridPayment = false;
+          _hasChange = false;
+        }
+      }),
+      icon: AppIcon(
+        Icons.public_rounded,
+        size: 22,
+        color: on ? cs.secondary : cs.onSurfaceVariant,
       ),
     );
   }
@@ -2165,6 +2187,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
 
   Future<void> _save() async {
     if (_isEditingTemplate) return _saveTemplate();
+    if (!_dateChosen) _date = DateTime.now();
     final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
     final amount = _amount;
@@ -2580,6 +2603,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     // is also what every existing screen already renders (no account
     // selected yet defaults to the same thing it always has).
     final txCurrency = _currencyForAccount(_accountId, accountMap);
+    final offersForeign = _offersForeignCurrency(accountMap);
     // A mutually-exclusive toggle (split/hybrid/change/foreign) or a type
     // switch can hide the card `_activeAmountCtrl` was pointing into without
     // going through a single call site that could reset it — re-check on
@@ -2692,24 +2716,44 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                       const SizedBox(height: 24),
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 24),
-                        child: GestureDetector(
-                          onTap: () => _activateAmountCtrl(_mainAmountCtrl),
-                          child: FittedBox(
-                            fit: BoxFit.scaleDown,
-                            child: Text(
-                              key: const Key('amountDisplay'),
-                              txCurrency == null
-                                  ? MoneyFormat.symbol(amount)
-                                  : MoneyFormat.symbolIn(amount, txCurrency),
-                              style: theme.textTheme.displayMedium?.copyWith(
-                                fontWeight: FontWeight.w700,
-                                color: colorForTxType(_type),
-                                fontFeatures: kTabularFigures,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            // An empty twin of the 🌐 on the left keeps the
+                            // amount centred on the screen.
+                            if (offersForeign) const SizedBox(width: 48),
+                            Flexible(
+                              child: GestureDetector(
+                                onTap: () =>
+                                    _activateAmountCtrl(_mainAmountCtrl),
+                                child: FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: Text(
+                                    key: const Key('amountDisplay'),
+                                    txCurrency == null
+                                        ? MoneyFormat.symbol(amount)
+                                        : MoneyFormat.symbolIn(
+                                            amount,
+                                            txCurrency,
+                                          ),
+                                    style: theme.textTheme.displayMedium
+                                        ?.copyWith(
+                                          fontWeight: FontWeight.w700,
+                                          color: colorForTxType(_type),
+                                          fontFeatures: kTabularFigures,
+                                        ),
+                                  ),
+                                ),
                               ),
                             ),
-                          ),
+                            // Right against the figure's edge, never off
+                            // in a corner — and only for someone with
+                            // another currency to use.
+                            if (offersForeign) _foreignCurrencyButton(),
+                          ],
                         ),
                       ),
+                      if (!_isEditingTemplate) _whenLabel(theme),
                       if (_desktop)
                         Padding(
                           padding: const EdgeInsets.only(top: 4),
@@ -2789,6 +2833,12 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
   ) {
     if (_isEditingTemplate) return _templatePickers(accountMap, categoryMap);
     final tiles = <Widget>[];
+    // Foreign currency's editor sits right under the amount it's about,
+    // opened from the 🌐 beside it ([_foreignCurrencyButton]).
+    if (_isForeignCurrency && _offersForeignCurrency(accountMap)) {
+      tiles.add(_foreignCurrencyEditorCard());
+      tiles.add(const SizedBox(height: 12));
+    }
 
     if (_mode != null) {
       tiles.add(_modeToggleTile(_mode!));
@@ -2855,16 +2905,6 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
           tiles.add(const SizedBox(height: 12));
         }
       }
-      // Foreign currency applies to both income and expense (unlike
-      // split/hybrid/change, which are expense-only) and stays available
-      // while editing. Hidden once the account itself already carries a
-      // non-parent currency — the transaction's real amount is already
-      // natively foreign then, so a second manual foreign-currency
-      // annotation on top would be redundant and confusing.
-      if (_currencyForAccount(_accountId, accountMap) == null) {
-        tiles.add(_foreignToggleTile());
-        tiles.add(const SizedBox(height: 12));
-      }
       if (_type == TxType.expense) {
         // Editing an existing hybrid payment's legs together isn't
         // supported here (see the doc on [_isHybridPayment]) — there's
@@ -2900,10 +2940,6 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
         tiles.add(_changeEditorCard(accountMap));
         tiles.add(const SizedBox(height: 12));
       }
-      if (_isForeignCurrency) {
-        tiles.add(_foreignCurrencyEditorCard());
-        tiles.add(const SizedBox(height: 12));
-      }
       if (_isSplitting) {
         tiles.add(_splitEditorCard(categoryMap));
       } else {
@@ -2934,8 +2970,6 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
       }
     }
 
-    tiles.add(const SizedBox(height: 12));
-    tiles.add(_dateTile());
     if (_type == TxType.expense || _type == TxType.income) {
       tiles.add(const SizedBox(height: 12));
       tiles.add(_payeeCard());
@@ -3056,40 +3090,36 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     );
   }
 
-  /// Like [_pickerTile], but with a second, independent tap target: the
-  /// clock icon opens [_pickTime] without disturbing the date, while the
-  /// rest of the card still opens [_pickDate] — same card, two pickers,
-  /// so adjusting one never has to go through the other (GitHub #124).
-  Widget _dateTile() {
-    final theme = Theme.of(context);
-    return AppCard(
-      margin: EdgeInsets.zero,
-      clipBehavior: Clip.antiAlias,
-      child: AppListTile(
-        onTap: _pickDate,
-        leading: AppIcon(
-          Icons.event_outlined,
-          color: theme.colorScheme.onSurfaceVariant,
-        ),
-        title: Tr(
-          'Date',
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
+  /// When the entry happened, small at the amount's bottom-left —
+  /// `23 NOV 2:17 PM`, with the year only when it isn't this one. A tap
+  /// opens the date and time together ([_pickWhen]).
+  Widget _whenLabel(ThemeData theme) {
+    final when = _when;
+    final day = when.year == DateTime.now().year ? 'd MMM' : 'd MMM yyyy';
+    final time = MediaQuery.alwaysUse24HourFormatOf(context)
+        ? 'HH:mm'
+        : 'h:mm a';
+    final color = theme.colorScheme.onSurfaceVariant;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 2, 16, 0),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: TextButton.icon(
+          key: const Key('whenLabel'),
+          // The theme stretches buttons full width.
+          style: TextButton.styleFrom(
+            minimumSize: const Size(0, 32),
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            visualDensity: VisualDensity.compact,
+            foregroundColor: color,
+            textStyle: theme.textTheme.labelMedium?.copyWith(
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.6,
+            ),
           ),
-        ),
-        subtitle: Text(
-          DateFormat('d MMM yyyy, h:mm a').format(_date),
-          style: theme.textTheme.titleMedium?.copyWith(
-            color: theme.colorScheme.onSurface,
-          ),
-        ),
-        trailing: IconButton(
-          tooltip: tr('Change time'),
-          icon: AppIcon(
-            Icons.access_time_rounded,
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
-          onPressed: _pickTime,
+          onPressed: _pickWhen,
+          icon: AppIcon(Icons.schedule_rounded, size: 14, color: color),
+          label: Text(DateFormat('$day $time').format(when).toUpperCase()),
         ),
       ),
     );
@@ -3288,7 +3318,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     final selected = [
       for (final id in _tagIds)
         if (tagMap[id] != null)
-          (tag: tagMap[id]!, label: SmartTags.label(tagMap[id]!.name, _date)),
+          (tag: tagMap[id]!, label: SmartTags.label(tagMap[id]!.name, _when)),
     ]..sort((a, b) => a.label.compareTo(b.label));
     if (selected.isEmpty) return const SizedBox.shrink();
 
@@ -3839,6 +3869,121 @@ class _CategoryPickerSheetState extends ConsumerState<_CategoryPickerSheet> {
               },
             ),
         ],
+      ),
+    );
+  }
+}
+
+/// The date and the time of an entry, chosen together: Today / Yesterday,
+/// a calendar, and the time beneath it. Pops `(at:, now: false)` on Done,
+/// or `(at:, now: true)` for "Now" — the entry going back to the clock.
+class _WhenSheet extends StatefulWidget {
+  const _WhenSheet({required this.initial, required this.isNow});
+
+  final DateTime initial;
+
+  /// Whether the entry is following the clock, nothing chosen yet.
+  final bool isNow;
+
+  @override
+  State<_WhenSheet> createState() => _WhenSheetState();
+}
+
+class _WhenSheetState extends State<_WhenSheet> {
+  late DateTime _at = widget.initial;
+
+  void _setDay(DateTime day) => setState(
+    () => _at = combineDateAndTime(day, TimeOfDay.fromDateTime(_at)),
+  );
+
+  Future<void> _pickTime() async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(_at),
+    );
+    if (picked == null || !mounted) return;
+    setState(() => _at = combineDateAndTime(_at, picked));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final today = DateUtils.dateOnly(DateTime.now());
+    final yesterday = today.subtract(const Duration(days: 1));
+    final day = DateUtils.dateOnly(_at);
+    final time = MaterialLocalizations.of(context).formatTimeOfDay(
+      TimeOfDay.fromDateTime(_at),
+      alwaysUse24HourFormat: MediaQuery.alwaysUse24HourFormatOf(context),
+    );
+
+    return SafeArea(
+      top: false,
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Tr(
+                    'Date & time',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                if (!widget.isNow)
+                  TextButton(
+                    key: const Key('whenNow'),
+                    style: TextButton.styleFrom(minimumSize: const Size(0, 40)),
+                    onPressed: () => Navigator.pop(context, (
+                      at: DateTime.now(),
+                      now: true,
+                    )),
+                    child: const Tr('Now'),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              children: [
+                ChoiceChip(
+                  label: const Tr('Today'),
+                  selected: day == today,
+                  onSelected: (_) => _setDay(today),
+                ),
+                ChoiceChip(
+                  label: const Tr('Yesterday'),
+                  selected: day == yesterday,
+                  onSelected: (_) => _setDay(yesterday),
+                ),
+              ],
+            ),
+            CalendarDatePicker(
+              // A chip's pick moves the calendar to it too.
+              key: ValueKey(day),
+              initialDate: day,
+              firstDate: DateTime(2000),
+              lastDate: DateTime(2100),
+              onDateChanged: _setDay,
+            ),
+            OutlinedButton.icon(
+              key: const Key('whenTime'),
+              onPressed: _pickTime,
+              icon: const AppIcon(Icons.schedule_rounded, size: 18),
+              label: Text(tr('Time · {0}', [time])),
+            ),
+            const SizedBox(height: 12),
+            FilledButton(
+              key: const Key('whenDone'),
+              onPressed: () => Navigator.pop(context, (at: _at, now: false)),
+              child: const Tr('Done'),
+            ),
+          ],
+        ),
       ),
     );
   }
