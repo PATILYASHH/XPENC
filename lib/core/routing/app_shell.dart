@@ -23,6 +23,8 @@ import 'hold_menu_geometry.dart';
 import 'quick_actions.dart';
 import '../../features/add_transaction/add_transaction_choice_sheet.dart';
 import '../../features/dashboard/month_picker_sheet.dart';
+import '../../features/dashboard/pinned_total.dart';
+import '../money.dart';
 import '../../features/modes/mode_widgets.dart';
 import '../../data/mode_providers.dart';
 import '../../features/persons/persons_screen.dart' show showAddPersonDialog;
@@ -1580,26 +1582,46 @@ class _TopBar extends ConsumerWidget implements PreferredSizeWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final cs = Theme.of(context).colorScheme;
-    final title = AnimatedSwitcher(
-      duration: const Duration(milliseconds: 220),
-      switchInCurve: Curves.easeOutCubic,
-      switchOutCurve: Curves.easeInCubic,
-      transitionBuilder: (child, animation) => FadeTransition(
-        opacity: animation,
-        child: SlideTransition(
-          position: Tween<Offset>(
-            begin: const Offset(0, 0.3),
-            end: Offset.zero,
-          ).animate(animation),
-          child: child,
-        ),
-      ),
-      child: Text(
-        titleFor(ref, currentIndex),
-        key: ValueKey(titleFor(ref, currentIndex)),
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-      ),
+    // On the Dashboard, once Total money has scrolled away under the bar,
+    // its figure takes the title's place.
+    final title = ValueListenableBuilder<Money?>(
+      valueListenable: dashboardPinnedTotal,
+      builder: (context, pinned, _) {
+        final total = currentIndex == 0 ? pinned : null;
+        return AnimatedSwitcher(
+          duration: const Duration(milliseconds: 220),
+          switchInCurve: Curves.easeOutCubic,
+          switchOutCurve: Curves.easeInCubic,
+          transitionBuilder: (child, animation) => FadeTransition(
+            opacity: animation,
+            child: SlideTransition(
+              position: Tween<Offset>(
+                begin: const Offset(0, 0.3),
+                end: Offset.zero,
+              ).animate(animation),
+              child: child,
+            ),
+          ),
+          child: total == null
+              ? Text(
+                  titleFor(ref, currentIndex),
+                  key: ValueKey(titleFor(ref, currentIndex)),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                )
+              : FittedBox(
+                  key: const ValueKey('total'),
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: PinnedTotalTitle(
+                    total,
+                    style:
+                        Theme.of(context).appBarTheme.titleTextStyle ??
+                        Theme.of(context).textTheme.titleLarge,
+                  ),
+                ),
+        );
+      },
     );
 
     return DecoratedBox(

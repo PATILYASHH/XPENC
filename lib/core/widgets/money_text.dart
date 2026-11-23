@@ -170,12 +170,18 @@ class MoneyText extends StatelessWidget {
     this.signed = false,
     this.compact = false,
     this.currency,
+    this.fractionScale,
     super.key,
   });
 
   final Money amount;
   final TextStyle? style;
   final Color? color;
+
+  /// Draws what follows the decimal point at this fraction of the figure's
+  /// size — `₹1,24,500`·`.50` — so a headline reads by its whole part.
+  /// Null (the default) draws it all at one size.
+  final double? fractionScale;
 
   /// Prefix `+`/`-`. Use on ledger rows, not on balances.
   final bool signed;
@@ -237,6 +243,29 @@ class MoneyText extends StatelessWidget {
                 : currency == null
                     ? MoneyFormat.symbol(amount)
                     : MoneyFormat.symbolIn(amount, currency!);
+
+    final scale = fractionScale;
+    final dot = text.lastIndexOf('.');
+    if (!hidden && scale != null && dot > 0 && dot < text.length - 1) {
+      final size = textStyle?.fontSize ?? 16;
+      return Text.rich(
+        TextSpan(
+          text: text.substring(0, dot),
+          children: [
+            TextSpan(
+              text: text.substring(dot),
+              style: TextStyle(
+                fontSize: size * scale,
+                letterSpacing: (textStyle?.letterSpacing ?? 0) * scale,
+              ),
+            ),
+          ],
+        ),
+        style: textStyle,
+        maxLines: 1,
+        softWrap: false,
+      );
+    }
 
     return Text(text, style: textStyle);
   }

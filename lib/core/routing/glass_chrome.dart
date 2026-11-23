@@ -453,45 +453,60 @@ class _GlassTopBarState extends ConsumerState<_GlassTopBar>
                 child: Transform.scale(
                   scale: titleScale,
                   alignment: Alignment.topLeft,
-                  child: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 280),
-                    switchInCurve: Curves.easeOutCubic,
-                    switchOutCurve: Curves.easeInCubic,
-                    transitionBuilder: (child, animation) => FadeTransition(
-                      opacity: animation,
-                      child: SlideTransition(
-                        position: Tween<Offset>(
-                          begin: const Offset(0, 0.18),
-                          end: Offset.zero,
-                        ).animate(animation),
-                        child: child,
-                      ),
-                    ),
-                    // Both titles from the same left edge: the default
-                    // centres the shorter one on the longer while they
-                    // cross-fade, then it jumps left.
-                    layoutBuilder: (current, previous) => Stack(
-                      alignment: Alignment.topLeft,
-                      clipBehavior: Clip.none,
-                      children: [...previous, ?current],
-                    ),
-                    child: ConstrainedBox(
-                      key: ValueKey(index),
-                      constraints: BoxConstraints(maxWidth: titleRoom),
-                      child: Text(
-                        title,
-                        maxLines: 1,
-                        softWrap: false,
-                        overflow: TextOverflow.fade,
-                        style: theme.textTheme.headlineLarge?.copyWith(
-                          fontSize: _GlassTopBar._largeSize,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: -1.2 + 0.8 * c,
-                          height: _GlassTopBar._lineHeight,
-                          color: cs.onSurface,
+                  child: ValueListenableBuilder<Money?>(
+                    // On the Dashboard, once Total money has scrolled away
+                    // under the bar, its figure takes the title's place.
+                    valueListenable: dashboardPinnedTotal,
+                    builder: (context, pinned, _) {
+                      final total = index == 0 ? pinned : null;
+                      final style = theme.textTheme.headlineLarge?.copyWith(
+                        fontSize: _GlassTopBar._largeSize,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -1.2 + 0.8 * c,
+                        height: _GlassTopBar._lineHeight,
+                        color: cs.onSurface,
+                      );
+                      return AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 280),
+                        switchInCurve: Curves.easeOutCubic,
+                        switchOutCurve: Curves.easeInCubic,
+                        transitionBuilder: (child, animation) => FadeTransition(
+                          opacity: animation,
+                          child: SlideTransition(
+                            position: Tween<Offset>(
+                              begin: const Offset(0, 0.18),
+                              end: Offset.zero,
+                            ).animate(animation),
+                            child: child,
+                          ),
                         ),
-                      ),
-                    ),
+                        // Both titles from the same left edge: the default
+                        // centres the shorter one on the longer while they
+                        // cross-fade, then it jumps left.
+                        layoutBuilder: (current, previous) => Stack(
+                          alignment: Alignment.topLeft,
+                          clipBehavior: Clip.none,
+                          children: [...previous, ?current],
+                        ),
+                        child: ConstrainedBox(
+                          key: ValueKey(total == null ? index : 'total'),
+                          constraints: BoxConstraints(maxWidth: titleRoom),
+                          child: total == null
+                              ? Text(
+                                  title,
+                                  maxLines: 1,
+                                  softWrap: false,
+                                  overflow: TextOverflow.fade,
+                                  style: style,
+                                )
+                              : FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  alignment: Alignment.centerLeft,
+                                  child: PinnedTotalTitle(total, style: style),
+                                ),
+                        ),
+                      );
+                    },
                   ),
                 ),
               ),

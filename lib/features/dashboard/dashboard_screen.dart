@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -31,6 +33,7 @@ import '../reports/chart_widgets.dart';
 import '../reports/stats_modules.dart';
 import 'dashboard_editor.dart';
 import 'dashboard_layout.dart';
+import 'pinned_total.dart';
 import 'sparkline.dart';
 import '../../core/widgets/nav_bar_inset.dart';
 import '../modes/mode_home.dart';
@@ -131,26 +134,43 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       const SizedBox(height: 32),
     ];
     if (DesktopLayout.of(context)) {
-      return _DesktopDashboard(shown: shown, item: _holdable, footer: footer);
+      return _LiveDashboard(
+        child: _DesktopDashboard(shown: shown, item: _holdable, footer: footer),
+      );
     }
 
-    return Scaffold(
-      body: CustomScrollView(
-        slivers: [
-          const TopBarInsetSliver(),
-          const SliverToBoxAdapter(child: SizedBox(height: 8)),
-          SliverList.list(
-            children: [
-              // Keyed by widget, so a reordered section keeps its state.
-              for (var i = 0; i < shown.length; i++) _holdable(shown[i], i),
-              ...footer,
-            ],
-          ),
-          const NavBarInsetSliver(),
-        ],
+    return _LiveDashboard(
+      child: Scaffold(
+        body: CustomScrollView(
+          slivers: [
+            const TopBarInsetSliver(),
+            const SliverToBoxAdapter(child: SizedBox(height: 8)),
+            SliverList.list(
+              children: [
+                // Keyed by widget, so a reordered section keeps its state.
+                for (var i = 0; i < shown.length; i++) _holdable(shown[i], i),
+                ...footer,
+              ],
+            ),
+            const NavBarInsetSliver(),
+          ],
+        ),
       ),
     );
   }
+}
+
+/// Marks the Dashboard as it's really shown — not the edit view's previews
+/// of its widgets — so only the real Total money card puts its figure in
+/// the top bar ([dashboardPinnedTotal]).
+class _LiveDashboard extends InheritedWidget {
+  const _LiveDashboard({required super.child});
+
+  static bool of(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<_LiveDashboard>() != null;
+
+  @override
+  bool updateShouldNotify(_LiveDashboard oldWidget) => false;
 }
 
 /// The dashboard on a PC: Total money with the accounts beside it, then
@@ -433,15 +453,102 @@ class _NetWorthCard extends ConsumerStatefulWidget {
   ConsumerState<_NetWorthCard> createState() => _NetWorthCardState();
 }
 
-class _NetWorthCardState extends ConsumerState<_NetWorthCard> {
+class _NetWorthCardState extends ConsumerState<_NetWorthCard>
+    with AutomaticKeepAliveClientMixin {
   static const _months = 6;
 
   _MoneyMetric? _metric;
 
+  // ── The figure in the top bar ─────────────────────────────────────────
+  // Once the big figure scrolls up under the top bar, the bar shows it in
+  // place of the "Dashboard" title ([dashboardPinnedTotal]).
+
+  final _figureKey = GlobalKey(debugLabel: 'totalMoneyFigure');
+  ScrollPosition? _position;
+
+  /// Total money — today's, or at a past month's close — whichever metric
+  /// the card itself is showing.
+  Money? _total;
+
+  /// Whether this card is the one [dashboardPinnedTotal] speaks for. Only
+  /// the live Dashboard's card may set it: the edit view's preview never.
+  bool _owns = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final position = _LiveDashboard.of(context)
+        ? Scrollable.maybeOf(context)?.position
+        : null;
+    if (position != _position) {
+      _position?.removeListener(_schedulePinned);
+      _position = position?..addListener(_schedulePinned);
+    }
+  }
+
+  bool _pinScheduled = false;
+
+  /// A scroll moves the offset before the frame lays the page out again, so
+  /// where the figure is can only be read once that frame's layout is done.
+  void _schedulePinned() {
+    if (_pinScheduled) return;
+    _pinScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _pinScheduled = false;
+      _updatePinned();
+    });
+  }
+
+  void _updatePinned() {
+    if (!mounted || _position == null) return;
+    final box = _figureKey.currentContext?.findRenderObject();
+    final viewport = _position!.context.notificationContext?.findRenderObject();
+    var under = false;
+    if (box is RenderBox &&
+        box.attached &&
+        box.hasSize &&
+        viewport is RenderBox &&
+        viewport.attached) {
+      // The bar's bottom edge: the top of the scroll view, plus — under
+      // Glass, where the page runs under the bar — the bar itself, less
+      // the large title's room that collapses away.
+      final barBottom =
+          viewport.localToGlobal(Offset.zero).dy +
+          math.max(
+            0.0,
+            MediaQuery.paddingOf(context).top - glassLargeTitleExtent,
+          );
+      final figureBottom = box.localToGlobal(Offset(0, box.size.height)).dy;
+      under = figureBottom <= barBottom;
+    }
+    final next = under ? _total : null;
+    if (next == null && !_owns) return;
+    _owns = next != null;
+    if (dashboardPinnedTotal.value != next) dashboardPinnedTotal.value = next;
+  }
+
+  /// Kept when scrolled far off, so it can go on telling the top bar its
+  /// figure is out of sight rather than vanishing with the title stuck.
+  @override
+  bool get wantKeepAlive => _position != null;
+
+  @override
+  void dispose() {
+    _position?.removeListener(_schedulePinned);
+    if (_owns) dashboardPinnedTotal.value = null;
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
+    super.build(context);
+    // A new figure, or a card that's gone (Basic mode): the bar follows
+    // once this frame's layout has landed.
+    _schedulePinned();
+
     // Basic mode (see AppMode) doesn't track net worth at all.
     if (ref.watch(appModeProvider) == AppMode.basic) {
+      _total = null;
       return const SizedBox.shrink();
     }
     final theme = Theme.of(context);
@@ -491,6 +598,11 @@ class _NetWorthCardState extends ConsumerState<_NetWorthCard> {
     final netWorth = metric == null && !past
         ? ref.watch(netWorthProvider)
         : null;
+    // What the top bar shows once the figure's scrolled away: always Total
+    // money, even while a metric tab has the card.
+    _total = past
+        ? ref.watch(periodNetWorthProvider(_months))?.trend.last
+        : ref.watch(netWorthProvider).valueOrNull;
 
     List<double> trendValues = const [];
     var delta = const Money.zero();
@@ -662,34 +774,39 @@ class _NetWorthCardState extends ConsumerState<_NetWorthCard> {
                             ],
                           ),
                           const SizedBox(height: 8),
-                          if (netWorth != null)
-                            netWorth.when(
-                              data: (money) => _BoldGradientText(
-                                active: isBold,
-                                child: AnimatedBalanceText(
-                                  money,
-                                  style: theme.textTheme.displaySmall?.copyWith(
-                                    fontWeight: FontWeight.w700,
-                                    letterSpacing: -1,
+                          KeyedSubtree(
+                            key: _figureKey,
+                            child: netWorth != null
+                                ? netWorth.when(
+                                    data: (money) => _BoldGradientText(
+                                      active: isBold,
+                                      child: AnimatedBalanceText(
+                                        money,
+                                        style: theme.textTheme.displaySmall
+                                            ?.copyWith(
+                                              fontWeight: FontWeight.w700,
+                                              letterSpacing: -1,
+                                            ),
+                                      ),
+                                    ),
+                                    loading: () =>
+                                        const _InlineLoader(height: 44),
+                                    error: (_, _) => const _InlineError(),
+                                  )
+                                : headline == null
+                                ? const _InlineLoader(height: 44)
+                                : _BoldGradientText(
+                                    active: isBold && metric == null,
+                                    child: AnimatedBalanceText(
+                                      headline,
+                                      style: theme.textTheme.displaySmall
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.w700,
+                                            letterSpacing: -1,
+                                          ),
+                                    ),
                                   ),
-                                ),
-                              ),
-                              loading: () => const _InlineLoader(height: 44),
-                              error: (_, _) => const _InlineError(),
-                            )
-                          else if (headline == null)
-                            const _InlineLoader(height: 44)
-                          else
-                            _BoldGradientText(
-                              active: isBold && metric == null,
-                              child: AnimatedBalanceText(
-                                headline,
-                                style: theme.textTheme.displaySmall?.copyWith(
-                                  fontWeight: FontWeight.w700,
-                                  letterSpacing: -1,
-                                ),
-                              ),
-                            ),
+                          ),
                           // Only when some account is left out of it — with
                           // every account counted it would just repeat the
                           // figure above.
