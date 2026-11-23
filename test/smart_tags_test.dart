@@ -8,7 +8,7 @@ import 'package:xpenc/core/theme/app_theme.dart';
 import 'package:xpenc/data/database.dart';
 import 'package:xpenc/data/providers.dart';
 import 'package:xpenc/data/tables.dart';
-import 'package:xpenc/features/tags/tags_screen.dart';
+import 'package:xpenc/features/categories/categories_screen.dart';
 
 /// GitHub #189: smart tags. A tag whose name holds a date part lands on a
 /// transaction as the plain tag that part reads on the transaction's date,
@@ -207,7 +207,10 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [dbProvider.overrideWithValue(db)],
-          child: MaterialApp(theme: AppTheme.light, home: const TagsScreen()),
+          child: MaterialApp(
+            theme: AppTheme.light,
+            home: const CategoriesScreen(initialTab: CategoriesTab.tags),
+          ),
         ),
       );
       await tester.runAsync(

@@ -52,6 +52,26 @@ part 'quick_actions_editor.dart';
 /// table (0=dashboard, 1=transactions, 2=persons, 3=more, 4=calendar,
 /// 5=budgets, 6=accounts, 7=stats, 8=payees; the last 5 were added by this
 /// feature and are only reachable when a user picks them into a slot).
+/// The modules the bottom bar has a tab for right now, by
+/// `bottom_nav_layout.dart` id — so More can leave out what a tab already
+/// reaches. Follows the bar exactly: Basic mode's stand-ins, and a focused
+/// mode's own two tabs.
+final bottomNavShownIdsProvider = Provider<Set<String>>((ref) {
+  final raw = ref.watch(settingsProvider).valueOrNull?.bottomNavSlots;
+  final basic = ref.watch(appModeProvider) == AppMode.basic;
+  final focused = ref.watch(focusedModeProvider);
+  if (focused == null) {
+    return resolveBottomNavLayout(raw, basic: basic).toSet();
+  }
+  // A focused mode's first tab is its own home, not the Dashboard.
+  final (left, right) = AppShell.focusedSlotIds(
+    modeSlots: focused.navSlots,
+    raw: raw,
+    basic: basic,
+  );
+  return {left, right, 'more'};
+});
+
 class AppShell extends ConsumerWidget {
   const AppShell({required this.navigationShell, super.key});
 
@@ -138,24 +158,32 @@ class AppShell extends ConsumerWidget {
     );
   }
 
-  static (String, String) _slotIds(WidgetRef ref) {
-    final basic = ref.watch(appModeProvider) == AppMode.basic;
+  static (String, String) _slotIds(WidgetRef ref) => focusedSlotIds(
+    modeSlots: ref.watch(focusedModeProvider)?.navSlots,
+    raw: ref.watch(settingsProvider).valueOrNull?.bottomNavSlots,
+    basic: ref.watch(appModeProvider) == AppMode.basic,
+  );
+
+  /// The two middle tabs while a mode (a trip) is the focus: its own pick
+  /// when it made a valid one, else the everyday pair.
+  static (String, String) focusedSlotIds({
+    required String? modeSlots,
+    required String? raw,
+    required bool basic,
+  }) {
     // A mode (a trip) that's the focus may pick its own two tabs.
-    final modeSlots = ref.watch(focusedModeProvider)?.navSlots?.split(',');
-    if (modeSlots != null &&
-        modeSlots.length == 2 &&
-        modeSlots[0] != modeSlots[1] &&
-        _catalog.containsKey(modeSlots[0]) &&
-        _catalog.containsKey(modeSlots[1]) &&
+    final mode = modeSlots?.split(',');
+    if (mode != null &&
+        mode.length == 2 &&
+        mode[0] != mode[1] &&
+        _catalog.containsKey(mode[0]) &&
+        _catalog.containsKey(mode[1]) &&
         !(basic &&
-            (basicModeHiddenCatalogIds.contains(modeSlots[0]) ||
-                basicModeHiddenCatalogIds.contains(modeSlots[1])))) {
-      return (modeSlots[0], modeSlots[1]);
+            (basicModeHiddenCatalogIds.contains(mode[0]) ||
+                basicModeHiddenCatalogIds.contains(mode[1])))) {
+      return (mode[0], mode[1]);
     }
-    final raw =
-        ref.watch(settingsProvider).valueOrNull?.bottomNavSlots ??
-        'transactions,persons';
-    final parts = raw.split(',');
+    final parts = (raw ?? 'transactions,persons').split(',');
     if (parts.length != 2 ||
         !_catalog.containsKey(parts[0]) ||
         !_catalog.containsKey(parts[1]) ||

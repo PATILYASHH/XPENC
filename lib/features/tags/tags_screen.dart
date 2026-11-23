@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../core/smart_tags.dart';
 import '../../core/widgets/app_surfaces.dart';
@@ -28,8 +27,11 @@ const _presetColors = <int>[
 /// Manage tags: short labels that can be pinned to any number of
 /// transactions, cutting across category and account. Unlike a category, a
 /// tag is a hard delete — dropping it just untags whatever carried it.
-class TagsScreen extends ConsumerWidget {
-  const TagsScreen({super.key});
+///
+/// The Tags tab of Categories & Tags (`CategoriesScreen`), which also gives
+/// it the top bar's Tag groups button and the ＋ ([openTagEditor]).
+class TagsList extends ConsumerWidget {
+  const TagsList({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -39,78 +41,56 @@ class TagsScreen extends ConsumerWidget {
         .watch(tagsProvider)
         .whenData((_) => ref.watch(everydayTagsProvider));
 
-    return Scaffold(
-      appBar: AppTopBar(
-        title: const Tr('Tags'),
-        actions: [
-          IconButton(
-            icon: const AppIcon(Icons.workspaces_outline),
-            tooltip: tr('Tag groups'),
-            onPressed: () => context.push('/more/tags/groups'),
-          ),
-        ],
-      ),
-      body: tagsAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (_, _) => Center(
-          child: Padding(
-            padding: EdgeInsets.all(24),
-            child: InlineErrorView(message: tr("Couldn't load tags")),
-          ),
+    return tagsAsync.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (_, _) => Center(
+        child: Padding(
+          padding: EdgeInsets.all(24),
+          child: InlineErrorView(message: tr("Couldn't load tags")),
         ),
-        data: (tags) {
-          return ListView(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 96).plusNavBar(context),
-            children: [
-              ModuleShortcuts([
-                ModuleShortcut(
-                  Icons.category_outlined,
-                  tr('Categories'),
-                  '/more/categories',
-                ),
-                ModuleShortcut(
-                  Icons.receipt_long_outlined,
-                  tr('Transactions'),
-                  '/more/transactions',
-                ),
-              ], padding: EdgeInsets.fromLTRB(0, 0, 0, 12)),
-              if (tags.isEmpty)
-                _EmptyTags(theme: theme)
-              else
-                AppCard(
-                  clipBehavior: Clip.antiAlias,
-                  child: Column(
-                    children: [
-                      for (var i = 0; i < tags.length; i++) ...[
-                        if (i > 0)
-                          Divider(
-                            height: 1,
-                            indent: 60,
-                            color: theme.colorScheme.outline,
-                          ),
-                        _TagTile(tag: tags[i]),
-                      ],
+      ),
+      data: (tags) {
+        return ListView(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 96).plusNavBar(context),
+          children: [
+            ModuleShortcuts([
+              ModuleShortcut(
+                Icons.receipt_long_outlined,
+                tr('Transactions'),
+                '/more/transactions',
+              ),
+            ], padding: EdgeInsets.fromLTRB(0, 0, 0, 12)),
+            if (tags.isEmpty)
+              _EmptyTags(theme: theme)
+            else
+              AppCard(
+                clipBehavior: Clip.antiAlias,
+                child: Column(
+                  children: [
+                    for (var i = 0; i < tags.length; i++) ...[
+                      if (i > 0)
+                        Divider(
+                          height: 1,
+                          indent: 60,
+                          color: theme.colorScheme.outline,
+                        ),
+                      _TagTile(tag: tags[i]),
                     ],
-                  ),
-                ),
-              const SizedBox(height: 20),
-              Tr(
-                'A transaction can carry any number of tags. Deleting a tag '
-                "just removes it from whatever it was on — nothing else changes.",
-                textAlign: TextAlign.center,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
+                  ],
                 ),
               ),
-            ],
-          );
-        },
-      ),
-      floatingActionButton: FloatingActionButton(
-        tooltip: tr('New tag'),
-        onPressed: () => _openTagEditor(context),
-        child: const AppIcon(Icons.add),
-      ),
+            const SizedBox(height: 20),
+            Tr(
+              'A transaction can carry any number of tags. Deleting a tag '
+              "just removes it from whatever it was on — nothing else changes.",
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }
@@ -197,7 +177,7 @@ class _TagTile extends ConsumerWidget {
             icon: const AppIcon(Icons.edit_outlined),
             tooltip: tr('Edit'),
             visualDensity: VisualDensity.compact,
-            onPressed: () => _openTagEditor(context, existing: tag),
+            onPressed: () => openTagEditor(context, existing: tag),
           ),
           IconButton(
             icon: AppIcon(Icons.delete_outline, color: theme.colorScheme.error),
@@ -248,7 +228,8 @@ Future<void> _confirmDelete(
     ..showSnackBar(const SnackBar(content: Tr('Tag deleted')));
 }
 
-Future<void> _openTagEditor(BuildContext context, {TagRow? existing}) {
+/// A new tag, or [existing] to edit.
+Future<void> openTagEditor(BuildContext context, {TagRow? existing}) {
   return showAppSheet<void>(
     context: context,
     isScrollControlled: true,

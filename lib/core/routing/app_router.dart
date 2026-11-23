@@ -87,7 +87,6 @@ import '../../features/settings/widgets_screen.dart';
 import '../../features/shopping/shopping_list_screen.dart';
 import '../../features/shopping/shopping_lists_screen.dart';
 import '../../features/tags/tag_groups_screen.dart';
-import '../../features/tags/tags_screen.dart';
 import '../../features/transactions/transaction_detail_screen.dart';
 import '../../features/transactions/transactions_screen.dart';
 import '../widgets/app_surfaces.dart';
@@ -435,7 +434,9 @@ final appRouter = GoRouter(
                 GoRoute(
                   path: 'tags',
                   parentNavigatorKey: _rootKey,
-                  builder: (_, _) => const TagsScreen(),
+                  // Tags are a tab of Categories & Tags.
+                  builder: (_, _) =>
+                      const CategoriesScreen(initialTab: CategoriesTab.tags),
                   routes: [
                     GoRoute(
                       path: 'groups',

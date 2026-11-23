@@ -332,12 +332,14 @@ void main() {
           name: mode.name,
           iconKey: mode.iconKey,
           colorValue: mode.colorValue,
-          modules: 'transactions,persons',
+          modules: 'transactions,persons,goals',
         ),
       );
       await pump(tester, const MoreScreen());
-      expect(find.text('Persons'), findsOneWidget);
+      expect(find.text('Goals & Loans'), findsOneWidget);
       expect(find.text('Payees'), findsNothing);
+      // Persons is a tab on the bar already.
+      expect(find.text('Persons'), findsNothing);
       expect(find.text('Modes'), findsOneWidget);
       expect(find.text('Settings'), findsOneWidget);
       expect(tester.takeException(), isNull);

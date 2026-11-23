@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/branding/app_info.dart';
+import '../../core/routing/app_shell.dart' show bottomNavShownIdsProvider;
 import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/bar_page_transition.dart';
@@ -56,22 +57,14 @@ class MoreScreen extends ConsumerWidget {
     final shown = focused == null ? null : modeModuleKeys(focused);
 
     final allGroups = <_Group>[
-      _Group(tr('Money'), [
-        _Item(
-          Icons.luggage_outlined,
-          tr('Modes'),
-          route: '/more/modes',
-          subtitle: active != null
-              ? tr('{0} is ON', [active.name])
-              : modeCount == 0
-              ? tr('Trips and events, each in focus')
-              : plural(modeCount, '1 mode', '{0} modes'),
-        ),
+      // What you open every day.
+      _Group(tr('Everyday'), [
         _Item(
           Icons.account_balance_wallet_outlined,
           tr('Accounts'),
           route: '/more/accounts',
           module: 'accounts',
+          navId: 'accounts',
           subtitle: netWorth == null
               ? tr('Manage where your money is')
               : tr('Total money: {0}', [MoneyFormat.compact(netWorth)]),
@@ -82,6 +75,7 @@ class MoreScreen extends ConsumerWidget {
           route: '/more/transactions',
           subtitle: tr('Every transaction, searchable and filterable'),
           module: 'transactions',
+          navId: 'transactions',
         ),
         _Item(
           Icons.people_alt_outlined,
@@ -89,6 +83,7 @@ class MoreScreen extends ConsumerWidget {
           route: '/more/persons',
           subtitle: tr('Who owes you, who you owe'),
           module: 'persons',
+          navId: 'persons',
         ),
         if (appMode != AppMode.basic)
           _Item(
@@ -98,6 +93,7 @@ class MoreScreen extends ConsumerWidget {
             subtitle: budgetSubtitle,
             subtitleColor: budgetSubtitleColor,
             module: 'budgets',
+            navId: 'budgets',
           ),
         if (appMode == AppMode.pro && rtaEnabled)
           _Item(
@@ -109,6 +105,9 @@ class MoreScreen extends ConsumerWidget {
                 tr('{0} '
                 'unassigned', [MoneyFormat.compact(ref.watch(readyToAssignProvider))]),
           ),
+      ]),
+      // What runs, and what you're working towards.
+      _Group(tr('Plan & Automate'), [
         _Item(
           Icons.autorenew_rounded,
           tr('Auto'),
@@ -122,6 +121,7 @@ class MoreScreen extends ConsumerWidget {
           route: '/more/payees',
           subtitle: tr('Who you pay, and how much'),
           module: 'payees',
+          navId: 'payees',
         ),
         _Item(
           Icons.savings_outlined,
@@ -137,6 +137,16 @@ class MoreScreen extends ConsumerWidget {
           subtitle: tr('Plan what to buy'),
           module: 'shopping',
         ),
+        _Item(
+          Icons.luggage_outlined,
+          tr('Modes'),
+          route: '/more/modes',
+          subtitle: active != null
+              ? tr('{0} is ON', [active.name])
+              : modeCount == 0
+              ? tr('Trips and events, each in focus')
+              : plural(modeCount, '1 mode', '{0} modes'),
+        ),
       ]),
       _Group(tr('Insights'), [
         _Item(
@@ -145,6 +155,7 @@ class MoreScreen extends ConsumerWidget {
           route: '/more/calendar',
           subtitle: tr('Day-wise in/out · planned payments'),
           module: 'calendar',
+          navId: 'calendar',
         ),
         _Item(
           Icons.insights_outlined,
@@ -152,6 +163,7 @@ class MoreScreen extends ConsumerWidget {
           route: '/more/stats',
           subtitle: tr('Trends and deeper analytics'),
           module: 'stats',
+          navId: 'stats',
         ),
         _Item(
           Icons.account_balance_outlined,
@@ -189,16 +201,9 @@ class MoreScreen extends ConsumerWidget {
       _Group(tr('Setup'), [
         _Item(
           Icons.category_outlined,
-          tr('Categories'),
+          tr('Categories & Tags'),
           route: '/more/categories',
-          subtitle: tr('Money in & out categories'),
-          module: 'setup',
-        ),
-        _Item(
-          Icons.sell_outlined,
-          tr('Tags'),
-          route: '/more/tags',
-          subtitle: tr('Label transactions, cutting across category'),
+          subtitle: tr('Money in & out categories, and tags'),
           module: 'setup',
         ),
         _Item(
@@ -227,15 +232,18 @@ class MoreScreen extends ConsumerWidget {
         ),
       ]),
     ];
+    // A tab on the bottom bar already reaches it: no second way in here.
+    final onBar = ref.watch(bottomNavShownIdsProvider);
     final groups = [
       for (final g in allGroups)
-        if (shown == null)
-          g
-        else
-          _Group(g.title, beta: g.beta, [
-            for (final i in g.items)
-              if (i.module == null || shown.contains(i.module)) i,
-          ]),
+        _Group(g.title, beta: g.beta, [
+          for (final i in g.items)
+            if ((shown == null ||
+                    i.module == null ||
+                    shown.contains(i.module)) &&
+                !onBar.contains(i.navId))
+              i,
+        ]),
     ].where((g) => g.items.isNotEmpty).toList();
 
     final viewMode = ref.watch(moreScreenViewModeProvider);
@@ -427,6 +435,7 @@ class _Item {
     required this.subtitle,
     this.subtitleColor,
     this.module,
+    this.navId,
   });
 
   final IconData icon;
@@ -440,4 +449,8 @@ class _Item {
   final String subtitle;
   final Color? subtitleColor;
   final String? module;
+
+  /// Its bottom-bar tab's id, when it can have one — see
+  /// [bottomNavShownIdsProvider]. Left off More while that tab is on the bar.
+  final String? navId;
 }

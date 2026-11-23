@@ -237,10 +237,21 @@ void main() {
     await unmount(tester);
   });
 
-  testWidgets('Categories renders both tabs', (tester) async {
+  testWidgets('Categories & Tags renders its three tabs, the Tags one too', (
+    tester,
+  ) async {
     await pump(tester, const CategoriesScreen());
     expect(tester.takeException(), isNull);
-    expect(find.text('Categories'), findsWidgets);
+    expect(find.text('Categories & Tags'), findsOneWidget);
+    for (final tab in ['Money out', 'Money in', 'Tags']) {
+      expect(find.widgetWithText(Tab, tab), findsOneWidget);
+    }
+    expect(find.byTooltip('Archived categories'), findsOneWidget);
+    await tester.tap(find.widgetWithText(Tab, 'Tags'));
+    await tester.pumpAndSettle();
+    expect(find.byTooltip('Tag groups'), findsOneWidget);
+    expect(find.byTooltip('New tag'), findsOneWidget);
+    expect(tester.takeException(), isNull);
     await unmount(tester);
   });
 
@@ -1093,6 +1104,33 @@ void main() {
     // Sits below the fold at phone size — bring it into the viewport first.
     await tester.scrollUntilVisible(find.text('Backup & Restore'), 240);
     expect(find.text('Backup & Restore'), findsOneWidget);
+    await unmount(tester);
+  });
+
+  testWidgets("More groups Everyday and Plan & Automate, and leaves out "
+      "what the bottom bar's tabs already reach", (tester) async {
+    // The default bar: Dashboard · Transactions · Persons · More.
+    await pump(tester, const MoreScreen());
+    expect(find.text('EVERYDAY'), findsOneWidget);
+    expect(find.text('PLAN & AUTOMATE'), findsOneWidget);
+    expect(find.text('Accounts'), findsOneWidget);
+    expect(find.text('Transactions'), findsNothing);
+    expect(find.text('Persons'), findsNothing);
+    await tester.scrollUntilVisible(find.text('Categories & Tags'), 240);
+    expect(find.text('Tags'), findsNothing);
+    await unmount(tester);
+
+    // Accounts and Stats on the bar instead: they go, the others come back.
+    await tester.runAsync(
+      () => db.setBottomNavLayout(['dashboard', 'accounts', 'stats', 'more']),
+    );
+    await pump(tester, const MoreScreen());
+    expect(find.text('Transactions'), findsOneWidget);
+    expect(find.text('Persons'), findsOneWidget);
+    expect(find.text('Accounts'), findsNothing);
+    await tester.scrollUntilVisible(find.text('Calculations'), 240);
+    expect(find.text('Stats'), findsNothing);
+    expect(tester.takeException(), isNull);
     await unmount(tester);
   });
 

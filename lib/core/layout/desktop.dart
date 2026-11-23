@@ -345,11 +345,11 @@ List<_Section> _sections(WidgetRef ref) {
     _Section(tr('Setup'), [
       _Destination(
         Icons.category_outlined,
-        tr('Categories'),
+        tr('Categories & Tags'),
         '/more/categories',
+        also: ['/more/tags'],
         module: 'setup',
       ),
-      _Destination(Icons.sell_outlined, tr('Tags'), '/more/tags', module: 'setup'),
       _Destination(
         Icons.auto_awesome_outlined,
         tr("What's new"),

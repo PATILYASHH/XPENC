@@ -14,6 +14,7 @@ import '../../data/providers.dart';
 import '../../data/tables.dart';
 import '../../core/widgets/nav_bar_inset.dart';
 import '../../core/l10n/l10n.dart';
+import '../tags/tags_screen.dart';
 
 /// Preset colours for a category. Plain ints — this is the category's own
 /// decorative colour, not a money-direction signal.
@@ -28,25 +29,44 @@ const _presetColors = <int>[
   0xFFEC4899,
 ];
 
-/// Manage expense and income categories. Categories are archived rather than
-/// deleted — every past transaction keeps its category so reports stay
-/// intact. Archived ones live behind the top bar's archive button, where
-/// they can be restored (or, if never used, deleted).
+/// Categories & Tags: money-out and money-in categories, and tags, as one
+/// page's three tabs — both are how a transaction gets sorted.
+///
+/// Categories are archived rather than deleted — every past transaction
+/// keeps its category so reports stay intact. Archived ones live behind the
+/// top bar's archive button, where they can be restored (or, if never used,
+/// deleted). Tags ([TagsList]) have Tag groups there instead.
 class CategoriesScreen extends ConsumerStatefulWidget {
-  const CategoriesScreen({super.key});
+  const CategoriesScreen({this.initialTab = CategoriesTab.moneyOut, super.key});
+
+  /// The tab it opens on — `/more/tags` opens on [CategoriesTab.tags].
+  final CategoriesTab initialTab;
 
   @override
   ConsumerState<CategoriesScreen> createState() => _CategoriesScreenState();
 }
 
+/// The tabs of [CategoriesScreen], in order.
+enum CategoriesTab { moneyOut, moneyIn, tags }
+
 class _CategoriesScreenState extends ConsumerState<CategoriesScreen>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController;
 
+  CategoriesTab get _tab => CategoriesTab.values[_tabController.index];
+
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(
+      length: CategoriesTab.values.length,
+      initialIndex: widget.initialTab.index,
+      vsync: this,
+    );
+    // The top bar's buttons and the ＋ follow the tab.
+    _tabController.addListener(() {
+      if (!_tabController.indexIsChanging) setState(() {});
+    });
   }
 
   @override
@@ -59,24 +79,33 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppTopBar(
-        title: const Tr('Categories'),
-        actions: [
-          IconButton(
-            icon: const AppIcon(Icons.inventory_2_outlined),
-            tooltip: tr('Archived categories'),
-            onPressed: () => context.push('/more/categories/archived'),
-          ),
-          IconButton(
-            icon: const AppIcon(Icons.dashboard_customize_outlined),
-            tooltip: tr('Templates'),
-            onPressed: () => context.push('/more/categories/templates'),
-          ),
-        ],
+        title: const Tr('Categories & Tags'),
+        actions: _tab == CategoriesTab.tags
+            ? [
+                IconButton(
+                  icon: const AppIcon(Icons.workspaces_outline),
+                  tooltip: tr('Tag groups'),
+                  onPressed: () => context.push('/more/tags/groups'),
+                ),
+              ]
+            : [
+                IconButton(
+                  icon: const AppIcon(Icons.inventory_2_outlined),
+                  tooltip: tr('Archived categories'),
+                  onPressed: () => context.push('/more/categories/archived'),
+                ),
+                IconButton(
+                  icon: const AppIcon(Icons.dashboard_customize_outlined),
+                  tooltip: tr('Templates'),
+                  onPressed: () => context.push('/more/categories/templates'),
+                ),
+              ],
         bottom: TabBar(
           controller: _tabController,
           tabs: [
             Tab(text: tr('Money out')),
             Tab(text: tr('Money in')),
+            Tab(text: tr('Tags')),
           ],
         ),
       ),
@@ -85,15 +114,23 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen>
         children: const [
           _CategoryList(kind: CategoryKind.expense),
           _CategoryList(kind: CategoryKind.income),
+          TagsList(),
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        tooltip: tr('New category'),
-        onPressed: () {
-          final kind = _tabController.index == 0
-              ? CategoryKind.expense
-              : CategoryKind.income;
-          _openCategoryEditor(context, kind: kind);
+        tooltip: _tab == CategoriesTab.tags
+            ? tr('New tag')
+            : tr('New category'),
+        onPressed: () => switch (_tab) {
+          CategoriesTab.moneyOut => _openCategoryEditor(
+            context,
+            kind: CategoryKind.expense,
+          ),
+          CategoriesTab.moneyIn => _openCategoryEditor(
+            context,
+            kind: CategoryKind.income,
+          ),
+          CategoriesTab.tags => openTagEditor(context),
         },
         child: const AppIcon(Icons.add),
       ),
@@ -133,7 +170,6 @@ class _CategoryList extends ConsumerWidget {
                   tr('Budgets'),
                   '/more/budgets',
                 ),
-              ModuleShortcut(Icons.sell_outlined, tr('Tags'), '/more/tags'),
               ModuleShortcut(
                 Icons.receipt_long_outlined,
                 tr('Transactions'),
