@@ -2397,6 +2397,26 @@ class AppDatabase extends _$AppDatabase {
     await (delete(tags)..where((t) => t.id.equals(id))).go();
   });
 
+  /// Bulk move: every transaction in [transactionIds] swaps tag [fromTagId]
+  /// for [toTagId] (kept just once if it already had it). Goes through
+  /// [setTransactionTags], so a smart target resolves for each date and a
+  /// person entry's mirror follows. Returns how many transactions moved.
+  Future<int> moveTransactionsToTag({
+    required Set<int> transactionIds,
+    required int fromTagId,
+    required int toTagId,
+  }) => transaction(() async {
+    if (fromTagId == toTagId) return 0;
+    var moved = 0;
+    for (final id in transactionIds) {
+      final current = (await tagIdsForTransaction(id)).toSet();
+      if (!current.remove(fromTagId)) continue;
+      await setTransactionTags(id, {...current, toTagId});
+      moved++;
+    }
+    return moved;
+  });
+
   /// Every tag link, across every transaction — composed with [watchTags] by
   /// the provider layer to build a `transactionId -> tags` map without a
   /// query per row.
@@ -8100,30 +8120,16 @@ class AppDatabase extends _$AppDatabase {
     }
   });
 
-  /// GitHub #162 — permanently removes an archived category that nothing
-  /// has ever used: one made by mistake. Archive stays the normal path
-  /// ([archiveCategory]); deleting a category that past transactions,
-  /// budgets or rules still name would orphan them and break old reports,
-  /// so this refuses — with a user-facing reason — whenever anything does.
-  /// Only archived categories, so it's always a deliberate second step.
+  /// GitHub #162 — permanently removes a category that nothing uses: one
+  /// made by mistake, or one emptied with [moveTransactionsToCategory].
+  /// Live or archived alike — an empty category needn't be archived first.
+  /// Deleting a category that past transactions, budgets or rules still
+  /// name would orphan them and break old reports, so this refuses — with a
+  /// user-facing reason ([categoryDeleteBlocker]) — whenever anything does.
   Future<void> deleteCategory(int id) => transaction(() async {
     final self = await categoryById(id);
     if (self == null) return;
-    if (!self.isArchived) {
-      throw ArgumentError(tr('Archive this category before deleting it.'));
-    }
-    final child =
-        await (select(categories)
-              ..where((c) => c.parentId.equals(id))
-              ..limit(1))
-            .getSingleOrNull();
-    if (child != null) {
-      throw ArgumentError(
-        tr('It still has subcategories (like "{0}"). Delete those '
-        'first.', [child.name]),
-      );
-    }
-    final reason = await _categoryInUseReason(id);
+    final reason = await categoryDeleteBlocker(id);
     if (reason != null) throw ArgumentError(reason);
     // A mode offering it (or capping it) is a setting, not a use — that
     // just goes; a planned cost keeps its amount, minus the category.
@@ -8135,6 +8141,22 @@ class AppDatabase extends _$AppDatabase {
         .write(const ModePlannedCostsCompanion(categoryId: Value(null)));
     await (delete(categories)..where((c) => c.id.equals(id))).go();
   });
+
+  /// Why [deleteCategory] would refuse [id] — a subcategory under it, or
+  /// anything still using it — or null when it can go. The UI asks first so
+  /// it only deletes a category that's really empty.
+  Future<String?> categoryDeleteBlocker(int id) async {
+    final child =
+        await (select(categories)
+              ..where((c) => c.parentId.equals(id))
+              ..limit(1))
+            .getSingleOrNull();
+    if (child != null) {
+      return tr('It still has subcategories (like "{0}"). Delete those '
+          'first.', [child.name]);
+    }
+    return _categoryInUseReason(id);
+  }
 
   /// Why [deleteCategory] must refuse [id], or null when nothing points at
   /// it. Covers every table with a `references(Categories, #id)` column —
@@ -8195,6 +8217,76 @@ class AppDatabase extends _$AppDatabase {
     }
     return null;
   }
+
+  /// Bulk move: every transaction in [transactionIds] that sits in one of
+  /// [fromCategoryIds] — directly, or through a split leg — goes to
+  /// [toCategoryId] instead. A category page passes itself plus its
+  /// subcategories as [fromCategoryIds], so a parent's page can move a line
+  /// that lives in a subcategory. A person entry that owns the ledger row
+  /// follows, so the two never disagree. Only the category changes: amounts,
+  /// accounts and balances are untouched. Returns how many transactions
+  /// moved.
+  Future<int> moveTransactionsToCategory({
+    required Set<int> transactionIds,
+    required Set<int> fromCategoryIds,
+    required int toCategoryId,
+  }) => transaction(() async {
+    if (transactionIds.isEmpty || fromCategoryIds.isEmpty) return 0;
+    final target = await categoryById(toCategoryId);
+    if (target == null) {
+      throw ArgumentError(tr('That category no longer exists.'));
+    }
+    final from = await (select(
+      categories,
+    )..where((c) => c.id.isIn(fromCategoryIds))).get();
+    if (from.any((c) => c.kind != target.kind)) {
+      throw ArgumentError(
+        tr('Move money-out to a money-out category, and money-in to '
+            'money-in.'),
+      );
+    }
+    final now = DateTime.now();
+    final moved = <int>{};
+    final direct = await (select(transactions)..where(
+          (t) =>
+              t.id.isIn(transactionIds) & t.categoryId.isIn(fromCategoryIds),
+        ))
+        .get();
+    if (direct.isNotEmpty) {
+      await (update(transactions)
+            ..where((t) => t.id.isIn([for (final t in direct) t.id])))
+          .write(
+            TransactionsCompanion(
+              categoryId: Value(toCategoryId),
+              updatedAt: Value(now),
+            ),
+          );
+      moved.addAll(direct.map((t) => t.id));
+    }
+    final legs = await (select(transactionSplits)..where(
+          (s) =>
+              s.transactionId.isIn(transactionIds) &
+              s.categoryId.isIn(fromCategoryIds),
+        ))
+        .get();
+    if (legs.isNotEmpty) {
+      await (update(transactionSplits)
+            ..where((s) => s.id.isIn([for (final s in legs) s.id])))
+          .write(TransactionSplitsCompanion(categoryId: Value(toCategoryId)));
+      final split = {for (final s in legs) s.transactionId};
+      await (update(transactions)..where((t) => t.id.isIn(split))).write(
+        TransactionsCompanion(updatedAt: Value(now)),
+      );
+      moved.addAll(split);
+    }
+    await (update(personEntries)..where(
+          (e) =>
+              e.transactionId.isIn(transactionIds) &
+              e.categoryId.isIn(fromCategoryIds),
+        ))
+        .write(PersonEntriesCompanion(categoryId: Value(toCategoryId)));
+    return moved.length;
+  });
 
   Future<int> countTransactionsForCategory(int categoryId) async {
     final rows = await (select(

@@ -91,10 +91,11 @@ void main() {
       expect(await db.categoryById(food), isNull);
     });
 
-    test('refuses a live category', () async {
+    test('removes a live category nothing uses — no archiving first', () async {
       final food = await addParent('Food');
-      await expectLater(db.deleteCategory(food), throwsArgumentError);
-      expect(await db.categoryById(food), isNotNull);
+      expect(await db.categoryDeleteBlocker(food), isNull);
+      await db.deleteCategory(food);
+      expect(await db.categoryById(food), isNull);
     });
 
     test('refuses a parent that still has subcategories', () async {

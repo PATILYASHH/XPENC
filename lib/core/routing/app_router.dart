@@ -25,6 +25,7 @@ import '../../features/calculators/calculator_kind.dart';
 import '../../features/calculators/calculator_screen.dart';
 import '../../features/calculators/calculations_screen.dart';
 import '../../features/categories/archived_categories_screen.dart';
+import '../../features/tags/tag_detail_screen.dart';
 import '../../features/categories/categories_screen.dart';
 import '../../features/categories/category_detail_screen.dart';
 import '../../features/modes/mode_detail_screen.dart';
@@ -442,6 +443,14 @@ final appRouter = GoRouter(
                       path: 'groups',
                       parentNavigatorKey: _rootKey,
                       builder: (_, _) => const TagGroupsScreen(),
+                    ),
+                    // One tag's transactions; hold to select and move.
+                    GoRoute(
+                      path: ':tagId',
+                      parentNavigatorKey: _rootKey,
+                      builder: (_, state) => TagDetailScreen(
+                        tagId: int.parse(state.pathParameters['tagId']!),
+                      ),
                     ),
                   ],
                 ),

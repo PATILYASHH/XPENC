@@ -383,7 +383,9 @@ Future<void> _openCategoryEditor(
 }
 
 /// Confirms and archives a category. Archiving only hides it from new entries —
-/// past transactions keep it and nothing is deleted.
+/// past transactions keep it and nothing is deleted. An empty category (see
+/// [AppDatabase.categoryDeleteBlocker]) can be deleted for good from here
+/// instead.
 Future<void> _confirmArchive(
   BuildContext context,
   WidgetRef ref,
@@ -394,6 +396,8 @@ Future<void> _confirmArchive(
 
   final count = await db.countTransactionsForCategory(category.id);
   final childCount = await db.countChildCategories(category.id);
+  // Empty — no subcategories, nothing using it — so it can go for good.
+  final deletable = await db.categoryDeleteBlocker(category.id) == null;
   if (!context.mounted) return;
 
   final usage = count > 0
@@ -408,25 +412,51 @@ Future<void> _confirmArchive(
         ])
       : '';
 
-  final confirmed = await showAppDialog<bool>(
+  final choice = await showAppDialog<String>(
     context: context,
     builder: (dialogContext) => AlertDialog(
       title: Text(tr('Archive "{0}"?', [category.name])),
-      content: Text('$usage$cascade'),
+      content: Text(
+        deletable
+            ? tr("Nothing uses this category — archive it to hide it, or "
+                  "delete it for good. Deleting can't be undone.")
+            : '$usage$cascade',
+      ),
       actions: [
         TextButton(
-          onPressed: () => Navigator.of(dialogContext).pop(false),
+          onPressed: () => Navigator.of(dialogContext).pop(),
           child: const Tr('Cancel'),
         ),
+        if (deletable)
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop('delete'),
+            style: TextButton.styleFrom(
+              foregroundColor: Theme.of(dialogContext).colorScheme.error,
+            ),
+            child: const Tr('Delete'),
+          ),
         FilledButton(
-          onPressed: () => Navigator.of(dialogContext).pop(true),
+          onPressed: () => Navigator.of(dialogContext).pop('archive'),
           child: const Tr('Archive'),
         ),
       ],
     ),
   );
 
-  if (confirmed != true) return;
+  if (choice == null) return;
+  if (choice == 'delete') {
+    try {
+      await db.deleteCategory(category.id);
+      messenger.showSnackBar(
+        SnackBar(content: Text(tr('"{0}" deleted', [category.name]))),
+      );
+    } on ArgumentError catch (e) {
+      messenger.showSnackBar(
+        SnackBar(content: Text(e.message?.toString() ?? '')),
+      );
+    }
+    return;
+  }
 
   await db.archiveCategory(category.id);
   messenger.showSnackBar(

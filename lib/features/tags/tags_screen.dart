@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/smart_tags.dart';
 import '../../core/widgets/app_surfaces.dart';
@@ -81,8 +82,9 @@ class TagsList extends ConsumerWidget {
               ),
             const SizedBox(height: 20),
             Tr(
-              'A transaction can carry any number of tags. Deleting a tag '
-              "just removes it from whatever it was on — nothing else changes.",
+              'A transaction can carry any number of tags. Tap a tag to see '
+              'its transactions — hold one there to move a bunch to another '
+              'tag. Deleting a tag just removes it from whatever it was on.',
               textAlign: TextAlign.center,
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
@@ -138,6 +140,7 @@ class _TagTile extends ConsumerWidget {
 
     return AppListTile(
       contentPadding: const EdgeInsets.only(left: 16, right: 4),
+      onTap: () => context.push('/more/tags/${tag.id}'),
       leading: Container(
         width: 40,
         height: 40,
