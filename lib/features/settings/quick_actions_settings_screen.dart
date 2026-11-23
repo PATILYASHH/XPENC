@@ -25,7 +25,6 @@ class QuickActionsSettingsScreen extends ConsumerWidget {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
     final screenshotShortcut = ref.watch(lockScreenScreenshotShortcutProvider);
-    final holdMenuEnabled = ref.watch(holdMenuEnabledProvider);
 
     return Scaffold(
       appBar: AppTopBar(title: const Tr('Quick Actions')),
@@ -42,46 +41,35 @@ class QuickActionsSettingsScreen extends ConsumerWidget {
           AppCard(
             child: Column(
               children: [
-                AppSwitchListTile(
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                  secondary: const AppIcon(Icons.radio_button_checked_rounded),
-                  title: const Tr('Hold ➕ for quick actions'),
-                  subtitle: Tr(
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                  child: Tr(
                     'Press and hold ➕ — a ring of shortcuts opens. Slide '
                     'toward one and let go to open it; let go in the middle '
                     'to cancel.',
+                    textAlign: TextAlign.center,
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: cs.onSurfaceVariant,
                     ),
                   ),
-                  value: holdMenuEnabled,
-                  onChanged: (v) => ref.read(dbProvider).setHoldMenuEnabled(v),
                 ),
-                if (holdMenuEnabled) ...[
-                  Divider(
-                    height: 1,
-                    indent: 16,
-                    endIndent: 16,
-                    color: cs.outline,
-                  ),
-                  const Padding(
-                    padding: EdgeInsets.fromLTRB(12, 16, 12, 8),
-                    child: _HoldMenuEditor(),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                    child: Tr(
-                      'Tap a circle to choose what it opens. The ✕ in the '
-                      'middle is always Cancel. Or hold ➕, slide up to ⚙ Edit '
-                      'in the top corner and let go to change them right '
-                      'there.',
-                      textAlign: TextAlign.center,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: cs.onSurfaceVariant,
-                      ),
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(12, 16, 12, 8),
+                  child: _HoldMenuEditor(),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                  child: Tr(
+                    'Tap a circle to choose what it opens. The ✕ in the '
+                    'middle is always Cancel. Or hold ➕, slide up to ⚙ Edit '
+                    'in the top corner and let go to change them right '
+                    'there.',
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: cs.onSurfaceVariant,
                     ),
                   ),
-                ],
+                ),
               ],
             ),
           ),

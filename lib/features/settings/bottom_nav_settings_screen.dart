@@ -24,7 +24,6 @@ class BottomNavSettingsScreen extends ConsumerWidget {
       basic: basic,
     );
     final showLabels = ref.watch(showBottomNavLabelsProvider);
-    final extraBottomInset = ref.watch(extraBottomInsetProvider);
 
     Future<void> pick(int slot) async {
       final chosen = await showAppSheet<String>(
@@ -104,54 +103,7 @@ class BottomNavSettingsScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 20),
           _sectionLabel(context, tr('Bottom spacing')),
-          AppCard(
-            margin: EdgeInsets.zero,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Tr(
-                    'On some phones the on-screen back/home buttons sit over '
-                    'the bottom nav bar or the PIN unlock keypad. Raise this '
-                    'if either looks cut off or hard to tap.',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Tr(
-                        'Extra space',
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                      Text(
-                        extraBottomInset == 0 ? tr('Off') : '${extraBottomInset}px',
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
-                  ),
-                  Slider(
-                    value: extraBottomInset.toDouble(),
-                    min: 0,
-                    max: 40,
-                    divisions: 10,
-                    label: extraBottomInset == 0
-                        ? tr('Off')
-                        : '${extraBottomInset}px',
-                    onChanged: (v) =>
-                        ref.read(dbProvider).setExtraBottomInset(v.round()),
-                  ),
-                ],
-              ),
-            ),
-          ),
+          const BottomSpacingCard(),
         ],
       ),
     );
@@ -251,6 +203,66 @@ class _CatalogPickerSheet extends ConsumerWidget {
                   ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Extra room under the bottom bar and the PIN keypad, for phones whose
+/// on-screen buttons sit over them (GitHub #78). Settings ▸ Appearance.
+class BottomSpacingCard extends ConsumerWidget {
+  const BottomSpacingCard({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final extraBottomInset = ref.watch(extraBottomInsetProvider);
+    return AppCard(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Tr(
+              'On some phones the on-screen back/home buttons sit over '
+              'the bottom nav bar or the PIN unlock keypad. Raise this '
+              'if either looks cut off or hard to tap.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Tr(
+                  'Extra space',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                Text(
+                  extraBottomInset == 0 ? tr('Off') : '${extraBottomInset}px',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+            Slider(
+              value: extraBottomInset.toDouble(),
+              min: 0,
+              max: 40,
+              divisions: 10,
+              label: extraBottomInset == 0
+                  ? tr('Off')
+                  : '${extraBottomInset}px',
+              onChanged: (v) =>
+                  ref.read(dbProvider).setExtraBottomInset(v.round()),
+            ),
+          ],
         ),
       ),
     );

@@ -1432,10 +1432,10 @@ final showBottomNavLabelsProvider = Provider<bool>((ref) {
   return ref.watch(settingsProvider).valueOrNull?.showBottomNavLabels ?? true;
 });
 
-/// Off by default — see `Settings.holdMenuEnabled`.
-final holdMenuEnabledProvider = Provider<bool>((ref) {
-  return ref.watch(settingsProvider).valueOrNull?.holdMenuEnabled ?? false;
-});
+/// Holding ➕ always opens the quick-actions ring now — there's no switch
+/// for it any more, so `Settings.holdMenuEnabled` is no longer read. (With
+/// every slot left empty, holding ➕ still opens Search instead.)
+final holdMenuEnabledProvider = Provider<bool>((ref) => true);
 
 /// The hold-➕ radial menu's 8 stored slot ids, index-aligned with
 /// `holdMenuSlotAngles` (`''` = empty). Unresolved here on purpose — see

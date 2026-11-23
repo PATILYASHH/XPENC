@@ -68,6 +68,8 @@ void main() {
 
   testWidgets('the Quick Actions switch turns the shortcut on', (tester) async {
     await pump(tester, const QuickActionsSettingsScreen());
+    // Below the always-open ➕ ring editor.
+    await tester.scrollUntilVisible(find.text('Screenshot blocking'), 200);
     expect(find.text('LOCK SCREEN SHORTCUTS'), findsOneWidget);
 
     await tester.tap(find.text('Screenshot blocking'));

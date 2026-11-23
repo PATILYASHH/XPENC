@@ -44,12 +44,20 @@ class SettingsScreen extends StatelessWidget {
               onTap: () => context.push('/more/settings/language'),
             ),
           ]),
-          _ModuleGroup([
+          _ModuleGroup(title: tr('Appearance'), [
             _ModuleTile(
-              icon: Icons.tune_rounded,
-              title: tr('General'),
-              subtitle: tr('Language, currency, theme, font, dashboard layout'),
+              icon: Icons.palette_outlined,
+              title: tr('Appearance'),
+              subtitle: tr('Theme, font, colours, week start, More layout'),
               onTap: () => context.push('/more/settings/general'),
+            ),
+          ]),
+          _ModuleGroup(title: tr('Money'), [
+            _ModuleTile(
+              icon: Icons.payments_outlined,
+              title: tr('Currency'),
+              subtitle: tr('Main currency, exchange rates, custom currencies'),
+              onTap: () => context.push('/more/settings/currency'),
             ),
             _ModuleTile(
               icon: Icons.savings_outlined,
@@ -58,13 +66,45 @@ class SettingsScreen extends StatelessWidget {
               onTap: () => context.push('/more/settings/mode-budgeting'),
             ),
             _ModuleTile(
-              icon: Icons.people_outline,
-              title: tr('Persons'),
-              subtitle: tr('Repayments and your payment methods'),
+              icon: Icons.account_balance_wallet_outlined,
+              title: tr('Payment methods'),
+              subtitle: tr('UPI and other IDs people pay you on · repayments'),
               onTap: () => context.push('/more/settings/persons'),
             ),
           ]),
-          _ModuleGroup([
+          _ModuleGroup(title: tr('Capture & Shortcuts'), [
+            _ModuleTile(
+              icon: Icons.sms_outlined,
+              title: tr('Bank-SMS capture'),
+              subtitle: tr('Coming soon'),
+              onTap: () => context.push('/more/capture'),
+            ),
+            if (PlatformFeatures.ocr)
+              _ModuleTile(
+                icon: Icons.rate_review_outlined,
+                title: tr('OCR corrections'),
+                subtitle: tr('Test a payment screenshot, help improve OCR'),
+                onTap: () => context.push('/more/capture/ocr-feedback'),
+              ),
+            _ModuleTile(
+              icon: Icons.flash_on_outlined,
+              title: tr('Quick Actions'),
+              subtitle: PlatformFeatures.homeWidgets
+                  ? tr('Hold ➕ shortcuts, home screen widgets')
+                  : tr('Hold ➕ shortcuts'),
+              onTap: () => context.push('/more/settings/quick-actions'),
+            ),
+            if (PlatformFeatures.notifications)
+              _ModuleTile(
+                icon: Icons.notifications_outlined,
+                title: tr('Notifications'),
+                subtitle: PlatformFeatures.quickAddNotification
+                    ? tr('Reminders and quick add from a notification')
+                    : tr('Reminders'),
+                onTap: () => context.push('/more/settings/notifications'),
+              ),
+          ]),
+          _ModuleGroup(title: tr('Security'), [
             _ModuleTile(
               icon: Icons.security_outlined,
               title: tr('Security & Privacy'),
@@ -80,19 +120,10 @@ class SettingsScreen extends StatelessWidget {
                 subtitle: tr('What XPENC can access — turn each on or off'),
                 onTap: () => context.push('/more/settings/permissions'),
               ),
-            if (PlatformFeatures.notifications)
-              _ModuleTile(
-                icon: Icons.notifications_outlined,
-                title: tr('Notifications'),
-                subtitle: PlatformFeatures.quickAddNotification
-                    ? tr('Reminders and quick add from a notification')
-                    : tr('Reminders'),
-                onTap: () => context.push('/more/settings/notifications'),
-              ),
           ]),
           // Optional, on-device; Android only for now.
           if (PlatformFeatures.localAi)
-            _ModuleGroup([
+            _ModuleGroup(title: tr('AI'), [
               _ModuleTile(
                 icon: Icons.auto_awesome_outlined,
                 title: tr('Local AI'),
@@ -100,15 +131,7 @@ class SettingsScreen extends StatelessWidget {
                 onTap: () => context.push('/more/settings/local-ai'),
               ),
             ]),
-          _ModuleGroup([
-            _ModuleTile(
-              icon: Icons.flash_on_outlined,
-              title: tr('Quick Actions'),
-              subtitle: PlatformFeatures.homeWidgets
-                  ? tr('Hold ➕ shortcuts, home screen widgets')
-                  : tr('Hold ➕ shortcuts'),
-              onTap: () => context.push('/more/settings/quick-actions'),
-            ),
+          _ModuleGroup(title: tr('Data'), [
             _ModuleTile(
               icon: Icons.storage_outlined,
               title: tr('Data'),
@@ -124,22 +147,6 @@ class SettingsScreen extends StatelessWidget {
                 onTap: () => context.push('/more/settings/connector'),
               ),
           ]),
-          AppCard(
-            child: AppListTile(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-              leading: const BrandMark(size: 34),
-              title: const Text('${AppInfo.name} · ${AppInfo.version}'),
-              subtitle: Tr(
-                'Developer, links and build info',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-              ),
-              trailing: const AppIcon(Icons.chevron_right_rounded),
-              onTap: () => context.push('/more/about'),
-            ),
-          ),
-          const SizedBox(height: 20),
           const _MoreFromUs(),
         ],
       ),
@@ -150,14 +157,17 @@ class SettingsScreen extends StatelessWidget {
 /// One card of related [_ModuleTile]s, split by hairlines inset past the
 /// icon — the More hub's grouping.
 class _ModuleGroup extends StatelessWidget {
-  const _ModuleGroup(this.tiles);
+  const _ModuleGroup(this.tiles, {this.title});
 
   final List<_ModuleTile> tiles;
+
+  /// The section's heading above the card, if it has one.
+  final String? title;
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return AppCard(
+    final card = AppCard(
       margin: const EdgeInsets.only(bottom: 20),
       child: Column(
         children: [
@@ -167,6 +177,24 @@ class _ModuleGroup extends StatelessWidget {
           ],
         ],
       ),
+    );
+    if (title == null) return card;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(4, 0, 4, 10),
+          child: Text(
+            title!.toUpperCase(),
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: cs.onSurfaceVariant,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1.1,
+            ),
+          ),
+        ),
+        card,
+      ],
     );
   }
 }

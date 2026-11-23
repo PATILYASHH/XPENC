@@ -34,7 +34,7 @@ class PersonsSettingsScreen extends ConsumerWidget {
     final revolutEnabled = ref.watch(revolutEnabledProvider);
 
     return Scaffold(
-      appBar: AppTopBar(title: const Tr('Persons')),
+      appBar: AppTopBar(title: const Tr('Payment methods')),
       body: ListView(
         // Explicit padding drops ListView's nav-bar inset; re-add it (#137).
         padding: EdgeInsets.fromLTRB(

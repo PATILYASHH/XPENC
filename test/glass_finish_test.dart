@@ -143,9 +143,12 @@ void main() {
 
   testWidgets('the ➕ dips the moment a finger lands on it', (tester) async {
     await pumpShell(tester, '/transactions');
-    final add = find.bySemanticsLabel('Add');
+    // The ➕ itself — its long press (the quick-actions ring) wraps it.
+    final add = find.byWidgetPredicate(
+      (w) => w is GlassButton && w.semanticLabel == 'Add',
+    );
     final plus = find.descendant(
-      of: find.ancestor(of: add, matching: find.byType(GlassButton)).first,
+      of: add.first,
       matching: find.byType(LiquidGlass),
     );
     expect(scaleOf(tester, plus), 1);

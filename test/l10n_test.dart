@@ -11,7 +11,7 @@ import 'package:xpenc/core/theme/app_theme.dart';
 import 'package:xpenc/core/week_start.dart';
 import 'package:xpenc/data/database.dart';
 import 'package:xpenc/data/providers.dart';
-import 'package:xpenc/features/settings/general_settings_screen.dart';
+import 'package:xpenc/features/settings/settings_screen.dart';
 import 'package:xpenc/features/settings/language_settings_screen.dart';
 
 /// GitHub #191 / #202: the interface in the person's own language.
@@ -244,7 +244,7 @@ void main() {
       await tester.pump(Duration.zero);
     });
 
-    testWidgets('Settings → General lists Language first', (tester) async {
+    testWidgets('Settings lists Language first', (tester) async {
       final db = AppDatabase(NativeDatabase.memory());
       addTearDown(db.close);
       await tester.pumpWidget(
@@ -252,7 +252,7 @@ void main() {
           overrides: [dbProvider.overrideWithValue(db)],
           child: MaterialApp(
             theme: AppTheme.light,
-            home: const GeneralSettingsScreen(),
+            home: const SettingsScreen(),
           ),
         ),
       );
@@ -260,15 +260,12 @@ void main() {
         () => Future<void>.delayed(const Duration(milliseconds: 150)),
       );
       await tester.pump();
-      final row = find.byKey(const Key('general-language'));
+      final row = find.text('Language');
       expect(row, findsOneWidget);
-      expect(
-        find.descendant(of: row, matching: find.text('English')),
-        findsOneWidget,
-      );
+      expect(find.text('English'), findsOneWidget);
       expect(
         tester.getTopLeft(row).dy,
-        lessThan(tester.getTopLeft(find.text('Currency')).dy),
+        lessThan(tester.getTopLeft(find.text('Appearance').first).dy),
       );
       await tester.pumpWidget(const SizedBox.shrink());
       await tester.pump(Duration.zero);

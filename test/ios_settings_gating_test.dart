@@ -6,7 +6,6 @@ import 'package:xpenc/core/platform/platform_features.dart';
 import 'package:xpenc/core/theme/app_theme.dart';
 import 'package:xpenc/data/database.dart';
 import 'package:xpenc/data/providers.dart';
-import 'package:xpenc/features/settings/general_settings_screen.dart';
 import 'package:xpenc/features/settings/notifications_settings_screen.dart';
 import 'package:xpenc/features/settings/quick_actions_settings_screen.dart';
 import 'package:xpenc/features/settings/security_privacy_settings_screen.dart';
@@ -49,7 +48,7 @@ void main() {
   }
 
   final gated = <String, (Widget, List<String>)>{
-    'Settings': (const SettingsScreen(), ['Permissions']),
+    'Settings': (const SettingsScreen(), ['Permissions', 'OCR corrections']),
     'Quick Actions': (
       const QuickActionsSettingsScreen(),
       ['Home screen widgets', 'Screenshot blocking'],
@@ -62,7 +61,6 @@ void main() {
       const NotificationsSettingsScreen(),
       ['Quick add from notification'],
     ),
-    'General': (const GeneralSettingsScreen(), ['OCR corrections']),
   };
 
   for (final MapEntry(key: name, value: (screen, labels)) in gated.entries) {

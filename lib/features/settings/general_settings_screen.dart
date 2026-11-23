@@ -2,18 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../core/platform/platform_features.dart';
 import '../../core/widgets/app_surfaces.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
+import 'bottom_nav_settings_screen.dart' show BottomSpacingCard;
 import 'more_screen_layout_sheet.dart';
 import 'settings_common.dart';
 import 'theme_picker_sheet.dart';
 import '../../core/l10n/l10n.dart';
 
-/// General — currency, theme, font, colours and layout. The settings that
-/// shape how XPENC looks and reads, independent of app mode or any one
-/// feature.
+/// Appearance — theme, font, colours, how amounts and weeks read, and the
+/// More page's layout: how XPENC looks, independent of app mode or any one
+/// feature. (Language and Currency are Settings' own rows; the Dashboard
+/// and the bottom bar are edited in place, by holding them.)
 class GeneralSettingsScreen extends ConsumerWidget {
   const GeneralSettingsScreen({super.key});
 
@@ -27,11 +28,10 @@ class GeneralSettingsScreen extends ConsumerWidget {
     final currency = ref.watch(currencyProvider);
     final showSymbol = ref.watch(showCurrencySymbolProvider);
     final moreScreenViewMode = ref.watch(moreScreenViewModeProvider);
-    final showCalendarDayTotals = ref.watch(showCalendarDayTotalsProvider);
     final weekStart = ref.watch(weekStartProvider);
 
     return Scaffold(
-      appBar: AppTopBar(title: const Tr('General')),
+      appBar: AppTopBar(title: const Tr('Appearance')),
       body: ListView(
         // Explicit padding drops ListView's nav-bar inset; re-add it (#137).
         padding: EdgeInsets.fromLTRB(
@@ -44,69 +44,6 @@ class GeneralSettingsScreen extends ConsumerWidget {
           AppCard(
             child: Column(
               children: [
-                // Also first in Settings itself, named in English too — the
-                // way back for someone who can't read the language showing.
-                AppListTile(
-                  key: const Key('general-language'),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                  leading: const AppIcon(Icons.translate_rounded),
-                  title: const Tr('Language'),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        appLanguageFor(L10n.code)?.nativeName ?? L10n.code,
-                        style: trailingStyle,
-                      ),
-                      const SizedBox(width: 4),
-                      AppIcon(
-                        Icons.chevron_right_rounded,
-                        color: cs.onSurfaceVariant,
-                      ),
-                    ],
-                  ),
-                  onTap: () => context.push('/more/settings/language'),
-                ),
-                Divider(height: 1, indent: 60, color: cs.outline),
-                AppListTile(
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                  leading: const AppIcon(Icons.payments_outlined),
-                  title: const Tr('Currency'),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        '${currency.symbol} ${currency.code}',
-                        style: trailingStyle,
-                      ),
-                      const SizedBox(width: 4),
-                      AppIcon(
-                        Icons.chevron_right_rounded,
-                        color: cs.onSurfaceVariant,
-                      ),
-                    ],
-                  ),
-                  onTap: () => context.push('/more/settings/currency'),
-                ),
-                Divider(height: 1, indent: 60, color: cs.outline),
-                AppSwitchListTile(
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                  secondary: const AppIcon(Icons.attach_money_rounded),
-                  title: const Tr('Show currency symbol'),
-                  subtitle: Text(
-                    showSymbol
-                        ? tr('Amounts show {0}', [currency.symbol])
-                        : tr('Amounts show plain numbers — use this if your '
-                              'currency symbol is missing'),
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: cs.onSurfaceVariant,
-                    ),
-                  ),
-                  value: showSymbol,
-                  onChanged: (v) =>
-                      ref.read(dbProvider).setShowCurrencySymbol(v),
-                ),
-                Divider(height: 1, indent: 60, color: cs.outline),
                 AppListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                   leading: AppIcon(themeChoice.style.icon),
@@ -159,6 +96,24 @@ class GeneralSettingsScreen extends ConsumerWidget {
                   onTap: () => context.push('/more/settings/colours'),
                 ),
                 Divider(height: 1, indent: 60, color: cs.outline),
+                AppSwitchListTile(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                  secondary: const AppIcon(Icons.attach_money_rounded),
+                  title: const Tr('Show currency symbol'),
+                  subtitle: Text(
+                    showSymbol
+                        ? tr('Amounts show {0}', [currency.symbol])
+                        : tr('Amounts show plain numbers — use this if your '
+                              'currency symbol is missing'),
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: cs.onSurfaceVariant,
+                    ),
+                  ),
+                  value: showSymbol,
+                  onChanged: (v) =>
+                      ref.read(dbProvider).setShowCurrencySymbol(v),
+                ),
+                Divider(height: 1, indent: 60, color: cs.outline),
                 AppListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                   leading: const AppIcon(Icons.dashboard_outlined),
@@ -180,24 +135,6 @@ class GeneralSettingsScreen extends ConsumerWidget {
                   onTap: () => MoreScreenLayoutSheet.show(context),
                 ),
               ],
-            ),
-          ),
-
-          settingsSectionLabel(context, tr('Dashboard')),
-          AppCard(
-            child: AppListTile(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-              leading: const AppIcon(Icons.dashboard_customize_outlined),
-              title: const Tr('Customize dashboard'),
-              subtitle: Tr(
-                'Add, remove and reorder widgets, lay out Accounts, and pick '
-                'what counts toward Net Worth.',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: cs.onSurfaceVariant,
-                ),
-              ),
-              trailing: const AppIcon(Icons.chevron_right_rounded),
-              onTap: () => context.push('/more/settings/dashboard'),
             ),
           ),
 
@@ -246,81 +183,12 @@ class GeneralSettingsScreen extends ConsumerWidget {
                     ],
                   ),
                 ),
-                Divider(height: 1, indent: 60, color: cs.outline),
-                AppSwitchListTile(
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                  secondary: const AppIcon(Icons.calendar_month_outlined),
-                  title: const Tr('Show day totals'),
-                  subtitle: Tr(
-                    'Selecting a day on the calendar shows its money in/out '
-                    'totals.',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: cs.onSurfaceVariant,
-                    ),
-                  ),
-                  value: showCalendarDayTotals,
-                  onChanged: (v) =>
-                      ref.read(dbProvider).setShowCalendarDayTotals(v),
-                ),
               ],
             ),
           ),
 
-          settingsSectionLabel(context, tr('Layout')),
-          AppCard(
-            child: AppListTile(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-              leading: const AppIcon(Icons.dashboard_customize_outlined),
-              title: const Tr('Customize bottom nav'),
-              subtitle: Tr(
-                'Choose what goes next to the ➕ button',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: cs.onSurfaceVariant,
-                ),
-              ),
-              trailing: const AppIcon(Icons.chevron_right_rounded),
-              onTap: () => context.push('/more/bottom-nav'),
-            ),
-          ),
-
-          settingsSectionLabel(context, tr('Message Capture')),
-          AppCard(
-            child: Column(
-              children: [
-                AppListTile(
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                  leading: const AppIcon(Icons.sms_outlined),
-                  title: const Tr('Bank-SMS auto-capture'),
-                  subtitle: Tr(
-                    'Coming soon — removed for now so the app installs '
-                    'without a Play Protect block.',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: cs.onSurfaceVariant,
-                    ),
-                  ),
-                  trailing: const AppIcon(Icons.chevron_right_rounded),
-                  onTap: () => context.push('/more/capture'),
-                ),
-                if (PlatformFeatures.ocr) ...[
-                  Divider(height: 1, indent: 60, color: cs.outline),
-                  AppListTile(
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                    leading: const AppIcon(Icons.rate_review_outlined),
-                    title: const Tr('OCR corrections'),
-                    subtitle: Tr(
-                      'Optional — test a payment screenshot and help improve '
-                      'OCR by sharing what you find, entirely on your terms.',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: cs.onSurfaceVariant,
-                      ),
-                    ),
-                    trailing: const AppIcon(Icons.chevron_right_rounded),
-                    onTap: () => context.push('/more/capture/ocr-feedback'),
-                  ),
-                ],
-              ],
-            ),
-          ),
+          settingsSectionLabel(context, tr('Bottom spacing')),
+          const BottomSpacingCard(),
         ],
       ),
     );
