@@ -826,7 +826,7 @@ class _ModeEditorScreenState extends ConsumerState<ModeEditorScreen> {
                     });
                   },
                 ),
-                Divider(height: 1, indent: 60, color: cs.outline),
+                Divider(height: 1, indent: 60),
                 AppListTile(
                   leading: const AppIcon(Icons.flight_land_rounded),
                   title: const Tr('Ends'),
@@ -1067,7 +1067,7 @@ class _ModeEditorScreenState extends ConsumerState<ModeEditorScreen> {
                 children: [
                   for (final (i, p) in _planned.indexed) ...[
                     if (i > 0)
-                      Divider(height: 1, indent: 16, color: cs.outline),
+                      Divider(height: 1, indent: 16),
                     AppListTile(
                       onTap: () => _editPlanned(i),
                       title: Text(p.name),

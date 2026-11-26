@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/material.dart';
 
+import '../../core/theme/app_motion.dart';
+
 /// A small, axis-less trend line with a gradient wash beneath it.
 ///
 /// It answers one question — "which way is this going?" — so it carries no
@@ -35,7 +37,10 @@ class Sparkline extends StatelessWidget {
       height: height,
       child: TweenAnimationBuilder<double>(
         tween: Tween(begin: 0, end: 1),
-        duration: const Duration(milliseconds: 900),
+        duration: AppMotion.capped(
+          context,
+          const Duration(milliseconds: 900),
+        ),
         curve: Curves.easeOutCubic,
         builder: (context, t, _) => _paint(t),
       ),

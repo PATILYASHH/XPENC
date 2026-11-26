@@ -3,6 +3,7 @@ import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:xpenc/core/layout/desktop.dart';
 import 'package:xpenc/core/money.dart';
 import 'package:xpenc/core/routing/app_router.dart';
 import 'package:xpenc/core/theme/app_theme.dart';
@@ -18,8 +19,8 @@ import 'package:xpenc/data/tables.dart';
 /// The Glass finishing pass of 2026-10-26: controls answer the finger the
 /// moment it lands, sheets give way at the top instead of stopping dead, the
 /// month picker frosts over as it opens, a page's top bar veils what scrolls
-/// under it, and on a tablet the tab bar (and every sheet grown out of it)
-/// sits centred at a phone-like width.
+/// under it, and on a tablet the tabs are a rail in the bottom-right corner
+/// while sheets open at the foot.
 void main() {
   late AppDatabase db;
 
@@ -42,6 +43,7 @@ void main() {
     WidgetTester tester,
     String location, {
     Size size = const Size(360, 780),
+    bool frame = false,
   }) async {
     tester.view.physicalSize = size * 3;
     tester.view.devicePixelRatio = 3.0;
@@ -57,6 +59,10 @@ void main() {
             backdrop: GlassBackdrop.black,
           ),
           routerConfig: appRouter,
+          // As the app mounts it: the frame decides the layout.
+          builder: frame
+              ? (context, child) => DesktopFrame(child: child!)
+              : null,
         ),
       ),
     );
@@ -245,24 +251,42 @@ void main() {
     await unmount(tester);
   });
 
-  testWidgets('on a tablet the tab bar sits centred and sheets grow from it', (
-    tester,
-  ) async {
+  testWidgets('on a tablet the tabs are a rail in the corner, and sheets '
+      'open at the foot', (tester) async {
     const size = Size(834, 1194);
-    await pumpShell(tester, '/transactions', size: size);
-    final capsule = tester.getRect(tabCapsule().first);
-    // Centred at the sheets' width, not stretched across the screen.
-    expect(capsule.left, closeTo((size.width - kGlassBarMaxWidth) / 2 + 16, 1));
-    final expected = glassTabCapsuleRect(MediaQueryData.fromView(tester.view));
-    expect(capsule.left, closeTo(expected.left, 1));
-    expect(capsule.right, closeTo(expected.right, 1));
-    expect(capsule.bottom, closeTo(expected.bottom, 1));
+    await pumpShell(tester, '/transactions', size: size, frame: true);
+    final rail = tester.getRect(tabCapsule().first);
+    // Four tabs stacked down the bottom-right corner.
+    expect(rail.width, closeTo(tabletRailWidth, 1));
+    expect(rail.height, closeTo(tabletRailTabExtent * 4, 1));
+    expect(rail.right, closeTo(size.width - tabletRailMargin, 1));
+    // Each glyph in the middle of the rail, labels or not.
+    expect(
+      tester
+          .getCenter(
+            find.descendant(
+              of: tabCapsule().first,
+              matching: find.byIcon(CupertinoIcons.doc_text_fill),
+            ),
+          )
+          .dx,
+      closeTo(rail.center.dx, 1),
+    );
+    // The ➕ under them, at the very bottom.
+    final plus = tester.getCenter(find.byIcon(CupertinoIcons.add).last);
+    expect(plus.dy, greaterThan(rail.bottom));
+    expect(plus.dx, closeTo(rail.center.dx, 1));
 
+    // A column has no row for a sheet to grow out of: it opens at the foot.
     await tester.tap(find.byTooltip('Filters'));
     await tester.pump();
     final start = tester.getRect(sheetGlass().last);
-    expect(start.left, closeTo(capsule.left, 1));
-    expect(start.right, closeTo(capsule.right, 1));
+    final foot = glassTabCapsuleRect(
+      MediaQueryData.fromView(tester.view),
+      withAdd: false,
+    );
+    expect(start.left, closeTo(foot.left, 1));
+    expect(start.right, closeTo(foot.right, 1));
     await tester.pump(const Duration(milliseconds: 700));
     await tester.tapAt(const Offset(400, 80));
     await tester.pump();

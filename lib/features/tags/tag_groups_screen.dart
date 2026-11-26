@@ -60,7 +60,6 @@ class TagGroupsScreen extends ConsumerWidget {
                           Divider(
                             height: 1,
                             indent: 60,
-                            color: theme.colorScheme.outline,
                           ),
                         _GroupTile(
                           group: groups[i],

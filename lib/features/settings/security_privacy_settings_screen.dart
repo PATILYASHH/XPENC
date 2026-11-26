@@ -99,7 +99,7 @@ class SecurityPrivacySettingsScreen extends ConsumerWidget {
                     configured: hasPasscode,
                   ),
                 ),
-                Divider(height: 1, indent: 60, color: cs.outline),
+                Divider(height: 1, indent: 60),
                 AppSwitchListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                   secondary: const AppIcon(Icons.key_outlined),
@@ -123,7 +123,7 @@ class SecurityPrivacySettingsScreen extends ConsumerWidget {
                     configured: hasMasterPhrase,
                   ),
                 ),
-                Divider(height: 1, indent: 60, color: cs.outline),
+                Divider(height: 1, indent: 60),
                 AppSwitchListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                   secondary: const AppIcon(Icons.qr_code_2_rounded),
@@ -147,7 +147,7 @@ class SecurityPrivacySettingsScreen extends ConsumerWidget {
                     configured: hasTotp,
                   ),
                 ),
-                Divider(height: 1, indent: 60, color: cs.outline),
+                Divider(height: 1, indent: 60),
 
                 // ── PIN management — visible whether or not PIN is active ──
                 AppListTile(
@@ -170,7 +170,7 @@ class SecurityPrivacySettingsScreen extends ConsumerWidget {
                 ),
                 if (hasPasscode) ...[
                   if (PlatformFeatures.biometrics) ...[
-                    Divider(height: 1, indent: 60, color: cs.outline),
+                    Divider(height: 1, indent: 60),
                     AppSwitchListTile(
                       contentPadding: const EdgeInsets.symmetric(
                         horizontal: 16,
@@ -190,7 +190,7 @@ class SecurityPrivacySettingsScreen extends ConsumerWidget {
                           ref.read(dbProvider).setBiometricEnabled(v),
                     ),
                   ],
-                  Divider(height: 1, indent: 60, color: cs.outline),
+                  Divider(height: 1, indent: 60),
                   AppListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                     leading: AppIcon(Icons.lock_open_outlined, color: cs.error),
@@ -202,7 +202,7 @@ class SecurityPrivacySettingsScreen extends ConsumerWidget {
                         context.push('/more/settings/passcode?remove=true'),
                   ),
                 ],
-                Divider(height: 1, indent: 60, color: cs.outline),
+                Divider(height: 1, indent: 60),
 
                 // ── Master recovery phrase management — visible whether or
                 // not it's active ──────────────────────────────────────────
@@ -219,7 +219,7 @@ class SecurityPrivacySettingsScreen extends ConsumerWidget {
                       ),
                     ),
                   ),
-                  Divider(height: 1, indent: 60, color: cs.outline),
+                  Divider(height: 1, indent: 60),
                   AppListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                     leading: const AppIcon(Icons.pin_outlined),
@@ -249,7 +249,7 @@ class SecurityPrivacySettingsScreen extends ConsumerWidget {
                     ),
                     onTap: () => MasterPhraseAttemptsSheet.show(context),
                   ),
-                  Divider(height: 1, indent: 60, color: cs.outline),
+                  Divider(height: 1, indent: 60),
                   AppListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                     leading: AppIcon(Icons.key_off_outlined, color: cs.error),
@@ -279,7 +279,7 @@ class SecurityPrivacySettingsScreen extends ConsumerWidget {
                     onTap: () =>
                         context.push('/more/settings/master-phrase/setup'),
                   ),
-                Divider(height: 1, indent: 60, color: cs.outline),
+                Divider(height: 1, indent: 60),
 
                 // ── Authenticator app (TOTP) management — visible whether
                 // or not it's active ──────────────────────────────────────
@@ -295,7 +295,7 @@ class SecurityPrivacySettingsScreen extends ConsumerWidget {
                       ),
                     ),
                   ),
-                  Divider(height: 1, indent: 60, color: cs.outline),
+                  Divider(height: 1, indent: 60),
                   AppListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                     leading: AppIcon(Icons.qr_code_2_rounded, color: cs.error),
@@ -328,7 +328,7 @@ class SecurityPrivacySettingsScreen extends ConsumerWidget {
                 // method is active, so it's keyed on any credential existing
                 // at all, not on PIN specifically ────────────────────────
                 if (hasUnlockCredential) ...[
-                  Divider(height: 1, indent: 60, color: cs.outline),
+                  Divider(height: 1, indent: 60),
                   AppListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                     leading: const AppIcon(Icons.timer_outlined),
@@ -356,7 +356,7 @@ class SecurityPrivacySettingsScreen extends ConsumerWidget {
                     ),
                     onTap: () => PinTimeoutSheet.show(context),
                   ),
-                  Divider(height: 1, indent: 60, color: cs.outline),
+                  Divider(height: 1, indent: 60),
                   AppListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                     leading: const AppIcon(Icons.dialpad_outlined),
@@ -408,7 +408,7 @@ class SecurityPrivacySettingsScreen extends ConsumerWidget {
                     onChanged: (v) =>
                         ref.read(dbProvider).setPreventScreenshots(v),
                   ),
-                  Divider(height: 1, indent: 60, color: cs.outline),
+                  Divider(height: 1, indent: 60),
                   AppSwitchListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                     secondary: const AppIcon(Icons.visibility_outlined),

@@ -320,117 +320,146 @@ class _GlassTopBarState extends ConsumerState<_GlassTopBar>
     // The mode that's ON (a trip) floats in its own circle at the bar's
     // left end; the capsule — and the title once it lands in it — make room.
     final orb = ref.watch(activeModeProvider) != null;
-    final orbInset = orb ? capsule + 8 : 0.0;
-    final titleLeft = 20 + (12 + orbInset + 5 + 12 - 20) * c;
+    // A tablet's ☰ takes the bar's left end in a disc of its own, the orb
+    // after it.
+    final menu = DesktopLayout.isTablet(context);
+    final menuInset = menu ? capsule + 8 : 0.0;
+    final orbInset = menuInset + (orb ? capsule + 8 : 0.0);
     final titleScale =
         (1 + (shrink - 1) * c) * (1 + (pull / 600).clamp(0.0, 0.08));
-    // Room for the title: the screen at rest; once landed, the capsule left
-    // of its buttons (in the title's own, unscaled units).
     final screenWidth = MediaQuery.sizeOf(context).width;
-    final restRoom = screenWidth - titleLeft - 20;
-    final buttons = _actionsWidth;
-    final landedRoom = buttons == null
-        ? restRoom
-        : screenWidth - 12 - 5 - buttons - 8 - titleLeft;
-    final titleRoom =
-        math.max(0.0, restRoom + (landedRoom - restRoom) * c) / titleScale;
+    // A tablet's tab sits clear of the rail, a list tab as a centred column
+    // (see `TabletColumn`): the large title at rest starts where the page
+    // does, easing with it as tabs switch.
+    final columnInset = menu
+        ? tabletColumnInsets(screenWidth, index)
+        : EdgeInsets.zero;
 
     final veil = tone.isDark
         ? const Color(0xFF000000)
         : const Color(0xFFF4F5FA);
 
-    return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: tone.isDark
-          ? SystemUiOverlayStyle.light
-          : SystemUiOverlayStyle.dark,
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          // The scroll edge: content softens into the top of the screen
-          // once there's content under the bar to soften.
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            height: top + bar + 18,
-            child: IgnorePointer(
-              child: Opacity(
-                opacity: c,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      // Near-solid behind the status bar, where nothing
-                      // should read through the clock; easing off down the
-                      // capsule.
-                      colors: [
-                        veil.withValues(alpha: 0.94),
-                        veil.withValues(alpha: 0.7),
-                        veil.withValues(alpha: 0),
-                      ],
-                      stops: const [0, 0.5, 1],
+    return TweenAnimationBuilder<EdgeInsets>(
+      tween: EdgeInsetsTween(end: columnInset),
+      duration: const Duration(milliseconds: 260),
+      curve: Curves.easeOutCubic,
+      builder: (context, inset, _) {
+        final restLeft = 20 + inset.left;
+        final titleLeft = restLeft + (12 + orbInset + 5 + 12 - restLeft) * c;
+        // Room for the title: the column at rest; once landed, the capsule
+        // left of its buttons (in the title's own, unscaled units).
+        final restRoom = screenWidth - inset.right - titleLeft - 20;
+        final buttons = _actionsWidth;
+        final landedRoom = buttons == null
+            ? restRoom
+            : screenWidth - 12 - 5 - buttons - 8 - titleLeft;
+        final titleRoom =
+            math.max(0.0, restRoom + (landedRoom - restRoom) * c) / titleScale;
+
+        return AnnotatedRegion<SystemUiOverlayStyle>(
+          value: tone.isDark
+              ? SystemUiOverlayStyle.light
+              : SystemUiOverlayStyle.dark,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              // The scroll edge: content softens into the top of the screen
+              // once there's content under the bar to soften.
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                height: top + bar + 18,
+                child: IgnorePointer(
+                  child: Opacity(
+                    opacity: c,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          // Near-solid behind the status bar, where nothing
+                          // should read through the clock; easing off down the
+                          // capsule.
+                          colors: [
+                            veil.withValues(alpha: 0.94),
+                            veil.withValues(alpha: 0.7),
+                            veil.withValues(alpha: 0),
+                          ],
+                          stops: const [0, 0.5, 1],
+                        ),
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
-          ),
-          // The capsule: the actions at rest; the whole bar once the title
-          // has landed. Width follows the spring; speed squashes it.
-          if (orb)
-            Positioned(
-              top: top + (bar - capsule) / 2,
-              left: 12,
-              width: capsule,
-              height: capsule,
-              child: const LiquidGlass(child: Center(child: ModeOrb(size: 40))),
-            ),
-          Positioned(
-            top: top + (bar - capsule) / 2,
-            left: 12 + orbInset,
-            right: 12,
-            height: capsule,
-            child: LayoutBuilder(
-              builder: (context, box) => Align(
-                alignment: Alignment.centerRight,
-                child: Opacity(
-                  opacity: ownGlass,
-                  child: Transform(
+              // The capsule: the actions at rest; the whole bar once the title
+              // has landed. Width follows the spring; speed squashes it.
+              if (menu)
+                Positioned(
+                  top: top + (bar - capsule) / 2,
+                  left: 12,
+                  width: capsule,
+                  height: capsule,
+                  child: const NavMenuButton(glassExtent: capsule),
+                ),
+              if (orb)
+                Positioned(
+                  top: top + (bar - capsule) / 2,
+                  left: 12 + menuInset,
+                  width: capsule,
+                  height: capsule,
+                  child: const LiquidGlass(
+                    child: Center(child: ModeOrb(size: 40)),
+                  ),
+                ),
+              Positioned(
+                top: top + (bar - capsule) / 2,
+                left: 12 + orbInset,
+                right: 12,
+                height: capsule,
+                child: LayoutBuilder(
+                  builder: (context, box) => Align(
                     alignment: Alignment.centerRight,
-                    transform: Matrix4.diagonal3Values(
-                      1 + squash * 0.35,
-                      1 - squash,
-                      1,
-                    ),
-                    child: LiquidGlass(
-                      key: _glassTopCapsule,
-                      child: _GlassCapsuleScope(
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 5),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Flexible(
-                                child: SizedBox(
-                                  width: box.maxWidth * liquid.clamp(0.0, 1.0),
-                                  // Laid out at full width and uncovered as
-                                  // the capsule stretches, so it never
-                                  // reflows mid-spring.
-                                  child: searching
-                                      ? ClipRect(
-                                          child: OverflowBox(
-                                            alignment: Alignment.centerLeft,
-                                            minWidth: 0,
-                                            maxWidth: box.maxWidth,
-                                            child: const _GlassTxSearch(),
-                                          ),
-                                        )
-                                      : null,
-                                ),
+                    child: Opacity(
+                      opacity: ownGlass,
+                      child: Transform(
+                        alignment: Alignment.centerRight,
+                        transform: Matrix4.diagonal3Values(
+                          1 + squash * 0.35,
+                          1 - squash,
+                          1,
+                        ),
+                        child: LiquidGlass(
+                          key: _glassTopCapsule,
+                          child: _GlassCapsuleScope(
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 5),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Flexible(
+                                    child: SizedBox(
+                                      width: box.maxWidth * liquid.clamp(0.0, 1.0),
+                                      // Laid out at full width and uncovered as
+                                      // the capsule stretches, so it never
+                                      // reflows mid-spring.
+                                      child: searching
+                                          ? ClipRect(
+                                              child: OverflowBox(
+                                                alignment: Alignment.centerLeft,
+                                                minWidth: 0,
+                                                maxWidth: box.maxWidth,
+                                                child: const _GlassTxSearch(),
+                                              ),
+                                            )
+                                          : null,
+                                    ),
+                                  ),
+                                  actions,
+                                ],
                               ),
-                              actions,
-                            ],
+                            ),
                           ),
                         ),
                       ),
@@ -438,82 +467,82 @@ class _GlassTopBarState extends ConsumerState<_GlassTopBar>
                   ),
                 ),
               ),
-            ),
-          ),
-          // The one title, on top: riding the content, then flying into
-          // the capsule and staying there.
-          Positioned(
-            left: titleLeft,
-            top: titleTop,
-            child: IgnorePointer(
-              child: AnimatedOpacity(
-                // The search field takes the title's place.
-                opacity: searching ? 0 : 1,
-                duration: const Duration(milliseconds: 180),
-                child: Transform.scale(
-                  scale: titleScale,
-                  alignment: Alignment.topLeft,
-                  child: ValueListenableBuilder<Money?>(
-                    // On the Dashboard, once Total money has scrolled away
-                    // under the bar, its figure takes the title's place.
-                    valueListenable: dashboardPinnedTotal,
-                    builder: (context, pinned, _) {
-                      final total = index == 0 ? pinned : null;
-                      final style = theme.textTheme.headlineLarge?.copyWith(
-                        fontSize: _GlassTopBar._largeSize,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: -1.2 + 0.8 * c,
-                        height: _GlassTopBar._lineHeight,
-                        color: cs.onSurface,
-                      );
-                      return AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 280),
-                        switchInCurve: Curves.easeOutCubic,
-                        switchOutCurve: Curves.easeInCubic,
-                        transitionBuilder: (child, animation) => FadeTransition(
-                          opacity: animation,
-                          child: SlideTransition(
-                            position: Tween<Offset>(
-                              begin: const Offset(0, 0.18),
-                              end: Offset.zero,
-                            ).animate(animation),
-                            child: child,
-                          ),
-                        ),
-                        // Both titles from the same left edge: the default
-                        // centres the shorter one on the longer while they
-                        // cross-fade, then it jumps left.
-                        layoutBuilder: (current, previous) => Stack(
-                          alignment: Alignment.topLeft,
-                          clipBehavior: Clip.none,
-                          children: [...previous, ?current],
-                        ),
-                        child: ConstrainedBox(
-                          key: ValueKey(total == null ? index : 'total'),
-                          constraints: BoxConstraints(maxWidth: titleRoom),
-                          child: total == null
-                              ? Text(
-                                  title,
-                                  maxLines: 1,
-                                  softWrap: false,
-                                  overflow: TextOverflow.fade,
-                                  style: style,
-                                )
-                              : FittedBox(
-                                  fit: BoxFit.scaleDown,
-                                  alignment: Alignment.centerLeft,
-                                  child: PinnedTotalTitle(total, style: style),
-                                ),
-                        ),
-                      );
-                    },
+              // The one title, on top: riding the content, then flying into
+              // the capsule and staying there.
+              Positioned(
+                left: titleLeft,
+                top: titleTop,
+                child: IgnorePointer(
+                  child: AnimatedOpacity(
+                    // The search field takes the title's place.
+                    opacity: searching ? 0 : 1,
+                    duration: const Duration(milliseconds: 180),
+                    child: Transform.scale(
+                      scale: titleScale,
+                      alignment: Alignment.topLeft,
+                      child: ValueListenableBuilder<Money?>(
+                        // On the Dashboard, once Total money has scrolled away
+                        // under the bar, its figure takes the title's place.
+                        valueListenable: dashboardPinnedTotal,
+                        builder: (context, pinned, _) {
+                          final total = index == 0 ? pinned : null;
+                          final style = theme.textTheme.headlineLarge?.copyWith(
+                            fontSize: _GlassTopBar._largeSize,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -1.2 + 0.8 * c,
+                            height: _GlassTopBar._lineHeight,
+                            color: cs.onSurface,
+                          );
+                          return AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 280),
+                            switchInCurve: Curves.easeOutCubic,
+                            switchOutCurve: Curves.easeInCubic,
+                            transitionBuilder: (child, animation) => FadeTransition(
+                              opacity: animation,
+                              child: SlideTransition(
+                                position: Tween<Offset>(
+                                  begin: const Offset(0, 0.18),
+                                  end: Offset.zero,
+                                ).animate(animation),
+                                child: child,
+                              ),
+                            ),
+                            // Both titles from the same left edge: the default
+                            // centres the shorter one on the longer while they
+                            // cross-fade, then it jumps left.
+                            layoutBuilder: (current, previous) => Stack(
+                              alignment: Alignment.topLeft,
+                              clipBehavior: Clip.none,
+                              children: [...previous, ?current],
+                            ),
+                            child: ConstrainedBox(
+                              key: ValueKey(total == null ? index : 'total'),
+                              constraints: BoxConstraints(maxWidth: titleRoom),
+                              child: total == null
+                                  ? Text(
+                                      title,
+                                      maxLines: 1,
+                                      softWrap: false,
+                                      overflow: TextOverflow.fade,
+                                      style: style,
+                                    )
+                                  : FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      alignment: Alignment.centerLeft,
+                                      child: PinnedTotalTitle(total, style: style),
+                                    ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
                   ),
                 ),
               ),
-            ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 }
@@ -666,16 +695,23 @@ class _LiquidTabBarState extends State<_LiquidTabBar>
     );
     final accent = Theme.of(context).colorScheme.secondary;
     final tone = AppSurface.of(context).tone;
+    // A tablet's bar is a compact capsule in the bottom-right corner, where
+    // the right thumb rests — and the sheets that grow out of it stay there
+    // (see [glassTabCapsuleRect]).
+    final tablet = DesktopLayout.isTablet(context);
     return RepaintBoundary(
       child: SafeArea(
         top: false,
-        minimum: const EdgeInsets.only(bottom: 8),
-        // Centred at a phone-like width on a tablet, as the sheets that grow
-        // out of it are (see [glassTabCapsuleRect]).
+        minimum: EdgeInsets.only(bottom: tablet ? kTabletBarFoot : 8),
+        // Centred at a phone-like width on a wide phone, as the sheets that
+        // grow out of it are.
         child: Align(
+          alignment: tablet ? Alignment.bottomRight : Alignment.center,
           heightFactor: 1,
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: kGlassBarMaxWidth),
+            constraints: tablet
+                ? const BoxConstraints.tightFor(width: kTabletBarRowWidth)
+                : const BoxConstraints(maxWidth: kGlassBarMaxWidth),
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: kGlassBarSide),
               child: AnimatedBuilder(

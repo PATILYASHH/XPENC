@@ -1118,7 +1118,6 @@ class _PeriodCard extends ConsumerWidget {
                   height: 18,
                   indent: 16,
                   endIndent: 16,
-                  color: cs.outline,
                 ),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 12),

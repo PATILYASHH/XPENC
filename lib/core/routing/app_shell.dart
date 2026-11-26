@@ -37,14 +37,17 @@ import '../branding/app_info.dart';
 import '../branding/brand_mark.dart';
 import '../budget_cycle.dart';
 import '../layout/desktop.dart';
+import '../theme/app_motion.dart';
 import '../theme/bar_page_transition.dart';
 import '../theme/glass.dart';
+import '../theme/theme_shape.dart';
 import '../widgets/nav_bar_inset.dart';
 import '../../core/l10n/l10n.dart';
 
 part 'glass_chrome.dart';
 part 'nav_editor.dart';
 part 'quick_actions_editor.dart';
+part 'tablet_rail.dart';
 
 /// `Dashboard · slotLeft · ➕ · slotRight · More`
 ///
@@ -218,6 +221,8 @@ class AppShell extends ConsumerWidget {
     final theme = Theme.of(context);
     final border = theme.colorScheme.outline;
     final glass = AppSurface.of(context).isGlass;
+    // Noir's phone bar floats off the foot of the screen (see _FloatingBar).
+    final floating = !glass && ThemeShape.of(context).floatingBar;
     final focused = ref.watch(focusedModeProvider);
     final layoutIds = _layoutIds(ref);
     final List<_TabSpec> tabs;
@@ -262,8 +267,30 @@ class AppShell extends ConsumerWidget {
 
     final index = navigationShell.currentIndex;
     // On a PC the sidebar navigates (see `DesktopFrame`): no bottom bar,
-    // and the ➕ sits in the page's corner.
-    final desktop = DesktopLayout.of(context);
+    // and the ➕ sits in the page's corner. On a tablet the bar floats in
+    // the bottom-right corner, and the tabs scroll under it as under Glass's.
+    final layout = DesktopLayout.layoutOf(context);
+    final desktop = layout == ScreenLayout.desktop;
+    final tablet = layout == ScreenLayout.tablet;
+    // A tablet's list tabs read as a centred column; a pass-through elsewhere.
+    final tabBody = TabletColumn(branch: index, child: navigationShell);
+    // A tablet's tabs are a vertical rail in the bottom-right corner, the ➕
+    // under them (see `_TabletRail`). Voice add needs a row for its words:
+    // while it's open the horizontal corner bar stands in.
+    final rail = tablet && !voice
+        ? _TabletRail(
+            glass: glass,
+            tabs: tabs,
+            currentBranch: index,
+            showLabels: ref.watch(showBottomNavLabelsProvider),
+            onSelect: (branch) => _goBranch(ref, branch),
+            add: add,
+            classicItems: glass
+                ? null
+                : [for (final t in tabs) _navItem(context, ref, t)],
+            onHoldEdit: editFrom,
+          )
+        : null;
     if (glass && _glassBranch != index) {
       // A tab keeps its own scroll — and so its own title state — when you
       // come back to it.
@@ -273,6 +300,39 @@ class AppShell extends ConsumerWidget {
       );
     }
 
+    // The classic bar's row — across the foot on a phone, in the corner
+    // pill on a tablet.
+    final classicTabs = voice
+        // Voice add: the words in place of the tabs, the ➕ — now Continue —
+        // at the end.
+        ? Row(
+            children: [
+              const Expanded(child: VoiceAddBar()),
+              add,
+              const SizedBox(width: 12),
+            ],
+          )
+        : _NavHoldToEdit(
+            enabled: editFrom != null,
+            // Five equal columns, the ➕ in the middle one.
+            onTriggered: (bar) {
+              final w = bar.width / 5;
+              editFrom!(bar, [
+                for (final i in [0, 1, 3, 4])
+                  Rect.fromLTWH(bar.left + w * i, bar.top, w, bar.height),
+              ]);
+            },
+            child: Row(
+              children: [
+                _navItem(context, ref, tabs[0]),
+                _navItem(context, ref, tabs[1]),
+                add,
+                _navItem(context, ref, tabs[2]),
+                _navItem(context, ref, tabs[3]),
+              ],
+            ),
+          );
+
     // Back while voice add is open closes it, not the app.
     return PopScope(
       canPop: !voice,
@@ -280,9 +340,10 @@ class AppShell extends ConsumerWidget {
         if (!didPop) ref.read(voiceAddProvider.notifier).close();
       },
       child: SettledPromptListener(
-      // A sheet opened from anywhere in here grows out of the Glass tab bar.
+      // A sheet opened from anywhere in here grows out of the Glass tab bar —
+      // not a tablet's rail, a column no sheet's row can grow out of.
       child: GlassBarScope(
-        active: glass,
+        active: glass && !tablet,
         child: Scaffold(
           appBar: glass
               ? _GlassTopBar(currentIndex: index)
@@ -319,25 +380,27 @@ class AppShell extends ConsumerWidget {
                   },
                   child: Stack(
                     children: [
-                      _TabSwitchFade(index: index, child: navigationShell),
+                      _TabSwitchFade(index: index, child: tabBody),
                       // Under the bars: dims the page while the tab bar is the
                       // month picker, and folds it back on a tap.
                       const Positioned.fill(child: _GlassMonthScrim()),
                     ],
                   ),
                 )
-              : navigationShell,
+              : tabBody,
           // Glass floats the bar as a capsule and lets every tab scroll *under*
           // it, so the blur has content to frost. The Scaffold then reports the
           // bar's height as bottom padding, which every tab already honours
-          // (see `NavBarInset`).
-          extendBody: glass,
+          // (see `NavBarInset`). A tablet's corner bar (voice add) floats the
+          // same way.
+          extendBody: glass || tablet || floating,
+          // The page's corner holds a PC's ➕ and a tablet's whole rail.
           floatingActionButton: desktop
               ? _DesktopAddButton(
                   hasTemplates: ref.watch(shownTemplatesProvider).isNotEmpty,
                 )
-              : null,
-          bottomNavigationBar: desktop
+              : rail,
+          bottomNavigationBar: desktop || rail != null
               ? null
               : glass
               ? _LiquidTabBar(
@@ -349,50 +412,17 @@ class AppShell extends ConsumerWidget {
                   add: add,
                   voice: voice ? const VoiceAddBar() : null,
                 )
+              : tablet
+              ? _TabletBar(child: classicTabs)
+              : floating
+              ? _FloatingBar(child: classicTabs)
               : DecoratedBox(
                   decoration: BoxDecoration(
                     border: Border(top: BorderSide(color: border)),
                   ),
                   child: SafeArea(
                     top: false,
-                    child: SizedBox(
-                      height: 68,
-                      child: voice
-                          // Voice add: the words in place of the tabs, the
-                          // ➕ — now Continue — at the end.
-                          ? Row(
-                              children: [
-                                const Expanded(child: VoiceAddBar()),
-                                add,
-                                const SizedBox(width: 12),
-                              ],
-                            )
-                          : _NavHoldToEdit(
-                        enabled: editFrom != null,
-                        // Five equal columns, the ➕ in the middle one.
-                        onTriggered: (bar) {
-                          final w = bar.width / 5;
-                          editFrom!(bar, [
-                            for (final i in [0, 1, 3, 4])
-                              Rect.fromLTWH(
-                                bar.left + w * i,
-                                bar.top,
-                                w,
-                                bar.height,
-                              ),
-                          ]);
-                        },
-                        child: Row(
-                          children: [
-                            _navItem(context, ref, tabs[0]),
-                            _navItem(context, ref, tabs[1]),
-                            add,
-                            _navItem(context, ref, tabs[2]),
-                            _navItem(context, ref, tabs[3]),
-                          ],
-                        ),
-                      ),
-                    ),
+                    child: SizedBox(height: 68, child: classicTabs),
                   ),
                 ),
         ),
@@ -439,6 +469,121 @@ class AppShell extends ConsumerWidget {
                 ),
               ],
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The classic bar on a tablet while voice add is open (the tabs are a
+/// vertical rail otherwise — see `_TabletRail` — but the words need a row):
+/// a floating pill in the bottom-right corner, the ➕ — now Continue — at
+/// its end. Glass's capsule does the same (see `_LiquidTabBar`). The tabs
+/// scroll under it ([Scaffold.extendBody]), and taps beside it reach the
+/// page.
+class _TabletBar extends StatelessWidget {
+  const _TabletBar({required this.child});
+
+  /// The bar's row: the five slots, or voice add's words.
+  final Widget child;
+
+  static const double width = kTabletTabExtent * 5;
+  static const _radius = BorderRadius.all(Radius.circular(kGlassBarHeight / 2));
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final media = MediaQuery.of(context);
+    return Padding(
+      padding: EdgeInsets.only(
+        right: kGlassBarSide + media.padding.right,
+        bottom: glassBarBottom(media, tablet: true),
+      ),
+      child: Align(
+        alignment: Alignment.bottomRight,
+        heightFactor: 1,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: cs.surface,
+            borderRadius: _radius,
+            border: Border.all(color: cs.outline),
+            // Lifted off the page it floats over.
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.12),
+                blurRadius: 28,
+                offset: const Offset(0, 10),
+              ),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: _radius,
+            child: Material(
+              type: MaterialType.transparency,
+              child: SizedBox(
+                width: width,
+                height: kGlassBarHeight,
+                child: child,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Noir's bar on a phone ([ThemeShape.floatingBar]): the classic row in a
+/// card of its own, lifted a little off the foot of the screen and in from
+/// its sides, its corners a touch rounded and ringed in the theme's ink. The
+/// tabs scroll under it ([Scaffold.extendBody]) and show around it.
+class _FloatingBar extends StatelessWidget {
+  const _FloatingBar({required this.child});
+
+  /// The bar's row: the five slots, or voice add's words.
+  final Widget child;
+
+  static const height = 62.0;
+  static const _side = 12.0;
+  static const _lift = 10.0;
+  static const _radius = BorderRadius.all(Radius.circular(16));
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    // The card's own edge: Noir's full ink outline, not the softer hairline.
+    final edge = switch (theme.cardTheme.shape) {
+      final OutlinedBorder border => border.side,
+      _ => BorderSide(color: cs.outline),
+    };
+    final dark = theme.brightness == Brightness.dark;
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(_side, 0, _side, _lift),
+        child: DecoratedBox(
+          key: const ValueKey('floatingBar'),
+          decoration: BoxDecoration(
+            color: theme.cardTheme.color ?? cs.surface,
+            borderRadius: _radius,
+            border: Border.all(color: edge.color, width: edge.width),
+            // Lifted off the page that scrolls under it.
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: dark ? 0.5 : 0.12),
+                blurRadius: 24,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: _radius,
+            child: Material(
+              type: MaterialType.transparency,
+              child: SizedBox(height: height, child: child),
+            ),
           ),
         ),
       ),
@@ -1470,11 +1615,17 @@ class _LiquidDroplet extends StatefulWidget {
     required this.index,
     required this.itemWidth,
     required this.color,
+    this.vertical = false,
   });
 
   final int index;
+
+  /// One tab's extent along the bar — its height on a [vertical] rail.
   final double itemWidth;
   final Color color;
+
+  /// Gliding up and down a tablet's rail rather than along a bar.
+  final bool vertical;
 
   @override
   State<_LiquidDroplet> createState() => _LiquidDropletState();
@@ -1522,6 +1673,15 @@ class _LiquidDropletState extends State<_LiquidDroplet>
             1 + 0.22 * distance * math.sin(math.pi * _controller.value);
         final width = (w - 8) * stretch;
         final centre = _position * w + w / 2;
+        if (widget.vertical) {
+          return Positioned(
+            top: centre - width / 2,
+            left: 4,
+            right: 4,
+            height: width,
+            child: child!,
+          );
+        }
         return Positioned(
           left: centre - width / 2,
           top: 4,
@@ -1668,7 +1828,8 @@ class _TabSpec {
 ///
 /// Carries the current tab's own title and actions — one bar, sized like an
 /// ordinary toolbar (`kToolbarHeight`, same as every pushed screen's bar —
-/// see the screens under `lib/features/*`).
+/// see the screens under `lib/features/*`). Classic shows no tab title, only
+/// the Dashboard's pinned total or focused trip (see `build`).
 ///
 /// Indexed by branch, not by bar position — GitHub #70 made which catalog
 /// item sits at bar position 2/4 configurable, but the 9 branch indices
@@ -1706,6 +1867,15 @@ class _TopBar extends ConsumerWidget implements PreferredSizeWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final cs = Theme.of(context).colorScheme;
+    final orb = ref.watch(activeModeProvider) != null;
+    final tablet = DesktopLayout.isTablet(context);
+    // Classic (brisk) names no tab in the corner — the bar below already
+    // says where you are. A trip the Dashboard is focused on still shows:
+    // that's which money you're looking at, not the page's name.
+    final brisk = AppMotion.isBrisk(context);
+    final named =
+        !brisk ||
+        (currentIndex == 0 && ref.watch(focusedModeProvider) != null);
     // On the Dashboard, once Total money has scrolled away under the bar,
     // its figure takes the title's place.
     final title = ValueListenableBuilder<Money?>(
@@ -1713,26 +1883,30 @@ class _TopBar extends ConsumerWidget implements PreferredSizeWidget {
       builder: (context, pinned, _) {
         final total = currentIndex == 0 ? pinned : null;
         return AnimatedSwitcher(
-          duration: const Duration(milliseconds: 220),
+          duration: Duration(milliseconds: brisk ? 140 : 220),
           switchInCurve: Curves.easeOutCubic,
           switchOutCurve: Curves.easeInCubic,
           transitionBuilder: (child, animation) => FadeTransition(
             opacity: animation,
-            child: SlideTransition(
-              position: Tween<Offset>(
-                begin: const Offset(0, 0.3),
-                end: Offset.zero,
-              ).animate(animation),
-              child: child,
-            ),
+            child: brisk
+                ? child
+                : SlideTransition(
+                    position: Tween<Offset>(
+                      begin: const Offset(0, 0.3),
+                      end: Offset.zero,
+                    ).animate(animation),
+                    child: child,
+                  ),
           ),
           child: total == null
-              ? Text(
-                  titleFor(ref, currentIndex),
-                  key: ValueKey(titleFor(ref, currentIndex)),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                )
+              ? named
+                    ? Text(
+                        titleFor(ref, currentIndex),
+                        key: ValueKey(titleFor(ref, currentIndex)),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      )
+                    : const SizedBox.shrink(key: ValueKey('untitled'))
               : FittedBox(
                   key: const ValueKey('total'),
                   fit: BoxFit.scaleDown,
@@ -1755,24 +1929,39 @@ class _TopBar extends ConsumerWidget implements PreferredSizeWidget {
       child: AppBar(
         automaticallyImplyLeading: false,
         centerTitle: false,
-        // The mode that's ON (a trip) floats in the corner, before the title.
-        leading: ref.watch(activeModeProvider) == null
-            ? null
-            : const Padding(
-                padding: EdgeInsets.only(left: 12),
-                child: Center(child: ModeOrb(size: 38)),
+        // The mode that's ON (a trip) floats in the corner, before the title
+        // — after a tablet's ☰, which takes the corner itself.
+        leading: !tablet
+            ? (!orb
+                  ? null
+                  : const Padding(
+                      padding: EdgeInsets.only(left: 12),
+                      child: Center(child: ModeOrb(size: 38)),
+                    ))
+            : Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const SizedBox(width: 4),
+                  const NavMenuButton(),
+                  if (orb) ...[
+                    const SizedBox(width: 4),
+                    const ModeOrb(size: 38),
+                  ],
+                ],
               ),
-        leadingWidth: ref.watch(activeModeProvider) == null ? null : 58,
-        titleSpacing: ref.watch(activeModeProvider) == null ? null : 6,
+        leadingWidth: tablet ? (orb ? 98 : 56) : (orb ? 58 : null),
+        titleSpacing: orb ? 6 : null,
         title: title,
         actions: [
           AnimatedSwitcher(
-            duration: const Duration(milliseconds: 220),
+            duration: Duration(milliseconds: brisk ? 120 : 220),
             switchInCurve: Curves.easeOutCubic,
             switchOutCurve: Curves.easeInCubic,
             transitionBuilder: (child, animation) => FadeTransition(
               opacity: animation,
-              child: ScaleTransition(scale: animation, child: child),
+              child: brisk
+                  ? child
+                  : ScaleTransition(scale: animation, child: child),
             ),
             child: Row(
               key: ValueKey(currentIndex),
@@ -2004,10 +2193,16 @@ class _DashboardMonthButton extends ConsumerWidget {
         type: MaterialType.transparency,
         child: InkWell(
           customBorder: const StadiumBorder(),
-          // Under Glass the tab bar itself grows into the month picker.
+          // Under Glass the tab bar itself grows into the month picker — on
+          // a phone. A tablet's rail is a column with no room to grow into
+          // a year of months: there it's a sheet.
           onTap: () {
             HapticFeedback.selectionClick();
-            _glassMonthPicker.value = !_glassMonthPicker.value;
+            if (DesktopLayout.isTablet(context)) {
+              pick();
+            } else {
+              _glassMonthPicker.value = !_glassMonthPicker.value;
+            }
           },
           child: Tooltip(
             message: tr('Change month'),

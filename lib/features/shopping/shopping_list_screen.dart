@@ -149,7 +149,6 @@ class ShoppingListScreen extends ConsumerWidget {
                         Divider(
                           height: 1,
                           indent: 56,
-                          color: theme.colorScheme.outline,
                         ),
                       _ShoppingItemTile(item: items[i]),
                     ],

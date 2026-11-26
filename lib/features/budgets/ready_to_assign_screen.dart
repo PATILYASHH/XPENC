@@ -124,7 +124,6 @@ class _CategoryEnvelopeList extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final cs = Theme.of(context).colorScheme;
     final categoriesAsync = ref.watch(categoriesProvider(CategoryKind.expense));
 
     return categoriesAsync.when(
@@ -137,7 +136,7 @@ class _CategoryEnvelopeList extends ConsumerWidget {
         child: Column(
           children: [
             for (var i = 0; i < categories.length; i++) ...[
-              if (i > 0) Divider(height: 1, indent: 70, color: cs.outline),
+              if (i > 0) Divider(height: 1, indent: 70),
               _CategoryEnvelopeRow(category: categories[i]),
             ],
           ],

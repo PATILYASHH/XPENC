@@ -90,12 +90,7 @@ class ModeDetailScreen extends ConsumerWidget {
               child: Column(
                 children: [
                   for (final (i, e) in byCategory.indexed) ...[
-                    if (i > 0)
-                      Divider(
-                        height: 1,
-                        indent: 60,
-                        color: theme.colorScheme.outline,
-                      ),
+                    if (i > 0) Divider(height: 1, indent: 60),
                     ModeShareRow(
                       iconKey: categories[e.key]?.iconKey ?? 'other',
                       colorValue:
@@ -121,12 +116,7 @@ class ModeDetailScreen extends ConsumerWidget {
               child: Column(
                 children: [
                   for (final (i, e) in byAccount.indexed) ...[
-                    if (i > 0)
-                      Divider(
-                        height: 1,
-                        indent: 60,
-                        color: theme.colorScheme.outline,
-                      ),
+                    if (i > 0) Divider(height: 1, indent: 60),
                     ModeShareRow(
                       iconKey: accounts[e.key]?.iconKey ?? 'bank',
                       colorValue:

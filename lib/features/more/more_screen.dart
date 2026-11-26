@@ -320,7 +320,7 @@ class MoreScreen extends ConsumerWidget {
                       children: [
                         for (var i = 0; i < group.items.length; i++) ...[
                           if (i > 0)
-                            Divider(height: 1, indent: 60, color: cs.outline),
+                            Divider(height: 1, indent: 60),
                           _MoreTile(item: group.items[i]),
                         ],
                       ],

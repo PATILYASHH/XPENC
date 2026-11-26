@@ -718,7 +718,7 @@ class ModePlannedCostsCard extends ConsumerWidget {
       child: Column(
         children: [
           for (final (i, c) in costs.indexed) ...[
-            if (i > 0) Divider(height: 1, indent: 60, color: cs.outline),
+            if (i > 0) Divider(height: 1, indent: 60),
             AppListTile(
               onTap: () => c.transactionId != null
                   ? context.push('/transaction/${c.transactionId}')
@@ -886,7 +886,7 @@ class ModeLimitsCard extends ConsumerWidget {
       child: Column(
         children: [
           for (final (i, l) in lines.indexed) ...[
-            if (i > 0) Divider(height: 1, indent: 60, color: cs.outline),
+            if (i > 0) Divider(height: 1, indent: 60),
             Builder(
               builder: (context) {
                 final cat = cats[l.categoryId];
@@ -971,7 +971,7 @@ class ModeAccountsCard extends ConsumerWidget {
       child: Column(
         children: [
           for (final (i, e) in entries.indexed) ...[
-            if (i > 0) Divider(height: 1, indent: 60, color: cs.outline),
+            if (i > 0) Divider(height: 1, indent: 60),
             AppListTile(
               onTap: () => pushZoom(context, '/account/${e.key}'),
               leading: CircleAvatar(

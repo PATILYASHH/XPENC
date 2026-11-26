@@ -80,7 +80,7 @@ class NotificationsSettingsScreen extends ConsumerWidget {
                   ),
                 ),
                 if (expenseReminder.enabled) ...[
-                  Divider(height: 1, indent: 60, color: cs.outline),
+                  Divider(height: 1, indent: 60),
                   AppListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                     leading: const AppIcon(Icons.schedule_outlined),
@@ -134,7 +134,7 @@ class NotificationsSettingsScreen extends ConsumerWidget {
                         : null,
                   ),
                   if (notificationQuickAddEnabled) ...[
-                    Divider(height: 1, indent: 60, color: cs.outline),
+                    Divider(height: 1, indent: 60),
                     _QuickAddAccountTile(trailingStyle: trailingStyle),
                   ],
                 ],

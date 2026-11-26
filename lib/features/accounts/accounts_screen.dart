@@ -53,6 +53,7 @@ class AccountsScreen extends ConsumerWidget {
             SliverAppBar(
               pinned: true,
               flexibleSpace: const GlassScrollEdge(),
+              leading: navMenuLeading(context),
               automaticallyImplyLeading: impliesBackArrow(context),
               title: const Tr('Accounts'),
               actions: [
@@ -226,7 +227,6 @@ class AccountsScreen extends ConsumerWidget {
     List<AccountRow> rows,
     Map<int, AccountRow> accountMap,
   ) {
-    final theme = Theme.of(context);
     return SliverToBoxAdapter(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -238,7 +238,6 @@ class AccountsScreen extends ConsumerWidget {
                   Divider(
                     height: 1,
                     indent: 70,
-                    color: theme.colorScheme.outline,
                   ),
                 _AccountTile(account: rows[i], accountMap: accountMap),
               ],

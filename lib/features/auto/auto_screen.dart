@@ -36,6 +36,7 @@ class AutoScreen extends ConsumerWidget {
           SliverAppBar(
             pinned: true,
             flexibleSpace: const GlassScrollEdge(),
+            leading: navMenuLeading(context),
             automaticallyImplyLeading: impliesBackArrow(context),
             title: const Tr('Auto'),
             actions: [

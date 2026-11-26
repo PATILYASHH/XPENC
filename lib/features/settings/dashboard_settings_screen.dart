@@ -207,7 +207,7 @@ class _DashboardSettingsScreenState
                         children: [
                           for (var i = 0; i < hidden.length; i++) ...[
                             if (i > 0)
-                              Divider(height: 1, indent: 60, color: cs.outline),
+                              Divider(height: 1, indent: 60),
                             _WidgetRow(
                               widget: hidden[i],
                               note: noteFor(hidden[i]),
@@ -441,7 +441,6 @@ class _NetWorthAccounts extends ConsumerWidget {
                               Divider(
                                 height: 1,
                                 indent: 60,
-                                color: cs.outline,
                               ),
                             _AccountToggleTile(account: accounts[i]),
                           ],

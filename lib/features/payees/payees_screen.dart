@@ -27,7 +27,6 @@ class PayeesScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
     final summaries = ref.watch(payeeSummariesProvider);
     final net = summaries.fold(const Money.zero(), (sum, s) => sum + s.net);
 
@@ -39,6 +38,7 @@ class PayeesScreen extends ConsumerWidget {
             SliverAppBar(
               pinned: true,
               flexibleSpace: const GlassScrollEdge(),
+              leading: navMenuLeading(context),
               automaticallyImplyLeading: impliesBackArrow(context),
               title: const Tr('Payees'),
             ),
@@ -79,7 +79,6 @@ class PayeesScreen extends ConsumerWidget {
                           Divider(
                             height: 1,
                             indent: 72,
-                            color: theme.colorScheme.outline,
                           ),
                         _PayeeTile(summary: summaries[i]),
                       ],

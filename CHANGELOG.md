@@ -152,6 +152,27 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
   page's ⋮ menu or the Archive dialog, without archiving it first.
 
 ### Changed
+- **Tablets get their own layout.** The tabs sit in a vertical rail in the
+  bottom-right corner, where the thumb rests (four tabs stacked, ➕ under
+  them), and a ☰ menu top-left lists every page. List tabs read as a
+  centred column clear of the rail, and the dashboard goes to two columns
+  on a wide screen. A tablet is a touch screen at least 640 dp on its short
+  side; PCs keep the sidebar. Pages opened from a tab (Add, Settings) are
+  still full width for now.
+- **Classic is quicker.** Pages open with the phone's own transition in
+  about half the time, sheets slide up faster, and lists, numbers and bars
+  arrive at once instead of easing in one by one; nothing bounces. The tab
+  names are gone from the top-left corner (the bar below already says
+  where you are); the Dashboard still shows a trip you're in, and Total
+  money once you scroll past it.
+- **Noir is bolder.** Text is heavier throughout, cards have no divider
+  lines between rows, icons are square-cornered, and on a phone the bottom
+  bar floats a little above the edge of the screen. Motion stays, settling
+  softly instead of bouncing.
+- **Editing the bar and the ➕ menu follows your theme.** Holding the bar
+  or the ➕ to edit now draws in Classic's or Noir's own colours, over the
+  page's background, instead of the same dark overlay everywhere (Glass
+  keeps its frosted look).
 - **Add Transaction: accounts as cards.** Paid via, Deposit to, and a
   transfer's From and To are now a row of account cards you swipe through,
   each with its icon, name and balance (a debit card shows the bank it

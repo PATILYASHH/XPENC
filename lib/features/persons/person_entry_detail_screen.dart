@@ -206,7 +206,7 @@ class _EntryView extends ConsumerWidget {
       textAlign: TextAlign.right,
       style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w500),
     );
-    final divider = Divider(height: 1, color: cs.outline);
+    final divider = Divider(height: 1);
 
     final details = <Widget>[
       row(

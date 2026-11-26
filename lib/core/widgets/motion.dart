@@ -2,6 +2,8 @@ import 'package:flutter/gestures.dart' show kTouchSlop;
 import 'package:flutter/material.dart';
 import 'package:flutter/physics.dart';
 
+import '../theme/app_motion.dart';
+
 /// Shared motion. Every animation here is one-shot and cheap: no controllers to
 /// leak, and each one respects the platform "reduce motion" setting.
 
@@ -10,6 +12,9 @@ import 'package:flutter/physics.dart';
 /// `index` staggers siblings so a screen assembles top-down instead of popping
 /// in all at once. The stagger is folded into a single tween via [Interval],
 /// so there is no timer and no controller to dispose.
+///
+/// A brisk theme ([AppMotion]) skips the stagger: everything arrives at once,
+/// in a short fade with a smaller rise.
 class Reveal extends StatelessWidget {
   const Reveal({required this.child, this.index = 0, super.key});
 
@@ -22,13 +27,18 @@ class Reveal extends StatelessWidget {
   static const _stagger = Duration(milliseconds: 60);
   static const _rise = 18.0;
 
+  static const _briskDuration = Duration(milliseconds: 160);
+  static const _briskRise = 6.0;
+
   @override
   Widget build(BuildContext context) {
     if (MediaQuery.disableAnimationsOf(context)) return child;
 
-    final delay = _stagger * index;
-    final total = _duration + delay;
+    final brisk = AppMotion.isBrisk(context);
+    final delay = brisk ? Duration.zero : _stagger * index;
+    final total = (brisk ? _briskDuration : _duration) + delay;
     final start = delay.inMicroseconds / total.inMicroseconds;
+    final rise = brisk ? _briskRise : _rise;
 
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: 0, end: 1),
@@ -38,7 +48,7 @@ class Reveal extends StatelessWidget {
       builder: (context, t, child) => Opacity(
         opacity: t,
         child: Transform.translate(
-          offset: Offset(0, (1 - t) * _rise),
+          offset: Offset(0, (1 - t) * rise),
           child: child,
         ),
       ),
@@ -109,6 +119,10 @@ class _PressScaleState extends State<PressScale> {
 /// larger area (a whole tab); otherwise the child's own pointer events
 /// drive it — through a [Listener], so an [InkWell] beneath still gets its
 /// tap and ripple. Off entirely under the system's "reduce motion".
+///
+/// A brisk theme ([AppMotion]) keeps only a quick, shallow dip: a stiff,
+/// critically damped return with no overshoot, and no pop when picked. A
+/// smooth one keeps the pop, softly, and settles without a visible bounce.
 class SpringBounce extends StatefulWidget {
   const SpringBounce({
     required this.child,
@@ -139,15 +153,46 @@ class _SpringBounceState extends State<SpringBounce>
     ratio: 0.42,
   );
 
+  // Brisk: home in about a tenth of a second, never past it.
+  static final _briskSpring = SpringDescription.withDampingRatio(
+    mass: 1,
+    stiffness: 900,
+    ratio: 1,
+  );
+
+  // Smooth: a soft landing — what overshoot is left is under half a percent.
+  static final _smoothSpring = SpringDescription.withDampingRatio(
+    mass: 1,
+    stiffness: 380,
+    ratio: 0.75,
+  );
+
   late final _scale = AnimationController.unbounded(vsync: this, value: _rest);
   bool _down = false;
+  MotionStyle _style = MotionStyle.fluid;
   Offset _origin = Offset.zero;
 
   double get _rest => widget.active ? widget.activeScale : 1;
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _style = AppMotion.of(context);
+  }
+
   void _springTo(double target, {double kick = 0}) {
+    final (spring, kickScale) = switch (_style) {
+      MotionStyle.brisk => (_briskSpring, 0.0),
+      MotionStyle.smooth => (_smoothSpring, 0.4),
+      MotionStyle.fluid => (_spring, 1.0),
+    };
     _scale.animateWith(
-      SpringSimulation(_spring, _scale.value, target, _scale.velocity + kick),
+      SpringSimulation(
+        spring,
+        _scale.value,
+        target,
+        _scale.velocity + kick * kickScale,
+      ),
     );
   }
 
@@ -155,9 +200,15 @@ class _SpringBounceState extends State<SpringBounce>
     if (_down == down) return;
     _down = down;
     if (down) {
+      // Half the dip under a brisk theme, three quarters under a smooth one.
+      final depth = switch (_style) {
+        MotionStyle.brisk => 0.5,
+        MotionStyle.smooth => 0.75,
+        MotionStyle.fluid => 1.0,
+      };
       _scale.animateTo(
-        widget.pressedScale,
-        duration: const Duration(milliseconds: 90),
+        1 - (1 - widget.pressedScale) * depth,
+        duration: Duration(milliseconds: _style == MotionStyle.brisk ? 70 : 90),
         curve: Curves.easeOut,
       );
     } else {
@@ -172,7 +223,8 @@ class _SpringBounceState extends State<SpringBounce>
       _setDown(widget.pressed!);
     }
     if (widget.active != old.active || widget.activeScale != old.activeScale) {
-      // Picked: a pop up past rest. Let go of: straight home.
+      // Picked: a pop up past rest (softer under a smooth theme, none under
+      // a brisk one). Let go of: straight home.
       _springTo(_rest, kick: widget.active && !old.active ? 3.2 : 0);
     }
   }
@@ -248,7 +300,9 @@ class AnimatedBar extends StatelessWidget {
           color: track ?? theme.colorScheme.surfaceContainerHighest,
           child: TweenAnimationBuilder<double>(
             tween: Tween(begin: animate ? 0 : target, end: target),
-            duration: animate ? duration : Duration.zero,
+            duration: animate
+                ? AppMotion.capped(context, duration)
+                : Duration.zero,
             curve: Curves.easeOutCubic,
             builder: (context, value, _) => FractionallySizedBox(
               alignment: Alignment.centerLeft,

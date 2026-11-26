@@ -79,11 +79,10 @@ class CurrencySettingsScreen extends ConsumerWidget {
                     )
                   else
                     for (var i = 0; i < rates.length; i++) ...[
-                      if (i > 0)
-                        Divider(height: 1, indent: 60, color: cs.outline),
+                      if (i > 0) Divider(height: 1, indent: 60),
                       _RateTile(rate: rates[i], parentCurrency: parentCurrency),
                     ],
-                  Divider(height: 1, indent: 60, color: cs.outline),
+                  Divider(height: 1, indent: 60),
                   AppListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                     leading: const AppIcon(Icons.add_circle_outline_rounded),
@@ -138,7 +137,7 @@ class CurrencySettingsScreen extends ConsumerWidget {
                     trailing: const AppIcon(Icons.chevron_right_rounded),
                     onTap: () => showCustomCurrencySheet(context, existing: c),
                   ),
-                  Divider(height: 1, indent: 60, color: cs.outline),
+                  Divider(height: 1, indent: 60),
                 ],
                 AppListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16),

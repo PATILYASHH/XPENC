@@ -55,7 +55,7 @@ class ColorsSettingsScreen extends ConsumerWidget {
               children: [
                 for (final d in _Direction.values) ...[
                   if (d.index > 0)
-                    Divider(height: 1, indent: 60, color: cs.outline),
+                    Divider(height: 1, indent: 60),
                   _DirectionTile(
                     direction: d,
                     isCustom: d.stored(choice) != null,
@@ -95,7 +95,7 @@ class ColorsSettingsScreen extends ConsumerWidget {
               children: [
                 for (final mode in TxIconBackground.values) ...[
                   if (mode.index > 0)
-                    Divider(height: 1, indent: 60, color: cs.outline),
+                    Divider(height: 1, indent: 60),
                   _IconModeTile(
                     mode: mode,
                     selected: choice.iconMode == mode,
@@ -104,7 +104,7 @@ class ColorsSettingsScreen extends ConsumerWidget {
                   ),
                 ],
                 if (choice.iconMode == TxIconBackground.single) ...[
-                  Divider(height: 1, indent: 60, color: cs.outline),
+                  Divider(height: 1, indent: 60),
                   AppListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                     leading: _Swatch(TxIconStyle.single),

@@ -61,7 +61,7 @@ class GeneralSettingsScreen extends ConsumerWidget {
                   ),
                   onTap: () => ThemePickerSheet.show(context),
                 ),
-                Divider(height: 1, indent: 60, color: cs.outline),
+                Divider(height: 1, indent: 60),
                 AppListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                   leading: const AppIcon(Icons.text_fields_rounded),
@@ -78,7 +78,7 @@ class GeneralSettingsScreen extends ConsumerWidget {
                   ),
                   onTap: () => context.push('/more/settings/font'),
                 ),
-                Divider(height: 1, indent: 60, color: cs.outline),
+                Divider(height: 1, indent: 60),
                 AppListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                   leading: const AppIcon(Icons.palette_outlined),
@@ -95,7 +95,7 @@ class GeneralSettingsScreen extends ConsumerWidget {
                   ),
                   onTap: () => context.push('/more/settings/colours'),
                 ),
-                Divider(height: 1, indent: 60, color: cs.outline),
+                Divider(height: 1, indent: 60),
                 AppSwitchListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                   secondary: const AppIcon(Icons.attach_money_rounded),
@@ -113,7 +113,7 @@ class GeneralSettingsScreen extends ConsumerWidget {
                   onChanged: (v) =>
                       ref.read(dbProvider).setShowCurrencySymbol(v),
                 ),
-                Divider(height: 1, indent: 60, color: cs.outline),
+                Divider(height: 1, indent: 60),
                 AppListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                   leading: const AppIcon(Icons.dashboard_outlined),

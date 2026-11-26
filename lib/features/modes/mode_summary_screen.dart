@@ -151,8 +151,7 @@ class ModeSummaryScreen extends ConsumerWidget {
               child: Column(
                 children: [
                   for (final (i, c) in data.categories.indexed) ...[
-                    if (i > 0)
-                      Divider(height: 1, indent: 60, color: cs.outline),
+                    if (i > 0) Divider(height: 1, indent: 60),
                     ModeShareRow(
                       iconKey:
                           categories.values
@@ -178,8 +177,7 @@ class ModeSummaryScreen extends ConsumerWidget {
               child: Column(
                 children: [
                   for (final (i, p) in people.indexed) ...[
-                    if (i > 0)
-                      Divider(height: 1, indent: 60, color: cs.outline),
+                    if (i > 0) Divider(height: 1, indent: 60),
                     Builder(
                       builder: (context) {
                         final bal = balances[p.id] ?? const Money.zero();

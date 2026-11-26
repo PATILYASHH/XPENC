@@ -89,7 +89,7 @@ class PersonsSettingsScreen extends ConsumerWidget {
                   onChanged: (v) => ref.read(dbProvider).setUpiEnabled(v),
                 ),
                 if (upiEnabled) ...[
-                  Divider(height: 1, indent: 16, color: cs.outline),
+                  Divider(height: 1, indent: 16),
                   AppListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                     leading: const AppIcon(Icons.qr_code_outlined),
@@ -112,7 +112,7 @@ class PersonsSettingsScreen extends ConsumerWidget {
                     ),
                   ),
                   if (PlatformFeatures.ussdPay) ...[
-                    Divider(height: 1, indent: 16, color: cs.outline),
+                    Divider(height: 1, indent: 16),
                     AppListTile(
                       contentPadding: const EdgeInsets.only(left: 16, right: 8),
                       title: const Tr('Pay without internet (Beta)'),
@@ -144,7 +144,7 @@ class PersonsSettingsScreen extends ConsumerWidget {
                   onChanged: (v) => ref.read(dbProvider).setPaypalEnabled(v),
                 ),
                 if (paypalEnabled) ...[
-                  Divider(height: 1, indent: 16, color: cs.outline),
+                  Divider(height: 1, indent: 16),
                   AppListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                     leading: const AppIcon(Icons.attach_money_rounded),
@@ -184,7 +184,7 @@ class PersonsSettingsScreen extends ConsumerWidget {
                   onChanged: (v) => ref.read(dbProvider).setVenmoEnabled(v),
                 ),
                 if (venmoEnabled) ...[
-                  Divider(height: 1, indent: 16, color: cs.outline),
+                  Divider(height: 1, indent: 16),
                   AppListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                     leading: const AppIcon(Icons.attach_money_rounded),
@@ -224,7 +224,7 @@ class PersonsSettingsScreen extends ConsumerWidget {
                   onChanged: (v) => ref.read(dbProvider).setCashappEnabled(v),
                 ),
                 if (cashappEnabled) ...[
-                  Divider(height: 1, indent: 16, color: cs.outline),
+                  Divider(height: 1, indent: 16),
                   AppListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                     leading: const AppIcon(Icons.attach_money_rounded),
@@ -264,7 +264,7 @@ class PersonsSettingsScreen extends ConsumerWidget {
                   onChanged: (v) => ref.read(dbProvider).setRevolutEnabled(v),
                 ),
                 if (revolutEnabled) ...[
-                  Divider(height: 1, indent: 16, color: cs.outline),
+                  Divider(height: 1, indent: 16),
                   AppListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                     leading: const AppIcon(Icons.attach_money_rounded),

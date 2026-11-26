@@ -72,8 +72,7 @@ class AiMemoryScreen extends ConsumerWidget {
               child: Column(
                 children: [
                   for (var i = 0; i < memories.length; i++) ...[
-                    if (i > 0)
-                      Divider(height: 1, indent: 16, color: cs.outline),
+                    if (i > 0) Divider(height: 1, indent: 16),
                     AppListTile(
                       title: Text(memories[i].content),
                       onTap: () =>

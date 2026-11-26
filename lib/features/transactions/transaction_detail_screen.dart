@@ -936,7 +936,7 @@ Widget _detailRow(BuildContext context, String label, Widget value) {
 }
 
 Widget _divider(ThemeData theme) =>
-    Divider(height: 1, color: theme.colorScheme.outline);
+    Divider(height: 1);
 
 Widget _valueText(BuildContext context, String text) {
   final theme = Theme.of(context);

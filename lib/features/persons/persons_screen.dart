@@ -345,7 +345,6 @@ class _IndividualTab extends ConsumerWidget {
                           Divider(
                             height: 1,
                             indent: 72,
-                            color: theme.colorScheme.outline,
                           ),
                         _PersonTile(
                           person: sorted[i],
@@ -391,7 +390,7 @@ class _TotalsHeader extends StatelessWidget {
                   Icons.south_west_rounded,
                 ),
               ),
-              Container(width: 1, height: 46, color: theme.colorScheme.outline),
+              const SizedBox(height: 46, child: VerticalDivider(width: 1, thickness: 1)),
               Expanded(
                 child: _totalColumn(
                   theme,
@@ -820,7 +819,6 @@ class _GroupTab extends ConsumerWidget {
                       Divider(
                         height: 1,
                         indent: 72,
-                        color: theme.colorScheme.outline,
                       ),
                     _GroupTile(group: sorted[i]),
                   ],
@@ -1080,7 +1078,6 @@ class SettledScreen extends ConsumerWidget {
                   Divider(
                     height: 1,
                     indent: 72,
-                    color: theme.colorScheme.outline,
                   ),
                 tiles[i],
               ],

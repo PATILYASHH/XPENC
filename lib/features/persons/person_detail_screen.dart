@@ -318,12 +318,7 @@ class _PayeeActivity extends ConsumerWidget {
             child: Column(
               children: [
                 for (var i = 0; i < txs.length; i++) ...[
-                  if (i > 0)
-                    Divider(
-                      height: 1,
-                      indent: 44,
-                      color: theme.colorScheme.outlineVariant,
-                    ),
+                  if (i > 0) Divider(height: 1, indent: 44),
                   _PayeeTxRow(
                     tx: txs[i],
                     categoryName: categories[txs[i].categoryId]?.name,
@@ -801,7 +796,7 @@ class _MonthLabel extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 8),
-          Expanded(child: Divider(color: cs.outline, height: 1)),
+          Expanded(child: Divider(height: 1)),
           const SizedBox(width: 8),
           Text(
             count == 1 ? tr('1 entry') : tr('{0} entries', [count]),

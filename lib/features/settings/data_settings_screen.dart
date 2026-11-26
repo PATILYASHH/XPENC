@@ -50,7 +50,7 @@ class DataSettingsScreen extends ConsumerWidget {
                       );
                   },
                 ),
-                Divider(height: 1, indent: 60, color: cs.outline),
+                Divider(height: 1, indent: 60),
                 AppListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                   leading: AppIcon(Icons.delete_forever_outlined, color: cs.error),

@@ -46,7 +46,7 @@ class GuideScreen extends StatelessWidget {
             child: Column(
               children: [
                 for (var i = 0; i < appModeGuide.length; i++) ...[
-                  if (i > 0) Divider(height: 1, indent: 60, color: cs.outline),
+                  if (i > 0) Divider(height: 1, indent: 60),
                   AppListTile(
                     contentPadding: const EdgeInsets.symmetric(
                       horizontal: 16,
@@ -97,8 +97,7 @@ class GuideScreen extends StatelessWidget {
               child: Column(
                 children: [
                   for (var i = 0; i < section.shown.length; i++) ...[
-                    if (i > 0)
-                      Divider(height: 1, indent: 20, color: cs.outline),
+                    if (i > 0) Divider(height: 1, indent: 20),
                     _GuideTile(entry: section.shown[i]),
                   ],
                 ],

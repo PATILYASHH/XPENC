@@ -5,6 +5,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:go_router/go_router.dart';
 
 import '../widgets/glass_sheet.dart';
+import 'app_motion.dart';
 import 'glass.dart';
 import 'zoom_origin.dart';
 
@@ -198,10 +199,16 @@ Rect? _capsuleAround(BuildContext context) {
 /// [inner]'s. The page under is always wrapped — idle unless a page is
 /// growing over it — because changing the shape of its tree mid-push would
 /// remount the whole page.
+///
+/// [brisk] (Classic, see `AppMotion`) drops the morphs: every page — from
+/// the bar, a card or the ➕ alike — opens with [inner]'s own push, cut to
+/// [AppMotion.pushDuration]. A morph recorded for it goes unclaimed and
+/// expires on its own.
 class BarMorphTransitionsBuilder extends PageTransitionsBuilder {
-  const BarMorphTransitionsBuilder(this.inner);
+  const BarMorphTransitionsBuilder(this.inner, {this.brisk = false});
 
   final PageTransitionsBuilder inner;
+  final bool brisk;
 
   @override
   DelegatedTransitionBuilder? get delegatedTransition =>
@@ -209,7 +216,9 @@ class BarMorphTransitionsBuilder extends PageTransitionsBuilder {
 
   // Read when the route is created — just after the morph was recorded.
   @override
-  Duration get transitionDuration => GlassReveal.pending
+  Duration get transitionDuration => brisk
+      ? _shorter(inner.transitionDuration, AppMotion.pushDuration)
+      : GlassReveal.pending
       ? GlassReveal.duration
       : PageFromBar.pendingZoom
       ? PageFromBar.zoomDuration
@@ -218,13 +227,17 @@ class BarMorphTransitionsBuilder extends PageTransitionsBuilder {
       : inner.transitionDuration;
 
   @override
-  Duration get reverseTransitionDuration => GlassReveal.pending
+  Duration get reverseTransitionDuration => brisk
+      ? _shorter(inner.reverseTransitionDuration, AppMotion.popDuration)
+      : GlassReveal.pending
       ? GlassReveal.reverseDuration
       : PageFromBar.pendingZoom
       ? PageFromBar.zoomReverseDuration
       : PageFromBar.pending
       ? PageFromBar.reverseDuration
       : inner.reverseTransitionDuration;
+
+  static Duration _shorter(Duration a, Duration b) => a < b ? a : b;
 
   @override
   Widget buildTransitions<T>(
@@ -234,8 +247,22 @@ class BarMorphTransitionsBuilder extends PageTransitionsBuilder {
     Animation<double> secondaryAnimation,
     Widget child,
   ) {
-    // A page opened from the ➕ grows out of it, in every theme (Glass
-    // claims it a level up, for its page backdrop).
+    if (brisk) {
+      // Same tree shape as below (an idle [_Dim]), so a page doesn't remount
+      // when the theme switches between Classic and Noir.
+      return _Dim(
+        animation: kAlwaysDismissedAnimation,
+        child: inner.buildTransitions(
+          route,
+          context,
+          animation,
+          secondaryAnimation,
+          child,
+        ),
+      );
+    }
+    // A page opened from the ➕ grows out of it, in every theme but Classic
+    // (Glass claims it a level up, for its page backdrop).
     final reveal = GlassReveal.specFor(route, animation);
     if (reveal != null) {
       return GlassRevealTransition(

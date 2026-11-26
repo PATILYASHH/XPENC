@@ -8,6 +8,7 @@ import '../../data/tables.dart';
 import '../currency.dart';
 import '../money.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_motion.dart';
 import '../theme/glass.dart';
 import 'app_surfaces.dart';
 import '../../core/l10n/l10n.dart';
@@ -322,7 +323,7 @@ class AnimatedBalanceText extends StatelessWidget {
     }
     return TweenAnimationBuilder<int>(
       tween: IntTween(begin: 0, end: amount.paise),
-      duration: duration,
+      duration: AppMotion.capped(context, duration),
       curve: Curves.easeOutCubic,
       builder: (context, paise, _) =>
           BalanceText(Money(paise), style: style, currency: currency),

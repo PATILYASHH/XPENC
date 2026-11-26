@@ -188,7 +188,6 @@ class _CategoryList extends ConsumerWidget {
                         Divider(
                           height: 1,
                           indent: rows[i].isChild ? 72 : 60,
-                          color: theme.colorScheme.outline,
                         ),
                       _CategoryTile(
                         category: rows[i].category,

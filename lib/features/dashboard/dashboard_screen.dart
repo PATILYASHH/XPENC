@@ -133,7 +133,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         _CustomizeLink(onTap: _startEditing),
       const SizedBox(height: 32),
     ];
-    if (DesktopLayout.of(context)) {
+    // A PC, or a tablet with the room (landscape, mostly): the columns.
+    if (DesktopLayout.wideContent(context)) {
       return _LiveDashboard(
         child: _DesktopDashboard(shown: shown, item: _holdable, footer: footer),
       );
@@ -229,6 +230,8 @@ class _DesktopDashboard extends StatelessWidget {
               ],
             ),
           ),
+          // A tablet's corner bar floats over the foot.
+          const NavBarInsetSliver(),
         ],
       ),
     );
@@ -1410,10 +1413,10 @@ class _AccountsStrip extends ConsumerWidget {
       return const Padding(padding: _sectionPad, child: _InlineLoader());
     }
     final asOf = past ? _periodEndLabel(ref) : null;
-    // On a PC the accounts sit beside Total money as a list (see
-    // `_DesktopDashboard`) — a swiping strip belongs to a phone.
+    // On a PC (or a wide tablet) the accounts sit beside Total money as a
+    // list (see `_DesktopDashboard`) — a swiping strip belongs to a phone.
     final oneCard =
-        DesktopLayout.of(context) ||
+        DesktopLayout.wideContent(context) ||
         ref.watch(dashboardAccountsStyleProvider) ==
             DashboardAccountsStyle.oneCard;
     final title = asOf == null ? tr('Accounts') : tr('Accounts on {0}', [asOf]);
@@ -1686,7 +1689,6 @@ class _PersonsSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
     final past = ref.watch(viewingPastPeriodProvider);
     final persons = ref.watch(personsProvider).valueOrNull;
     final balances = past
@@ -1744,7 +1746,7 @@ class _PersonsSection extends ConsumerWidget {
                       youPay: totals.youPay,
                       past: past,
                     ),
-                    Divider(height: 1, color: theme.colorScheme.outline),
+                    Divider(height: 1),
                   ],
                   for (var i = 0; i < top.length; i++) ...[
                     if (i > 0)
@@ -1806,7 +1808,7 @@ class _DuesOwesRow extends StatelessWidget {
               Icons.south_west_rounded,
             ),
           ),
-          Container(width: 1, height: 40, color: theme.colorScheme.outline),
+          const SizedBox(height: 40, child: VerticalDivider(width: 1, thickness: 1)),
           Expanded(
             child: _column(
               theme,
@@ -2380,7 +2382,6 @@ class _SpendByCategorySection extends ConsumerWidget {
                             height: 1,
                             indent: 64,
                             endIndent: 16,
-                            color: theme.colorScheme.outlineVariant,
                           ),
                         _SpendCategoryTile(
                           row: r,
@@ -2853,7 +2854,6 @@ class _CardSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.only(bottom: 24),
       child: Column(
@@ -2873,7 +2873,6 @@ class _CardSection extends StatelessWidget {
                         height: 1,
                         indent: 16,
                         endIndent: 16,
-                        color: theme.colorScheme.outline,
                       ),
                     children[i],
                   ],

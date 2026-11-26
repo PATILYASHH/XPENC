@@ -34,15 +34,16 @@ class _HoldMenuGear extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
+    final look = _EditorLook.of(context);
     final glyphColor = hovered
-        ? Colors.white
+        ? (glass ? Colors.white : look.onAccent)
         : glass
         ? cs.secondary
-        : cs.onSurface;
+        : look.text;
     final glyph = AnimatedRotation(
       turns: hovered ? 0.25 : 0,
-      duration: const Duration(milliseconds: 360),
-      curve: Curves.easeOutBack,
+      duration: Duration(milliseconds: look.brisk ? 180 : 360),
+      curve: look.settle(Curves.easeOutBack),
       child: AppIcon(Icons.settings_rounded, size: 24, color: glyphColor),
     );
     final Widget disc;
@@ -60,14 +61,9 @@ class _HoldMenuGear extends StatelessWidget {
         duration: const Duration(milliseconds: 120),
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: hovered ? cs.secondary : cs.surfaceContainerHighest,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.3),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
+          color: hovered ? look.accent : look.card,
+          border: hovered ? null : look.border,
+          boxShadow: look.shadow,
         ),
         child: Center(child: glyph),
       );
@@ -101,7 +97,9 @@ class _HoldMenuGear extends StatelessWidget {
                 duration: const Duration(milliseconds: 120),
                 child: DecoratedBox(
                   decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.45),
+                    color: glass
+                        ? Colors.black.withValues(alpha: 0.45)
+                        : cs.inverseSurface,
                     borderRadius: BorderRadius.circular(999),
                   ),
                   child: Padding(
@@ -112,7 +110,7 @@ class _HoldMenuGear extends StatelessWidget {
                     child: Text(
                       tr('Edit'),
                       style: theme.textTheme.labelSmall?.copyWith(
-                        color: Colors.white,
+                        color: glass ? Colors.white : cs.onInverseSurface,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -134,12 +132,13 @@ void _openQuickActionsEditor(
   required bool glass,
   required Offset anchor,
 }) {
+  final brisk = AppMotion.isBrisk(context);
   Navigator.of(context, rootNavigator: true).push(
     PageRouteBuilder<void>(
       opaque: false,
       barrierDismissible: false,
-      transitionDuration: const Duration(milliseconds: 460),
-      reverseTransitionDuration: const Duration(milliseconds: 280),
+      transitionDuration: Duration(milliseconds: brisk ? 240 : 460),
+      reverseTransitionDuration: Duration(milliseconds: brisk ? 170 : 280),
       pageBuilder: (_, animation, _) => _QuickActionsEditor(
         animation: animation,
         glass: glass,
@@ -383,12 +382,13 @@ class _QuickActionsEditorState extends ConsumerState<_QuickActionsEditor> {
     final compact = trayBottom - top < 320;
 
     // The page under it: Glass's fan only glows and frosts it, the classic
-    // ring dims it — the editor starts from that look and deepens it.
+    // ring washes it over — the editor starts from that look and deepens it.
     final tone = AppSurface.of(context).tone;
-    final fanDim = widget.glass ? 0.0 : 0.55;
+    final look = _EditorLook.of(context);
+    final fanDim = widget.glass ? 0.0 : look.fanDim;
     final fanBlur = widget.glass ? 8.0 : 0.0;
-    const editDim = 0.62;
-    const editBlur = 14.0;
+    final editDim = look.night ? 0.62 : look.dim;
+    final editBlur = look.night ? 14.0 : 0.0;
     final dim = leaving ? editDim * v : ui.lerpDouble(fanDim, editDim, enter)!;
     final blur = leaving
         ? editBlur * v
@@ -405,7 +405,7 @@ class _QuickActionsEditorState extends ConsumerState<_QuickActionsEditor> {
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  ColoredBox(color: Colors.black.withValues(alpha: dim)),
+                  ColoredBox(color: look.scrim.withValues(alpha: dim)),
                   if (widget.glass)
                     DecoratedBox(
                       decoration: BoxDecoration(
@@ -465,8 +465,8 @@ class _QuickActionsEditorState extends ConsumerState<_QuickActionsEditor> {
             // they follow the animation exactly instead.
             duration: moving
                 ? Duration.zero
-                : const Duration(milliseconds: 320),
-            curve: Curves.easeOutBack,
+                : Duration(milliseconds: look.brisk ? 180 : 320),
+            curve: look.settle(Curves.easeOutBack),
             left: centres[k].dx - _bubble / 2,
             top: centres[k].dy - _bubble / 2,
             width: _bubble,
@@ -506,6 +506,7 @@ class _QuickActionsEditorState extends ConsumerState<_QuickActionsEditor> {
     bool compact,
   ) {
     final theme = Theme.of(context);
+    final look = _EditorLook.of(context);
     final selected = _selected;
     final picked = selected == null ? null : resolved[selected];
     final String hint;
@@ -526,8 +527,8 @@ class _QuickActionsEditorState extends ConsumerState<_QuickActionsEditor> {
         Text(
           tr('Edit quick actions'),
           style: theme.textTheme.titleLarge?.copyWith(
-            color: Colors.white,
-            fontWeight: FontWeight.w700,
+            color: look.text,
+            fontWeight: look.night ? FontWeight.w700 : null,
           ),
         ),
         if (!compact) ...[
@@ -541,7 +542,7 @@ class _QuickActionsEditorState extends ConsumerState<_QuickActionsEditor> {
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: theme.textTheme.bodyMedium?.copyWith(
-                color: Colors.white.withValues(alpha: 0.75),
+                color: look.textMuted,
               ),
             ),
           ),
@@ -585,16 +586,21 @@ class _QuickActionsEditorState extends ConsumerState<_QuickActionsEditor> {
     double opacity,
   ) {
     final cs = Theme.of(context).colorScheme;
+    final look = _EditorLook.of(context);
     final d = widget.glass ? _LiquidTabBar.height : _bubble;
     final cross = Transform.rotate(
       angle: math.pi / 4,
       child: AppIcon(
         widget.glass ? CupertinoIcons.add : Icons.add_rounded,
-        color: widget.glass ? Colors.white : cs.onSurface,
+        color: widget.glass ? Colors.white : look.text,
         size: 28,
       ),
     );
-    const check = AppIcon(Icons.check_rounded, color: Colors.white, size: 28);
+    final check = AppIcon(
+      Icons.check_rounded,
+      color: widget.glass ? Colors.white : look.onAccent,
+      size: 28,
+    );
     final glyphs = Stack(
       alignment: Alignment.center,
       children: [
@@ -620,7 +626,11 @@ class _QuickActionsEditorState extends ConsumerState<_QuickActionsEditor> {
       disc = DecoratedBox(
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: Color.lerp(cs.surfaceContainerHighest, cs.secondary, enter),
+          color: Color.lerp(look.card, look.accent, enter),
+          border: Border.all(
+            color: Color.lerp(look.edge, look.accent, enter)!,
+            width: look.edgeWidth,
+          ),
         ),
         child: Center(child: glyphs),
       );
@@ -683,7 +693,12 @@ class _EditBubbleState extends State<_EditBubble>
   @override
   void didUpdateWidget(_EditBubble old) {
     super.didUpdateWidget(old);
-    if (old.spec?.id != widget.spec?.id) _pop.forward(from: 0);
+    if (old.spec?.id != widget.spec?.id) {
+      _pop.duration = Duration(
+        milliseconds: _EditorLook.of(context).brisk ? 180 : 380,
+      );
+      _pop.forward(from: 0);
+    }
   }
 
   @override
@@ -695,15 +710,16 @@ class _EditBubbleState extends State<_EditBubble>
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final look = _EditorLook.of(context);
     final spec = widget.spec;
     final selected = widget.selected;
     final glyphColor = selected
-        ? Colors.white
+        ? (widget.glass ? Colors.white : look.onAccent)
         : spec == null
-        ? Colors.white.withValues(alpha: 0.8)
+        ? (widget.glass ? Colors.white.withValues(alpha: 0.8) : look.textMuted)
         : widget.glass
         ? cs.secondary
-        : cs.onSurface;
+        : look.text;
     final glyph = AppIcon(
       spec?.icon ?? Icons.add_rounded,
       size: 24,
@@ -729,22 +745,19 @@ class _EditBubbleState extends State<_EditBubble>
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           color: selected
-              ? cs.secondary
+              ? look.accent
               : spec == null
               ? Colors.transparent
-              : cs.surfaceContainerHighest,
-          border: spec == null && !selected
-              ? Border.all(color: Colors.white.withValues(alpha: 0.55))
-              : null,
-          boxShadow: spec == null
+              : look.card,
+          border: selected
               ? null
-              : [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.3),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
+              : spec == null
+              ? Border.all(
+                  color: look.textMuted.withValues(alpha: 0.6),
+                  width: look.edgeWidth,
+                )
+              : look.border,
+          boxShadow: spec == null ? null : look.shadow,
         ),
         child: Center(child: glyph),
       );
@@ -758,13 +771,15 @@ class _EditBubbleState extends State<_EditBubble>
         onTap: widget.onTap,
         child: AnimatedScale(
           scale: selected ? 1.15 : 1,
-          duration: const Duration(milliseconds: 200),
-          curve: Curves.easeOutBack,
+          duration: Duration(milliseconds: look.brisk ? 120 : 200),
+          curve: look.settle(Curves.easeOutBack),
           child: AnimatedBuilder(
             animation: _pop,
             child: disc,
             builder: (context, child) => Transform.scale(
-              scale: 0.6 + 0.4 * Curves.easeOutBack.transform(_pop.value),
+              scale:
+                  0.6 +
+                  0.4 * look.settle(Curves.easeOutBack).transform(_pop.value),
               child: child,
             ),
           ),
@@ -794,13 +809,17 @@ class _QuickActionTray extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final look = _EditorLook.of(context);
+    final radius = BorderRadius.circular(look.night ? 24 : look.radius);
     return ClipRRect(
-      borderRadius: BorderRadius.circular(24),
+      borderRadius: radius,
       child: DecoratedBox(
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.07),
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+          color: look.night ? Colors.white.withValues(alpha: 0.07) : look.card,
+          borderRadius: radius,
+          border: look.night
+              ? Border.all(color: Colors.white.withValues(alpha: 0.12))
+              : look.border,
         ),
         child: LayoutBuilder(
           builder: (context, constraints) {
@@ -816,7 +835,9 @@ class _QuickActionTray extends StatelessWidget {
                     child: Text(
                       title.toUpperCase(),
                       style: theme.textTheme.labelSmall?.copyWith(
-                        color: Colors.white.withValues(alpha: 0.55),
+                        color: look.night
+                            ? Colors.white.withValues(alpha: 0.55)
+                            : look.textMuted,
                         fontWeight: FontWeight.w700,
                         letterSpacing: 1.1,
                       ),
@@ -863,6 +884,9 @@ class _TrayTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
+    final look = _EditorLook.of(context);
+    final night = look.night;
+    final accent = night ? cs.secondary : look.accent;
     return Semantics(
       button: true,
       selected: inMenu,
@@ -886,14 +910,25 @@ class _TrayTile extends StatelessWidget {
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       color: inMenu
-                          ? cs.secondary
-                          : Colors.white.withValues(alpha: 0.12),
+                          ? accent
+                          : night
+                          ? Colors.white.withValues(alpha: 0.12)
+                          : Color.alphaBlend(
+                              look.text.withValues(alpha: 0.06),
+                              look.card,
+                            ),
                       border: isTarget
-                          ? Border.all(color: Colors.white, width: 2)
+                          ? Border.all(color: look.text, width: 2)
                           : null,
                     ),
                     child: Center(
-                      child: AppIcon(spec.icon, size: 22, color: Colors.white),
+                      child: AppIcon(
+                        spec.icon,
+                        size: 22,
+                        color: night || inMenu
+                            ? (night ? Colors.white : look.onAccent)
+                            : look.text,
+                      ),
                     ),
                   ),
                   Positioned(
@@ -901,19 +936,22 @@ class _TrayTile extends StatelessWidget {
                     top: -3,
                     child: AnimatedScale(
                       scale: inMenu ? 1 : 0,
-                      duration: const Duration(milliseconds: 220),
-                      curve: Curves.easeOutBack,
+                      duration: Duration(milliseconds: look.brisk ? 120 : 220),
+                      curve: look.settle(Curves.easeOutBack),
                       child: Container(
                         width: 18,
                         height: 18,
-                        decoration: const BoxDecoration(
+                        decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: Colors.white,
+                          color: night ? Colors.white : look.card,
+                          border: night
+                              ? null
+                              : Border.all(color: accent, width: 1.4),
                         ),
                         child: AppIcon(
                           Icons.check_rounded,
                           size: 13,
-                          color: cs.secondary,
+                          color: accent,
                         ),
                       ),
                     ),
@@ -927,7 +965,9 @@ class _TrayTile extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.center,
                 style: theme.textTheme.labelSmall?.copyWith(
-                  color: Colors.white.withValues(alpha: 0.88),
+                  color: night
+                      ? Colors.white.withValues(alpha: 0.88)
+                      : look.text,
                   fontSize: 10.5,
                   height: 1.15,
                 ),

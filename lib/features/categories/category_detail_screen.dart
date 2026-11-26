@@ -193,7 +193,6 @@ class _CategoryDetailScreenState extends ConsumerState<CategoryDetailScreen>
                         Divider(
                           height: 1,
                           indent: 60,
-                          color: theme.colorScheme.outline,
                         ),
                       _ShareRow(
                         category: sub,

@@ -9,6 +9,7 @@ import '../../core/currency.dart';
 import '../../core/l10n/l10n.dart';
 import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_motion.dart';
 import '../../core/theme/bar_page_transition.dart';
 import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/custom_icon_badge.dart';
@@ -341,7 +342,10 @@ class _Composition extends StatelessWidget {
               child: TweenAnimationBuilder<double>(
                 // The bar fills in from the left once, as the page lands.
                 tween: Tween(begin: 0, end: 1),
-                duration: const Duration(milliseconds: 520),
+                duration: AppMotion.capped(
+                  context,
+                  const Duration(milliseconds: 520),
+                ),
                 curve: Curves.easeOutCubic,
                 builder: (context, t, _) => Row(
                   children: [
@@ -456,8 +460,7 @@ class _GroupSection extends StatelessWidget {
             child: Column(
               children: [
                 for (var i = 0; i < group.accounts.length; i++) ...[
-                  if (i > 0)
-                    Divider(height: 1, indent: 70, color: cs.outlineVariant),
+                  if (i > 0) Divider(height: 1, indent: 70),
                   _AccountRow(placed: group.accounts[i]),
                 ],
               ],

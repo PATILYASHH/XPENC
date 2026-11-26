@@ -69,12 +69,7 @@ class _CountrySettingsScreenState extends ConsumerState<CountrySettingsScreen> {
             child: Column(
               children: [
                 for (final (i, c) in countries.indexed) ...[
-                  if (i > 0)
-                    Divider(
-                      height: 1,
-                      indent: 60,
-                      color: theme.colorScheme.outline,
-                    ),
+                  if (i > 0) Divider(height: 1, indent: 60),
                   AppListTile(
                     leading: Text(c.flag, style: const TextStyle(fontSize: 26)),
                     title: Text(c.name),

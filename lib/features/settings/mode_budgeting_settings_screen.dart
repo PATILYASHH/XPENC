@@ -58,7 +58,7 @@ class ModeBudgetingSettingsScreen extends ConsumerWidget {
                 ),
                 // Basic has no budgets at all.
                 if (appMode != AppMode.basic) ...[
-                  Divider(height: 1, indent: 60, color: cs.outline),
+                  Divider(height: 1, indent: 60),
                   AppListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                     leading: const AppIcon(Icons.event_repeat_outlined),
@@ -84,7 +84,7 @@ class ModeBudgetingSettingsScreen extends ConsumerWidget {
                 // Envelope mode / Ready to Assign is Pro-only (see AppMode)
                 // — Medium has budgets without it.
                 if (appMode == AppMode.pro) ...[
-                  Divider(height: 1, indent: 60, color: cs.outline),
+                  Divider(height: 1, indent: 60),
                   AppSwitchListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                     secondary: const AppIcon(Icons.savings_outlined),

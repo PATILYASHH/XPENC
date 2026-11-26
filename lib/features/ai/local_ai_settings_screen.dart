@@ -105,7 +105,7 @@ class LocalAiSettingsScreen extends ConsumerWidget {
                     trailing: const AppIcon(Icons.chevron_right_rounded),
                     onTap: () => context.push('/more/settings/local-ai/memory'),
                   ),
-                  Divider(height: 1, indent: 60, color: cs.outline),
+                  Divider(height: 1, indent: 60),
                   AppListTile(
                     leading: const AppIcon(Icons.forum_outlined),
                     title: const Tr('Ask Exo'),

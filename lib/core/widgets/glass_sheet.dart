@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/physics.dart';
 import 'package:flutter/rendering.dart';
 
+import '../layout/screen_layout.dart';
 import '../theme/glass.dart';
 
 /// The Glass tab bar's geometry, shared with the sheets that grow out of it
@@ -25,14 +26,31 @@ const double kGlassSheetSide = 8;
 /// screen whose sheets would have to jump in from a narrower one.
 const double kGlassBarMaxWidth = 640;
 
+/// One tab's width in a tablet's horizontal corner bar — the bar voice add
+/// opens in (the tabs themselves are a vertical rail there; see
+/// `app_shell.dart`'s `_TabletRail`).
+const double kTabletTabExtent = 80;
+
+/// That corner bar's row — four tabs' capsule, the gap, the ➕, and the
+/// bar's inset each side.
+const double kTabletBarRowWidth =
+    kGlassBarSide * 2 + kTabletTabExtent * 4 + kGlassAddGap + kGlassBarHeight;
+
+/// The space a tablet's bar keeps from the window's foot when there's no
+/// home indicator: it floats, so it stands clear of the edge.
+const double kTabletBarFoot = 16;
+
 /// The space under the bar (and under a sheet): the home indicator's, or 8 —
-/// what the bar's own `SafeArea(minimum: 8)` leaves, so the two line up.
-double glassBarBottom(MediaQueryData media) =>
-    math.max(8.0, media.padding.bottom);
+/// what the bar's own `SafeArea(minimum: 8)` leaves, so the two line up. A
+/// [tablet]'s corner bar ([DesktopLayout.isTablet]) floats higher
+/// ([kTabletBarFoot]).
+double glassBarBottom(MediaQueryData media, {bool tablet = false}) =>
+    math.max(tablet ? kTabletBarFoot : 8.0, media.padding.bottom);
 
 /// Where the shell's tab capsule sits on screen — the ➕ and its gap lie
 /// beyond its right end — or, with [withAdd] false, the bar-shaped capsule
-/// a page with no tab bar grows its sheets and pages out of.
+/// a page with no tab bar grows its sheets and pages out of. (A tablet's
+/// tabs are a rail nothing grows out of: its sheets take the second form.)
 Rect glassTabCapsuleRect(MediaQueryData media, {bool withAdd = true}) {
   final size = media.size;
   final row = math.min(size.width, kGlassBarMaxWidth);
@@ -423,7 +441,10 @@ class _GlassSheetFrameState extends State<_GlassSheetFrame>
     final route = widget.route;
     final media = MediaQuery.of(context);
     final tone = AppSurface.of(context).tone;
-    final bottom = glassBarBottom(media);
+    final bottom = glassBarBottom(
+      media,
+      tablet: DesktopLayout.isTablet(context),
+    );
     final maxHeight = route.isScrollControlled
         ? media.size.height - (route.useSafeArea ? media.padding.top : 0)
         : media.size.height * 9 / 16;

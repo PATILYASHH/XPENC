@@ -823,7 +823,6 @@ class _ApproveSheetState extends ConsumerState<_ApproveSheet> {
                   Divider(
                     height: 1,
                     indent: 64,
-                    color: theme.colorScheme.outline,
                   ),
                 _accountTile(theme, accounts[i], accountMap),
               ],

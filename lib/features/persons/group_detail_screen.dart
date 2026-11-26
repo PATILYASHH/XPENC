@@ -165,7 +165,7 @@ class GroupDetailScreen extends ConsumerWidget {
                     children: [
                       for (var i = 0; i < members.length; i++) ...[
                         if (i > 0)
-                          Divider(height: 1, indent: 60, color: cs.outline),
+                          Divider(height: 1, indent: 60),
                         _MemberRow(person: members[i], groupId: group.id),
                       ],
                     ],

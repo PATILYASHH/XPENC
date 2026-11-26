@@ -10,6 +10,112 @@ part of 'app_shell.dart';
 /// How long the bar has to be held before the editor opens.
 const kNavHoldToEdit = Duration(seconds: 1);
 
+/// What the hold-to-edit screens are drawn with — the bottom bar's editor,
+/// the ➕'s hold menu and its quick-actions editor. Glass ([night]) keeps
+/// its dark frost with white on it. Classic and Noir wash the page over in
+/// its own background and draw the controls the way their cards are drawn:
+/// Classic flat and hairline-edged, Noir in its heavy ink outline — both
+/// around the theme's accent, in the theme's own type. Motion follows the
+/// theme's [MotionStyle]: brisk is quick and plain, smooth and brisk settle
+/// without overshooting.
+@immutable
+class _EditorLook {
+  const _EditorLook._({
+    required this.night,
+    required this.scrim,
+    required this.text,
+    required this.textMuted,
+    required this.card,
+    required this.edge,
+    required this.edgeWidth,
+    required this.accent,
+    required this.onAccent,
+    required this.radius,
+    required this.shadow,
+    required this.motion,
+  });
+
+  factory _EditorLook.of(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final motion = AppMotion.of(context);
+    final shape = ThemeShape.of(context);
+    final night = AppSurface.of(context).isGlass;
+    // Noir's cards wear the palette's full ink border; the scheme's outline
+    // is a softened hairline (see `AppTheme`).
+    final inked = shape.borderWidth > 1;
+    final cardSide = switch (theme.cardTheme.shape) {
+      final OutlinedBorder border => border.side,
+      _ => null,
+    };
+    final accent = cs.secondary;
+    final dark = theme.brightness == Brightness.dark;
+    return _EditorLook._(
+      night: night,
+      scrim: night ? Colors.black : theme.scaffoldBackgroundColor,
+      text: night ? Colors.white : cs.onSurface,
+      textMuted: night
+          ? Colors.white.withValues(alpha: 0.75)
+          : cs.onSurfaceVariant,
+      card: theme.cardTheme.color ?? cs.surface,
+      edge: inked ? (cardSide?.color ?? cs.outline) : cs.outline,
+      edgeWidth: shape.borderWidth,
+      accent: accent,
+      onAccent: ThemeData.estimateBrightnessForColor(accent) == Brightness.dark
+          ? Colors.white
+          : Colors.black,
+      radius: shape.controlRadius + 4,
+      // Classic lifts its discs a little; Noir's ink outline does that.
+      shadow: inked
+          ? const []
+          : [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: dark ? 0.45 : 0.08),
+                blurRadius: 14,
+                offset: const Offset(0, 4),
+              ),
+            ],
+      motion: motion,
+    );
+  }
+
+  /// Glass: white on a dark frost. Every colour below is for the other
+  /// themes, where the editor sits on the page's own background.
+  final bool night;
+
+  /// What the page is washed over with — at [dim], or [fanDim] for the
+  /// hold menu.
+  final Color scrim;
+  final Color text;
+  final Color textMuted;
+
+  /// Discs, pills, the tray and the lens: the theme's card.
+  final Color card;
+  final Color edge;
+  final double edgeWidth;
+
+  /// The choice, the picked spot, Done.
+  final Color accent;
+  final Color onAccent;
+  final double radius;
+  final List<BoxShadow> shadow;
+  final MotionStyle motion;
+
+  /// How opaque [scrim] gets under an editor and under the hold menu.
+  double get dim => night ? 0.55 : 0.94;
+  double get fanDim => night ? 0.55 : 0.86;
+
+  /// [curve] as Glass has it, or a plain ease-out where the theme settles
+  /// without a bounce.
+  Curve settle(Curve curve) =>
+      motion == MotionStyle.fluid ? curve : Curves.easeOutCubic;
+
+  bool get brisk => motion == MotionStyle.brisk;
+
+  /// The theme's card edge, for a disc, pill or panel.
+  Border get border => Border.all(color: edge, width: edgeWidth);
+}
+
 /// Wraps the bar's tabs: a [kNavHoldToEdit] hold calls [onTriggered] with
 /// the wrapped area's on-screen rect. Built on a long-press recognizer, so
 /// once the hold wins, the tab under the finger isn't also tapped.
@@ -104,12 +210,13 @@ void _openNavEditor(
   required Rect bar,
   required bool glass,
 }) {
+  final brisk = AppMotion.isBrisk(context);
   Navigator.of(context, rootNavigator: true).push(
     PageRouteBuilder<void>(
       opaque: false,
       barrierDismissible: false,
-      transitionDuration: const Duration(milliseconds: 560),
-      reverseTransitionDuration: const Duration(milliseconds: 300),
+      transitionDuration: Duration(milliseconds: brisk ? 260 : 560),
+      reverseTransitionDuration: Duration(milliseconds: brisk ? 180 : 300),
       pageBuilder: (_, animation, _) => _NavEditor(
         animation: animation,
         layout: layout,
@@ -198,10 +305,11 @@ class _NavEditorState extends ConsumerState<_NavEditor> {
     if (best == current) return;
     _driven++;
     try {
+      final look = _EditorLook.of(context);
       await wheel.animateToItem(
         best,
-        duration: const Duration(milliseconds: 420),
-        curve: Curves.easeOutBack,
+        duration: Duration(milliseconds: look.brisk ? 220 : 420),
+        curve: look.settle(Curves.easeOutBack),
       );
     } finally {
       _driven--;
@@ -266,6 +374,7 @@ class _NavEditorState extends ConsumerState<_NavEditor> {
       2 * ext - (size.height - widget.bar.bottom) + 16,
     );
     final wheelHeight = ext * 5;
+    final look = _EditorLook.of(context);
 
     final appear = CurvedAnimation(
       parent: widget.animation,
@@ -274,7 +383,7 @@ class _NavEditorState extends ConsumerState<_NavEditor> {
     );
     final pop = CurvedAnimation(
       parent: widget.animation,
-      curve: Curves.easeOutBack,
+      curve: look.settle(Curves.easeOutBack),
       reverseCurve: Curves.easeInCubic,
     );
 
@@ -290,17 +399,25 @@ class _NavEditorState extends ConsumerState<_NavEditor> {
           final lensMid = lens.center.dy;
           return Stack(
             children: [
-              // The page dims and frosts; a tap on it is "Done".
+              // The page dims and frosts (Glass) or washes over in its own
+              // background; a tap on it is "Done".
               Positioned.fill(
                 child: GestureDetector(
                   behavior: HitTestBehavior.opaque,
                   onTap: _done,
-                  child: BackdropFilter(
-                    filter: ui.ImageFilter.blur(sigmaX: 10 * a, sigmaY: 10 * a),
-                    child: ColoredBox(
-                      color: Colors.black.withValues(alpha: 0.55 * a),
-                    ),
-                  ),
+                  child: look.night
+                      ? BackdropFilter(
+                          filter: ui.ImageFilter.blur(
+                            sigmaX: 10 * a,
+                            sigmaY: 10 * a,
+                          ),
+                          child: ColoredBox(
+                            color: look.scrim.withValues(alpha: look.dim * a),
+                          ),
+                        )
+                      : ColoredBox(
+                          color: look.scrim.withValues(alpha: look.dim * a),
+                        ),
                 ),
               ),
               // The lifted bar: the lens each wheel's choice sits in.
@@ -308,7 +425,7 @@ class _NavEditorState extends ConsumerState<_NavEditor> {
                 rect: lens,
                 child: Transform.scale(
                   scale: 0.96 + 0.04 * pop.value,
-                  child: _lens(context),
+                  child: _lens(context, look),
                 ),
               ),
               for (var i = 0; i < widget.slots.length; i++)
@@ -317,7 +434,7 @@ class _NavEditorState extends ConsumerState<_NavEditor> {
                   width: widget.slots[i].width,
                   top: lensMid - wheelHeight / 2,
                   height: wheelHeight,
-                  child: _wheelIn(i, showLabels),
+                  child: _wheelIn(i, showLabels, look),
                 ),
               // Title, hint and controls, above the wheels.
               Positioned(
@@ -328,7 +445,7 @@ class _NavEditorState extends ConsumerState<_NavEditor> {
                   opacity: a,
                   child: Transform.translate(
                     offset: Offset(0, 16 * (1 - a)),
-                    child: _header(context, showLabels),
+                    child: _header(context, showLabels, look),
                   ),
                 ),
               ),
@@ -351,7 +468,7 @@ class _NavEditorState extends ConsumerState<_NavEditor> {
     );
   }
 
-  Widget _lens(BuildContext context) {
+  Widget _lens(BuildContext context, _EditorLook look) {
     final cs = Theme.of(context).colorScheme;
     if (widget.glass) {
       final tone = AppSurface.of(context).tone;
@@ -362,29 +479,25 @@ class _NavEditorState extends ConsumerState<_NavEditor> {
         child: const SizedBox.expand(),
       );
     }
+    // The bar, lifted: a card ringed in the accent.
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: cs.surfaceContainerHigh,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: cs.secondary.withValues(alpha: 0.6)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.3),
-            blurRadius: 24,
-            offset: const Offset(0, 8),
-          ),
-        ],
+        color: look.card,
+        borderRadius: BorderRadius.circular(look.radius),
+        border: Border.all(color: look.accent, width: look.edgeWidth + 0.6),
+        boxShadow: look.shadow,
       ),
     );
   }
 
-  /// Wheel [i], dealt in a beat after the one before it.
-  Widget _wheelIn(int i, bool showLabels) {
-    final start = 0.12 + 0.08 * i;
+  /// Wheel [i], dealt in a beat after the one before it — all at once under
+  /// a brisk theme.
+  Widget _wheelIn(int i, bool showLabels, _EditorLook look) {
+    final start = look.brisk ? 0.0 : 0.12 + 0.08 * i;
     final t = Interval(
       start,
-      (start + 0.6).clamp(0.0, 1.0),
-      curve: Curves.easeOutBack,
+      look.brisk ? 1.0 : (start + 0.6).clamp(0.0, 1.0),
+      curve: look.settle(Curves.easeOutBack),
     ).transform(widget.animation.value);
     final fade = widget.animation.status == AnimationStatus.reverse
         ? widget.animation.value
@@ -392,7 +505,7 @@ class _NavEditorState extends ConsumerState<_NavEditor> {
     return Opacity(
       opacity: fade.clamp(0.0, 1.0),
       child: Transform.scale(
-        scale: 0.7 + 0.3 * t,
+        scale: look.brisk ? 0.94 + 0.06 * t : 0.7 + 0.3 * t,
         child: NotificationListener<ScrollEndNotification>(
           onNotification: (_) {
             // After this frame: the wheel's selected item is final by then.
@@ -419,6 +532,7 @@ class _NavEditorState extends ConsumerState<_NavEditor> {
                   _ModuleChip(
                     spec: AppShell._modules[id]!,
                     glass: widget.glass,
+                    look: look,
                     inLens: _centred[i] == id,
                     required: id == bottomNavRequiredId,
                     showLabel: showLabels,
@@ -435,7 +549,7 @@ class _NavEditorState extends ConsumerState<_NavEditor> {
     );
   }
 
-  Widget _header(BuildContext context, bool showLabels) {
+  Widget _header(BuildContext context, bool showLabels, _EditorLook look) {
     final theme = Theme.of(context);
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -443,17 +557,16 @@ class _NavEditorState extends ConsumerState<_NavEditor> {
         Text(
           tr('Edit bottom bar'),
           style: theme.textTheme.titleLarge?.copyWith(
-            color: Colors.white,
-            fontWeight: FontWeight.w700,
+            color: look.text,
+            // The theme's own title weight outside Glass (Noir's is heavier).
+            fontWeight: look.night ? FontWeight.w700 : null,
           ),
         ),
         const SizedBox(height: 4),
         Text(
           tr('Scroll each tab to choose what goes there.'),
           textAlign: TextAlign.center,
-          style: theme.textTheme.bodyMedium?.copyWith(
-            color: Colors.white.withValues(alpha: 0.75),
-          ),
+          style: theme.textTheme.bodyMedium?.copyWith(color: look.textMuted),
         ),
         const SizedBox(height: 14),
         Wrap(
@@ -499,6 +612,7 @@ class _ModuleChip extends StatelessWidget {
   const _ModuleChip({
     required this.spec,
     required this.glass,
+    required this.look,
     required this.inLens,
     required this.required,
     required this.showLabel,
@@ -508,6 +622,7 @@ class _ModuleChip extends StatelessWidget {
 
   final _TabSpec spec;
   final bool glass;
+  final _EditorLook look;
   final bool inLens;
   final bool required;
   final bool showLabel;
@@ -518,31 +633,48 @@ class _ModuleChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
-    final accent = theme.brightness == Brightness.dark
+    final night = look.night;
+    final accent = !night
+        ? look.accent
+        : theme.brightness == Brightness.dark
         ? const Color(0xFF8CCBFF)
         : cs.secondary;
     final glyphs = glass ? _glassIcons[spec.branch] : null;
     final icon = inLens
         ? (glyphs?.$2 ?? spec.activeIcon)
         : (glyphs?.$1 ?? spec.icon);
-    final color = inLens ? accent : Colors.white.withValues(alpha: 0.9);
+    final color = inLens
+        ? accent
+        : night
+        ? Colors.white.withValues(alpha: 0.9)
+        : look.text;
+    final duration = Duration(milliseconds: look.brisk ? 140 : 220);
+    final curve = look.settle(Curves.easeOutBack);
     return Semantics(
       label: spec.label,
       selected: inLens,
       child: Center(
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 220),
-          curve: Curves.easeOutBack,
+          duration: duration,
+          curve: curve,
           width: inLens ? width - 8 : 48,
           height: inLens ? height - 8 : 48,
           decoration: BoxDecoration(
             color: inLens
-                ? Colors.white.withValues(alpha: 0)
-                : Colors.white.withValues(alpha: 0.14),
+                ? look.card.withValues(alpha: 0)
+                : night
+                ? Colors.white.withValues(alpha: 0.14)
+                : look.card,
             borderRadius: BorderRadius.circular(24),
-            border: Border.all(
-              color: Colors.white.withValues(alpha: inLens ? 0 : 0.18),
-            ),
+            border: night
+                ? Border.all(
+                    color: Colors.white.withValues(alpha: inLens ? 0 : 0.18),
+                  )
+                : Border.all(
+                    color: inLens ? look.edge.withValues(alpha: 0) : look.edge,
+                    width: look.edgeWidth,
+                  ),
+            boxShadow: night || inLens ? null : look.shadow,
           ),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -552,8 +684,8 @@ class _ModuleChip extends StatelessWidget {
                 children: [
                   AnimatedScale(
                     scale: inLens ? 1.12 : 0.9,
-                    duration: const Duration(milliseconds: 220),
-                    curve: Curves.easeOutBack,
+                    duration: duration,
+                    curve: curve,
                     child: AppIcon(icon, size: 24, color: color),
                   ),
                   if (required && inLens)
@@ -580,7 +712,7 @@ class _ModuleChip extends StatelessWidget {
                       style: theme.textTheme.labelSmall?.copyWith(
                         color: color,
                         fontSize: 10.5,
-                        fontWeight: FontWeight.w700,
+                        fontWeight: night ? FontWeight.w700 : null,
                       ),
                     ),
                   ),
@@ -613,16 +745,33 @@ class _EditorPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final look = _EditorLook.of(context);
     final enabled = onTap != null;
-    final bg = filled
-        ? cs.secondary
-        : Colors.white.withValues(alpha: selected ? 0.26 : 0.12);
-    final fg = Colors.white.withValues(alpha: enabled ? 1 : 0.4);
+    final Color bg;
+    final Color base;
+    if (look.night) {
+      bg = filled
+          ? cs.secondary
+          : Colors.white.withValues(alpha: selected ? 0.26 : 0.12);
+      base = Colors.white;
+    } else {
+      bg = filled
+          ? look.accent
+          : selected
+          ? Color.alphaBlend(look.accent.withValues(alpha: 0.16), look.card)
+          : look.card;
+      base = filled ? look.onAccent : look.text;
+    }
+    final fg = base.withValues(alpha: enabled ? 1 : 0.4);
     return SpringBounce(
       pressedScale: 0.92,
       child: Material(
         color: bg,
-        shape: const StadiumBorder(),
+        shape: StadiumBorder(
+          side: look.night || filled
+              ? BorderSide.none
+              : BorderSide(color: look.edge, width: look.edgeWidth),
+        ),
         child: InkWell(
           customBorder: const StadiumBorder(),
           onTap: onTap,
@@ -635,7 +784,11 @@ class _EditorPill extends StatelessWidget {
                 const SizedBox(width: 6),
                 Text(
                   label,
-                  style: TextStyle(color: fg, fontWeight: FontWeight.w700),
+                  style: look.night
+                      ? TextStyle(color: fg, fontWeight: FontWeight.w700)
+                      : Theme.of(
+                          context,
+                        ).textTheme.labelLarge?.copyWith(color: fg),
                 ),
               ],
             ),
@@ -654,10 +807,12 @@ class _HintPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final look = _EditorLook.of(context);
+    final cs = Theme.of(context).colorScheme;
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: 0, end: 1),
-      duration: const Duration(milliseconds: 320),
-      curve: Curves.easeOutBack,
+      duration: Duration(milliseconds: look.brisk ? 160 : 320),
+      curve: look.settle(Curves.easeOutBack),
       builder: (context, v, child) => Opacity(
         opacity: v.clamp(0.0, 1.0),
         child: Transform.scale(scale: 0.85 + 0.15 * v, child: child),
@@ -665,7 +820,9 @@ class _HintPill extends StatelessWidget {
       child: Center(
         child: DecoratedBox(
           decoration: BoxDecoration(
-            color: Colors.black.withValues(alpha: 0.7),
+            color: look.night
+                ? Colors.black.withValues(alpha: 0.7)
+                : cs.inverseSurface,
             borderRadius: BorderRadius.circular(999),
           ),
           child: Padding(
@@ -673,7 +830,10 @@ class _HintPill extends StatelessWidget {
             child: Text(
               text,
               textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.white, fontSize: 13),
+              style: TextStyle(
+                color: look.night ? Colors.white : cs.onInverseSurface,
+                fontSize: 13,
+              ),
             ),
           ),
         ),

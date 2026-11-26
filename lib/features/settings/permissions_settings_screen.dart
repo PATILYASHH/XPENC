@@ -131,7 +131,7 @@ class _PermissionsSettingsScreenState
             child: Column(
               children: [
                 for (final (i, p) in AppPermission.values.indexed) ...[
-                  if (i > 0) Divider(height: 1, color: cs.outline),
+                  if (i > 0) Divider(height: 1),
                   _PermissionTile(
                     permission: p,
                     state: states?[p],
@@ -151,7 +151,7 @@ class _PermissionsSettingsScreenState
                   subtitle:
                       tr('Re-schedules your reminders after the phone restarts'),
                 ),
-                Divider(height: 1, color: cs.outline),
+                Divider(height: 1),
                 _InfoTile(
                   icon: Icons.fingerprint_rounded,
                   title: tr('Biometrics'),
@@ -171,14 +171,14 @@ class _PermissionsSettingsScreenState
                   subtitle: tr('XPENC cannot connect to the internet — your '
                       'data never leaves this device'),
                 ),
-                Divider(height: 1, color: cs.outline),
+                Divider(height: 1),
                 _InfoTile(
                   icon: Icons.sms_outlined,
                   title: 'SMS',
                   subtitle: tr('Bank messages come in only when you share one '
                       'to XPENC'),
                 ),
-                Divider(height: 1, color: cs.outline),
+                Divider(height: 1),
                 _InfoTile(
                   icon: Icons.location_off_outlined,
                   title: tr('Location, microphone, phone'),

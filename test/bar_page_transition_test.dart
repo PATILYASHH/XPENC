@@ -4,10 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:xpenc/core/routing/app_router.dart';
+import 'package:xpenc/core/theme/app_colors.dart';
 import 'package:xpenc/core/theme/app_theme.dart';
 import 'package:xpenc/core/theme/bar_page_transition.dart';
 import 'package:xpenc/core/theme/glass.dart';
 import 'package:xpenc/core/theme/theme_preset.dart';
+import 'package:xpenc/core/theme/theme_shape.dart';
 import 'package:xpenc/core/widgets/glass_sheet.dart';
 import 'package:xpenc/data/database.dart';
 import 'package:xpenc/data/providers.dart';
@@ -123,10 +125,8 @@ void main() {
     await tester.pump(const Duration(seconds: 1));
   });
 
-  testWidgets('Classic: the page rises out of the bottom bar too', (
-    tester,
-  ) async {
-    await pumpHub(tester, AppTheme.light);
+  testWidgets('Noir: the page rises out of the bottom bar too', (tester) async {
+    await pumpHub(tester, AppTheme.of(AppPalettes.noirLight, ThemeShape.noir));
     final hub = tester.state<ScrollableState>(find.byType(Scrollable).first);
     await openAccounts(tester);
     final page = tester.state(find.byType(AccountsScreen));
@@ -138,6 +138,45 @@ void main() {
     await tester.binding.handlePopRoute();
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 600));
+    await settle(tester);
+    expect(find.byType(AccountsScreen), findsNothing);
+    expect(
+      identical(
+        tester.state<ScrollableState>(find.byType(Scrollable).first),
+        hub,
+      ),
+      isTrue,
+    );
+    expect(tester.takeException(), isNull);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump(const Duration(seconds: 1));
+  });
+
+  testWidgets('Classic: a quick plain push, no morph, and back', (
+    tester,
+  ) async {
+    await pumpHub(tester, AppTheme.light);
+    final hub = tester.state<ScrollableState>(find.byType(Scrollable).first);
+    await tester.tap(find.text('Accounts').hitTestable().first);
+    for (var f = 0; f < 6; f++) {
+      await tester.pump();
+    }
+    expect(find.byType(BarPageTransition), findsNothing);
+    expect(find.byType(GlassRevealTransition), findsNothing);
+    final route = ModalRoute.of(tester.element(find.byType(AccountsScreen)))!;
+    expect(route.transitionDuration, AppMotion.pushDuration);
+    expect(route.reverseTransitionDuration, AppMotion.popDuration);
+    final page = tester.state(find.byType(AccountsScreen));
+
+    await tester.pump(AppMotion.pushDuration);
+    await settle(tester);
+    expect(tester.getRect(find.byType(AccountsScreen)).height, 780);
+    expect(identical(tester.state(find.byType(AccountsScreen)), page), isTrue);
+
+    await tester.binding.handlePopRoute();
+    await tester.pump();
+    await tester.pump(AppMotion.popDuration);
     await settle(tester);
     expect(find.byType(AccountsScreen), findsNothing);
     expect(

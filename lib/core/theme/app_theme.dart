@@ -11,6 +11,7 @@ import 'font_options.dart';
 import 'glass.dart';
 import 'theme_shape.dart';
 
+export 'app_motion.dart' show AppMotion, MotionStyle;
 export 'glass.dart' show AppSurface, GlassBackdrop, GlassTone;
 export 'theme_shape.dart' show SurfaceStyle;
 
@@ -106,10 +107,14 @@ class AppTheme {
     );
 
     final theme = base.copyWith(
-      extensions: [AppSurface(style: shape.surfaceStyle, backdrop: wallpaper)],
+      extensions: [
+        AppSurface(style: shape.surfaceStyle, backdrop: wallpaper),
+        ThemeShapeScope(shape),
+      ],
       // Each platform keeps the SDK's own default transition — Glass only
       // slips its backdrop underneath — plus the tab bar transforming into
-      // pages opened from it (see [PageFromBar]).
+      // pages opened from it (see [PageFromBar]). Classic keeps just the
+      // platform's push, shortened ([AppMotion]).
       pageTransitionsTheme: PageTransitionsTheme(
         builders: {
           for (final e in base.pageTransitionsTheme.builders.entries)
@@ -117,7 +122,10 @@ class AppTheme {
                 ? _BackdropTransitionsBuilder(
                     BarMorphTransitionsBuilder(e.value),
                   )
-                : BarMorphTransitionsBuilder(e.value),
+                : BarMorphTransitionsBuilder(
+                    e.value,
+                    brisk: shape.motion == MotionStyle.brisk,
+                  ),
         },
       ),
       popupMenuTheme: glass ? PopupMenuThemeData(color: tone.solidFrost) : null,
@@ -180,7 +188,12 @@ class AppTheme {
           side: borderSide,
         ),
       ),
-      dividerTheme: DividerThemeData(color: hairline, thickness: 1, space: 1),
+      // Noir separates rows by spacing alone ([ThemeShape.dividers]).
+      dividerTheme: DividerThemeData(
+        color: shape.dividers ? hairline : Colors.transparent,
+        thickness: 1,
+        space: 1,
+      ),
       listTileTheme: ListTileThemeData(
         iconColor: p.textMuted,
         textColor: p.text,
@@ -211,7 +224,10 @@ class AppTheme {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(radius),
           ),
-          textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+          textStyle: TextStyle(
+            fontSize: 16,
+            fontWeight: _shiftWeight(FontWeight.w600, shape.baseWeightDelta),
+          ),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(

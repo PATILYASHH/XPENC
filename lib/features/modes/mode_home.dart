@@ -218,7 +218,6 @@ class _WhereItWent extends ConsumerWidget {
                   Divider(
                     height: 1,
                     indent: 60,
-                    color: theme.colorScheme.outline,
                   ),
                 ModeShareRow(
                   iconKey: categories[e.key]?.iconKey ?? 'other',
@@ -256,7 +255,7 @@ class _PeopleCard extends ConsumerWidget {
       child: Column(
         children: [
           for (final (i, p) in people.indexed) ...[
-            if (i > 0) Divider(height: 1, indent: 60, color: cs.outline),
+            if (i > 0) Divider(height: 1, indent: 60),
             Builder(
               builder: (context) {
                 final bal = balances[p.id] ?? const Money.zero();

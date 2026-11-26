@@ -7,10 +7,13 @@ import 'package:flutter/services.dart';
 
 import '../app_icons.dart';
 import '../layout/desktop.dart';
+import '../theme/app_motion.dart';
 import '../theme/glass.dart';
+import '../theme/theme_shape.dart';
 import '../theme/zoom_origin.dart';
 import 'glass_sheet.dart';
 import 'nav_bar_inset.dart';
+import 'sharp_glyphs.dart';
 
 export 'glass_sheet.dart' show GlassBarScope, GlassSheetRoute;
 
@@ -76,7 +79,9 @@ class AppCard extends StatelessWidget {
 
 /// [Icon], with the same arguments. Under Glass, the chrome glyphs swap for
 /// their SF-Symbols-style Cupertino counterparts (see [_glassGlyphs]);
-/// anything without one — category icons included — stays as given.
+/// anything without one — category icons included — stays as given. Under
+/// a theme with [ThemeShape.sharpIcons] (Noir) a rounded glyph turns
+/// square-cornered instead (see [sharpGlyphs]).
 class AppIcon extends StatelessWidget {
   const AppIcon(this.icon, {super.key, this.size, this.color});
 
@@ -86,9 +91,11 @@ class AppIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final glyph = icon == null || !AppSurface.of(context).isGlass
-        ? null
-        : _glassGlyphs[icon];
+    final glass = AppSurface.of(context).isGlass;
+    if (icon != null && !glass && ThemeShape.of(context).sharpIcons) {
+      return Icon(sharpGlyphs[icon] ?? icon, size: size, color: color);
+    }
+    final glyph = icon == null || !glass ? null : _glassGlyphs[icon];
     if (glyph == null) return Icon(icon, size: size, color: color);
     final (data, scale) = glyph;
     final base = size ?? IconTheme.of(context).size ?? 24;
@@ -282,7 +289,8 @@ Widget? glassLeadingTile(BuildContext context, Widget? leading) {
 /// way); elsewhere they lay out exactly as on a plain AppBar.
 ///
 /// On a PC ([DesktopLayout]) a page the sidebar leads to has no back arrow:
-/// it's somewhere you went, not something to go back from.
+/// it's somewhere you went, not something to go back from. On a tablet such
+/// a page has the ☰ there instead ([navMenuLeading]).
 class AppTopBar extends StatelessWidget implements PreferredSizeWidget {
   const AppTopBar({
     super.key,
@@ -312,7 +320,9 @@ class AppTopBar extends StatelessWidget implements PreferredSizeWidget {
   Widget build(BuildContext context) {
     final actions = this.actions;
     return AppBar(
-      leading: leading,
+      leading:
+          leading ??
+          (automaticallyImplyLeading ? navMenuLeading(context) : null),
       automaticallyImplyLeading:
           automaticallyImplyLeading && impliesBackArrow(context),
       title: title,
@@ -609,6 +619,13 @@ Future<T?> showAppSheet<T>({
       useRootNavigator: useRootNavigator,
       shape: shape,
       useSafeArea: useSafeArea,
+      // Classic: up a little quicker than Material's 250 ms, down quicker.
+      sheetAnimationStyle: AppMotion.isBrisk(context)
+          ? const AnimationStyle(
+              duration: Duration(milliseconds: 200),
+              reverseDuration: Duration(milliseconds: 150),
+            )
+          : null,
     );
   }
   return pushGlassSheet<T>(

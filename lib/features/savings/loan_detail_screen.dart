@@ -336,7 +336,7 @@ class LoanDetailScreen extends ConsumerWidget {
   }
 
   Widget _divider(ThemeData theme) =>
-      Divider(height: 1, color: theme.colorScheme.outline);
+      Divider(height: 1);
 
   Future<void> _showActions(
     BuildContext context,
