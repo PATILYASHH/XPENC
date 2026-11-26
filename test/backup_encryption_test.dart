@@ -31,6 +31,14 @@ class _FakePathProvider extends PathProviderPlatform
 /// Fast enough for tests; the real count is checked once, on its own.
 const _iterations = 1000;
 const _password = 'correct horse battery';
+const _phraseA = [
+  'anchor', 'apple', 'arrow', 'autumn', 'banana', //
+  'basket', 'beach', 'bear', 'bell', 'bench',
+];
+const _phraseB = [
+  'river', 'robin', 'rocket', 'rose', 'saddle', //
+  'saffron', 'sail', 'salmon', 'sand', 'sapphire',
+];
 
 /// Encrypted backups (GitHub #41), end to end on the host: two "phones",
 /// each a database, a backup folder and a key store of its own.
@@ -53,22 +61,28 @@ void main() {
   });
 
   /// [prompt]: the passwords typed, in order, until one works or they run
-  /// out (then it gives up). Every attempt's result lands in [results].
-  ({AppDatabase db, BackupService service, List<bool> results}) phone(
-    String name, {
-    List<String>? prompt,
-  }) {
+  /// out (then it gives up). Every attempt's result lands in [results], and
+  /// what each prompt asked for in [asked].
+  ({
+    AppDatabase db,
+    BackupService service,
+    List<bool> results,
+    List<BackupSecret> asked,
+  })
+  phone(String name, {List<String>? prompt}) {
     final db = AppDatabase(NativeDatabase.memory());
     dbs.add(db);
     final dir = Directory('${root.path}/$name')..createSync();
     final results = <bool>[];
+    final asked = <BackupSecret>[];
     final service = BackupService(
       db,
       appFolder: AppFolderBackups(root: () async => dir),
       keys: BackupKeys(root: () async => dir),
       askPassword: prompt == null
           ? null
-          : (attempt) async {
+          : (attempt, secret) async {
+              asked.add(secret);
               for (final p in prompt) {
                 final ok = await attempt(p);
                 results.add(ok);
@@ -77,7 +91,7 @@ void main() {
               return false;
             },
     );
-    return (db: db, service: service, results: results);
+    return (db: db, service: service, results: results, asked: asked);
   }
 
   Future<void> addAccount(AppDatabase db, String name) => db.addAccount(
@@ -323,7 +337,7 @@ void main() {
       db,
       appFolder: AppFolderBackups(root: () async => bDir),
       keys: bKeys,
-      askPassword: (attempt) async {
+      askPassword: (attempt, _) async {
         final ok = await attempt(_password);
         results.add(ok);
         return ok;
@@ -353,6 +367,144 @@ void main() {
     )!;
     final (json, _) = await sealed.openWithPassword(_password);
     expect(json, '{"a":1}');
+  });
+
+  // ── The recovery phrase as the backup key (GitHub #210) ────────────────
+
+  test(
+    'the recovery phrase locks backups, and opens them on another phone',
+    () async {
+      final a = phone('a');
+      await addAccount(a.db, 'Phrase Savings ICICI');
+      await a.db.setMasterPhrase(_phraseA);
+
+      // One slipped word must not lock backups behind an unknown phrase.
+      await expectLater(
+        a.service.encryptBackupsWithRecoveryPhrase([
+          ..._phraseA.take(9),
+          'tiger',
+        ], iterations: _iterations),
+        throwsArgumentError,
+      );
+      expect(await a.service.backupLock(), BackupLock.none);
+
+      await a.service.encryptBackupsWithRecoveryPhrase(
+        _phraseA,
+        iterations: _iterations,
+      );
+      expect(await a.service.backupLock(), BackupLock.recoveryPhrase);
+      expect(await a.service.encryptsBackups(), isTrue);
+
+      final text = await backupText(a.service);
+      expect(text, isNot(contains('Phrase Savings')));
+      final json = jsonDecode(text) as Map<String, dynamic>;
+      expect(json['lockedWith'], BackupCrypto.lockedWithRecoveryPhrase);
+
+      final b = phone(
+        'b',
+        prompt: [
+          BackupCrypto.phrasePassword(_phraseB),
+          BackupCrypto.phrasePassword(_phraseA),
+        ],
+      );
+      await b.service.restoreFromContent(text);
+      expect(b.asked, [BackupSecret.recoveryPhrase]);
+      expect(b.results, [false, true]);
+      expect(await accountNames(b.db), ['Phrase Savings ICICI']);
+
+      // Without the hint (an XPENC from before #210 reads it this way), the
+      // words typed as a password still open it.
+      final c = phone('c', prompt: [BackupCrypto.phrasePassword(_phraseA)]);
+      await c.service.restoreFromContent(
+        jsonEncode({...json}..remove('lockedWith')),
+      );
+      expect(c.asked, [BackupSecret.password]);
+      expect(await accountNames(c.db), ['Phrase Savings ICICI']);
+    },
+  );
+
+  test(
+    'a new recovery phrase takes over; older backups keep the old one',
+    () async {
+      final a = phone('a');
+      await addAccount(a.db, 'Before');
+      await a.db.setMasterPhrase(_phraseA);
+      await a.service.encryptBackupsWithRecoveryPhrase(
+        _phraseA,
+        iterations: _iterations,
+      );
+      final oldText = await backupText(a.service);
+
+      // Turned off for the lock screen: backups still need those words.
+      await a.db.clearMasterPhrase();
+      expect(await a.service.backupLock(), BackupLock.oldRecoveryPhrase);
+      expect(
+        await a.service.followNewRecoveryPhrase(
+          _phraseA,
+          iterations: _iterations,
+        ),
+        isFalse,
+        reason: 'nothing to follow until a new phrase is set up',
+      );
+
+      await a.db.setMasterPhrase(_phraseB);
+      expect(
+        await a.service.followNewRecoveryPhrase(
+          _phraseB,
+          iterations: _iterations,
+        ),
+        isTrue,
+      );
+      expect(await a.service.backupLock(), BackupLock.recoveryPhrase);
+
+      final newText = await backupText(a.service);
+      final b = phone(
+        'b',
+        prompt: [
+          BackupCrypto.phrasePassword(_phraseA),
+          BackupCrypto.phrasePassword(_phraseB),
+        ],
+      );
+      await b.service.restoreFromContent(newText);
+      expect(b.results, [false, true]);
+
+      final c = phone('c', prompt: [BackupCrypto.phrasePassword(_phraseA)]);
+      await c.service.restoreFromContent(oldText);
+      expect(c.results, [true]);
+
+      // This phone still opens the old one without asking.
+      await a.service.restoreFromContent(oldText);
+      expect(await accountNames(a.db), ['Before']);
+    },
+  );
+
+  test('a password lock stays put when a recovery phrase is set up', () async {
+    final a = phone('a');
+    await a.service.encryptBackups(_password, iterations: _iterations);
+    await a.db.setMasterPhrase(_phraseA);
+    expect(
+      await a.service.followNewRecoveryPhrase(
+        _phraseA,
+        iterations: _iterations,
+      ),
+      isFalse,
+    );
+    expect(await a.service.backupLock(), BackupLock.password);
+    final json = jsonDecode(await backupText(a.service)) as Map;
+    expect(json.containsKey('lockedWith'), isFalse);
+  });
+
+  test('a phrase key keeps its phrase across a restart', () async {
+    final dir = Directory('${root.path}/keys')..createSync();
+    final key = await BackupCrypto.newKey(
+      BackupCrypto.phrasePassword(_phraseA),
+      iterations: _iterations,
+      phraseHash: 'hash-of-a',
+    );
+    await BackupKeys(root: () async => dir).turnOn(key);
+    final again = await BackupKeys(root: () async => dir).active();
+    expect(again?.phraseHash, 'hash-of-a');
+    expect(again?.fromRecoveryPhrase, isTrue);
   });
 
   testWidgets('Backup & Restore: the switch asks for the password twice', (
@@ -446,6 +598,102 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump(Duration.zero);
   });
+
+  testWidgets('Backup & Restore: with a recovery phrase set up, it can lock '
+      'backups instead of a password', (tester) async {
+    tester.view.physicalSize = const Size(1080, 2400);
+    tester.view.devicePixelRatio = 3.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final dir = Directory('${root.path}/screen-phrase')..createSync();
+    final db = AppDatabase(NativeDatabase.memory());
+    dbs.add(db);
+    await tester.runAsync(() => db.setMasterPhrase(_phraseA));
+    final service = _FastService(
+      db,
+      appFolder: AppFolderBackups(root: () async => dir),
+      keys: BackupKeys(root: () async => dir),
+    );
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          dbProvider.overrideWithValue(db),
+          backupServiceProvider.overrideWithValue(service),
+        ],
+        child: MaterialApp(theme: AppTheme.light, home: const BackupScreen()),
+      ),
+    );
+    Future<void> settle(bool Function() done) async {
+      for (var i = 0; i < 100 && !done(); i++) {
+        await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 50)),
+        );
+        await tester.pump();
+      }
+      await tester.pump(const Duration(milliseconds: 400));
+    }
+
+    await settle(() => false);
+    final toggle = find.byKey(const Key('backup-encrypt'));
+    await tester.scrollUntilVisible(toggle, 200);
+    await tester.tap(toggle);
+    await settle(
+      () => find.byKey(const Key('backup-phrase')).evaluate().isNotEmpty,
+    );
+
+    // Opens on the phrase, with a password one tap away.
+    expect(find.byKey(const Key('backup-lock-kind')), findsOneWidget);
+    expect(find.byKey(const Key('backup-password')), findsNothing);
+
+    final field = find.descendant(
+      of: find.byKey(const Key('backup-phrase')),
+      matching: find.byType(TextField),
+    );
+    final submit = find.descendant(
+      of: find.byKey(const Key('backup-phrase')),
+      matching: find.byType(FilledButton),
+    );
+    await tester.enterText(field, 'Anchor apple arrow autumn banana');
+    await tester.ensureVisible(submit);
+    await tester.pump();
+    await tester.tap(submit);
+    await tester.pump();
+    expect(find.textContaining('Enter all 10 words'), findsOneWidget);
+
+    await tester.enterText(field, _phraseB.join(' '));
+    await tester.ensureVisible(submit);
+    await tester.pump();
+    await tester.tap(submit);
+    await settle(() => find.text('Wrong phrase').evaluate().isNotEmpty);
+    expect(find.text('Wrong phrase'), findsOneWidget);
+
+    // Casing and spacing don't matter.
+    await tester.enterText(field, '  ${_phraseA.join('  ').toUpperCase()} ');
+    await tester.ensureVisible(submit);
+    await tester.pump();
+    await tester.tap(submit);
+    await settle(
+      () =>
+          find.byKey(const Key('backup-encrypt-change')).evaluate().isNotEmpty,
+    );
+
+    final saved =
+        jsonDecode(
+              File('${dir.path}/backup_encryption.json').readAsStringSync(),
+            )
+            as Map<String, dynamic>;
+    final active = BackupKey.fromJson(saved['active']);
+    expect(active?.fromRecoveryPhrase, isTrue);
+    expect(find.text('Change how backups are locked'), findsOneWidget);
+    expect(
+      find.textContaining('locked with your recovery phrase'),
+      findsWidgets,
+    );
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump(Duration.zero);
+  });
 }
 
 /// The screen's service, with test-speed key derivation.
@@ -455,4 +703,10 @@ class _FastService extends BackupService {
   @override
   Future<void> encryptBackups(String password, {int iterations = 0}) =>
       super.encryptBackups(password, iterations: _iterations);
+
+  @override
+  Future<void> encryptBackupsWithRecoveryPhrase(
+    List<String> words, {
+    int iterations = 0,
+  }) => super.encryptBackupsWithRecoveryPhrase(words, iterations: _iterations);
 }

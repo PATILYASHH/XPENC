@@ -28,6 +28,13 @@ import '../../core/security/pbkdf2.dart';
 /// editing any of them (a lower iteration count, say) fails authentication
 /// exactly like a wrong password does.
 ///
+/// One field is left out of that on purpose: `"lockedWith":
+/// "recovery-phrase"` on a backup locked with the master recovery phrase
+/// (GitHub #210), so a restore asks for the 10 words rather than a
+/// password. It only picks which prompt shows; the key still has to be
+/// right. Leaving it unbound means XPENC from before #210 still opens such
+/// a backup, given the words typed as the password.
+///
 /// The key comes from the backup password through PBKDF2-HMAC-SHA256 at
 /// OWASP's 600,000 iterations. Deriving it is the slow part (about a second
 /// on a phone), so it happens only when a password is set or typed — never
@@ -47,6 +54,10 @@ abstract final class BackupCrypto {
   /// is guessed offline however slow each guess is made.
   static const minPasswordLength = 8;
 
+  /// The header's `lockedWith` for a backup locked with the master recovery
+  /// phrase (GitHub #210).
+  static const lockedWithRecoveryPhrase = 'recovery-phrase';
+
   static const _saltBytes = 16;
   static const _nonceBytes = 12;
   static const _tagBits = 128;
@@ -56,11 +67,24 @@ abstract final class BackupCrypto {
   static Uint8List _randomBytes(int n) =>
       Uint8List.fromList(List<int>.generate(n, (_) => _random.nextInt(256)));
 
+  /// The password a recovery phrase stands for: its words, lowercase, one
+  /// space apart, the same form the lock screen hashes. So the phrase
+  /// opens its backups however it's typed, here or in an XPENC from before
+  /// #210 that only knows passwords.
+  static String phrasePassword(List<String> words) => words.join(' ');
+
   /// A new key for [password]: fresh salt, derived off the UI thread.
+  /// [phraseHash] is set when [password] is the master recovery phrase.
   static Future<BackupKey> newKey(
     String password, {
     int iterations = defaultIterations,
-  }) => deriveKey(password, _randomBytes(_saltBytes), iterations);
+    String? phraseHash,
+  }) => deriveKey(
+    password,
+    _randomBytes(_saltBytes),
+    iterations,
+    phraseHash: phraseHash,
+  );
 
   /// The key [password] gives with [salt] and [iterations] — what opening a
   /// backup made elsewhere takes. Runs in a background isolate on a phone;
@@ -68,10 +92,16 @@ abstract final class BackupCrypto {
   static Future<BackupKey> deriveKey(
     String password,
     Uint8List salt,
-    int iterations,
-  ) async {
+    int iterations, {
+    String? phraseHash,
+  }) async {
     final key = await compute(_derive, (password, salt, iterations));
-    return BackupKey(salt: salt, iterations: iterations, key: key);
+    return BackupKey(
+      salt: salt,
+      iterations: iterations,
+      key: key,
+      phraseHash: phraseHash,
+    );
   }
 
   static Uint8List _derive((String, Uint8List, int) args) {
@@ -103,6 +133,7 @@ abstract final class BackupCrypto {
     final data = gcm.process(Uint8List.fromList(utf8.encode(backupJson)));
     return const JsonEncoder.withIndent('  ').convert({
       ...header,
+      if (key.fromRecoveryPhrase) 'lockedWith': lockedWithRecoveryPhrase,
       'nonce': base64Encode(nonce),
       'data': base64Encode(data),
     });
@@ -134,11 +165,21 @@ class BackupKey {
     required this.salt,
     required this.iterations,
     required this.key,
+    this.phraseHash,
   });
 
   final Uint8List salt;
   final int iterations;
   final Uint8List key;
+
+  /// For a key made from the master recovery phrase (GitHub #210): that
+  /// phrase's `Settings.masterPhraseHash`, the same salted hash the lock
+  /// screen checks. It tells whether backups are still locked with the
+  /// phrase set up now, or one since turned off or replaced. Null for a
+  /// password.
+  final String? phraseHash;
+
+  bool get fromRecoveryPhrase => phraseHash != null;
 
   /// Whether this key is the one [backup] was sealed with — same salt and
   /// iteration count means the same password gives the same key.
@@ -149,6 +190,7 @@ class BackupKey {
     'salt': base64Encode(salt),
     'iterations': iterations,
     'key': base64Encode(key),
+    'phraseHash': ?phraseHash,
   };
 
   static BackupKey? fromJson(Object? json) {
@@ -156,10 +198,12 @@ class BackupKey {
     try {
       final key = base64Decode(json['key'] as String);
       if (key.length != 32) return null;
+      final phraseHash = json['phraseHash'];
       return BackupKey(
         salt: base64Decode(json['salt'] as String),
         iterations: (json['iterations'] as num).toInt(),
         key: key,
+        phraseHash: phraseHash is String ? phraseHash : null,
       );
     } catch (_) {
       return null;
@@ -189,6 +233,11 @@ class EncryptedBackup {
   final int iterations;
   final Uint8List _nonce;
   final Uint8List _data;
+
+  /// Locked with the master recovery phrase (GitHub #210), so a restore
+  /// asks for the 10 words. Only a hint (see [BackupCrypto]).
+  bool get lockedWithRecoveryPhrase =>
+      _header['lockedWith'] == BackupCrypto.lockedWithRecoveryPhrase;
 
   /// [decoded] (a backup file's parsed JSON) as an encrypted backup, or null
   /// when it's a plain one. Throws [FormatException] when it's marked

@@ -5,6 +5,7 @@ import '../../core/security/master_phrase_field.dart';
 import '../../core/widgets/app_surfaces.dart';
 import '../../data/providers.dart';
 import '../../core/l10n/l10n.dart';
+import '../data_export/backup_service.dart' show BackupLock;
 
 /// Turning the master phrase off requires re-entering it — same reasoning
 /// as "Remove passcode" re-verifying the current PIN even though you're
@@ -37,13 +38,33 @@ class _MasterPhraseVerifyScreenState
       });
       return;
     }
+    // Backups locked with this phrase stay locked with it (#210).
+    var lockedBackups = false;
+    try {
+      lockedBackups =
+          await ref.read(backupServiceProvider).backupLock() ==
+          BackupLock.recoveryPhrase;
+    } catch (_) {}
     await ref.read(dbProvider).clearMasterPhrase();
     if (!mounted) return;
     Navigator.of(context).pop();
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(
-        const SnackBar(content: Tr('Master recovery phrase turned off')),
+        SnackBar(
+          duration: lockedBackups
+              ? const Duration(seconds: 8)
+              : const Duration(seconds: 4),
+          content: Text(
+            lockedBackups
+                ? tr(
+                    'Master recovery phrase turned off. Your backups are '
+                    'still locked with it — keep the words, or switch them '
+                    'to a password in Backup & Restore.',
+                  )
+                : tr('Master recovery phrase turned off'),
+          ),
+        ),
       );
   }
 

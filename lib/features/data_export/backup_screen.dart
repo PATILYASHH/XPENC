@@ -39,8 +39,11 @@ class BackupScreen extends ConsumerStatefulWidget {
 class _BackupScreenState extends ConsumerState<BackupScreen> {
   bool _busy = false;
 
-  /// Whether new backups are encrypted (GitHub #41); null until read.
-  bool? _encrypted;
+  /// How new backups are locked (GitHub #41, #210); null until read.
+  BackupLock? _lock;
+
+  /// Whether new backups are encrypted; null until read.
+  bool? get _encrypted => _lock == null ? null : _lock != BackupLock.none;
 
   @override
   void initState() {
@@ -48,15 +51,20 @@ class _BackupScreenState extends ConsumerState<BackupScreen> {
     _readEncryption();
   }
 
-  Future<void> _readEncryption() async {
-    final on = await ref.read(backupServiceProvider).encryptsBackups();
-    if (mounted) setState(() => _encrypted = on);
+  Future<BackupLock> _readEncryption() async {
+    final lock = await ref.read(backupServiceProvider).backupLock();
+    if (mounted) setState(() => _lock = lock);
+    return lock;
   }
 
-  /// Sets the backup password: turning encryption on, or [changing] it.
+  /// Sets the backup password — or, with a recovery phrase set up, that
+  /// phrase (GitHub #210): turning encryption on, or [changing] it.
   Future<void> _setBackupPassword({required bool changing}) async {
     final messenger = ScaffoldMessenger.of(context);
     final service = ref.read(backupServiceProvider);
+    final phraseSet =
+        (await ref.read(dbProvider).getSettings()).masterPhraseHash != null;
+    if (!mounted) return;
     final saved = await showAppSheet<bool>(
       context: context,
       isScrollControlled: true,
@@ -68,19 +76,29 @@ class _BackupScreenState extends ConsumerState<BackupScreen> {
       builder: (_) => BackupPasswordSheet(
         changing: changing,
         onSave: service.encryptBackups,
+        onSavePhrase: phraseSet
+            ? service.encryptBackupsWithRecoveryPhrase
+            : null,
+        // The phrase first, unless that's already what locks them.
+        startWithPhrase: _lock != BackupLock.recoveryPhrase,
       ),
     );
     if (saved != true || !mounted) return;
-    setState(() => _encrypted = true);
+    final lock = await _readEncryption();
+    if (!mounted) return;
     messenger
       ..hideCurrentSnackBar()
       ..showSnackBar(
         SnackBar(
           content: Text(
-            changing
-                ? tr('Backup password changed')
-                : tr('New backups are encrypted. The ones already here '
-                      "aren't."),
+            !changing
+                ? tr(
+                    'New backups are encrypted. The ones already here '
+                    "aren't.",
+                  )
+                : lock == BackupLock.recoveryPhrase
+                ? tr('New backups are locked with your recovery phrase')
+                : tr('Backup password changed'),
           ),
           action: SnackBarAction(
             label: tr('Back up now'),
@@ -97,11 +115,20 @@ class _BackupScreenState extends ConsumerState<BackupScreen> {
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Tr('Turn off encryption?'),
-        content: const Tr(
-          'New backups are saved as plain files again — anyone with one '
-          'can read it. Encrypted backups you already have stay encrypted: '
-          'XPENC on this phone still opens them, anywhere else they need '
-          'the password.',
+        content: Text(
+          _lock == BackupLock.password
+              ? tr(
+                  'New backups are saved as plain files again — anyone with '
+                  'one can read it. Encrypted backups you already have stay '
+                  'encrypted: XPENC on this phone still opens them, anywhere '
+                  'else they need the password.',
+                )
+              : tr(
+                  'New backups are saved as plain files again — anyone with '
+                  'one can read it. Encrypted backups you already have stay '
+                  'encrypted: XPENC on this phone still opens them, anywhere '
+                  'else they need the recovery phrase.',
+                ),
         ),
         actions: [
           TextButton(
@@ -128,7 +155,7 @@ class _BackupScreenState extends ConsumerState<BackupScreen> {
       return;
     }
     if (!mounted) return;
-    setState(() => _encrypted = false);
+    setState(() => _lock = BackupLock.none);
     messenger
       ..hideCurrentSnackBar()
       ..showSnackBar(
@@ -508,6 +535,14 @@ class _BackupScreenState extends ConsumerState<BackupScreen> {
     final cs = theme.colorScheme;
     final backupsAsync = ref.watch(backupRecordsProvider);
     final autoBackup = ref.watch(autoBackupSettingsProvider);
+    // A recovery phrase can lock backups instead of a password (#210).
+    final phraseSet =
+        ref.watch(settingsProvider).value?.masterPhraseHash != null;
+    // Turned off or replaced: whether backups still match it changes too.
+    ref.listen(
+      settingsProvider.select((s) => s.value?.masterPhraseHash),
+      (_, _) => _readEncryption(),
+    );
     // XPENC web: a backup is a download the page can't open again (see
     // `BackupService`), so there's no schedule, no "find" and no restoring
     // from the list — only Import from file.
@@ -644,12 +679,27 @@ class _BackupScreenState extends ConsumerState<BackupScreen> {
                     ),
                     title: const Tr('Encrypt backups'),
                     subtitle: Text(
-                      _encrypted == true
-                          ? tr('On — backups need your password to restore '
-                                'anywhere but this phone.')
-                          : tr('Off — anyone with a backup file can read it.'),
+                      switch (_lock) {
+                        BackupLock.password => tr(
+                          'On — backups need your password to restore '
+                          'anywhere but this phone.',
+                        ),
+                        BackupLock.recoveryPhrase => tr(
+                          'On — locked with your recovery phrase. Restoring '
+                          'anywhere but this phone asks for the 10 words.',
+                        ),
+                        BackupLock.oldRecoveryPhrase => tr(
+                          'On — locked with a recovery phrase that is no '
+                          'longer set up here. Restoring elsewhere still '
+                          'needs those words: keep them, or switch to a '
+                          'password.',
+                        ),
+                        _ => tr('Off — anyone with a backup file can read it.'),
+                      },
                       style: theme.textTheme.bodySmall?.copyWith(
-                        color: cs.onSurfaceVariant,
+                        color: _lock == BackupLock.oldRecoveryPhrase
+                            ? cs.error
+                            : cs.onSurfaceVariant,
                       ),
                     ),
                     value: _encrypted == true,
@@ -667,7 +717,11 @@ class _BackupScreenState extends ConsumerState<BackupScreen> {
                         vertical: 0,
                       ),
                       leading: const AppIcon(Icons.password_rounded),
-                      title: const Tr('Change backup password'),
+                      title: Text(
+                        _lock == BackupLock.password && !phraseSet
+                            ? tr('Change backup password')
+                            : tr('Change how backups are locked'),
+                      ),
                       trailing: const AppIcon(Icons.chevron_right_rounded),
                       onTap: _busy
                           ? null

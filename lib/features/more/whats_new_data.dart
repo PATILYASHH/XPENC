@@ -63,9 +63,10 @@ const _whatsNewEntries = <WhatsNewEntry>[
     title: 'Encrypted backups',
     location: 'Backup & Restore → Encrypt backups',
     description:
-        'Lock every backup with a password, so anyone else with the file '
-        'sees only scrambled data. This phone opens them without asking; '
-        "anywhere else asks for the password. Keep it safe: it can't be "
+        'Lock every backup with a password, or with the 10-word recovery '
+        'phrase you already use for the lock screen, so anyone else with '
+        'the file sees only scrambled data. This phone opens them without '
+        "asking; anywhere else asks for it. Keep it safe: it can't be "
         'reset.',
   ),
   WhatsNewEntry(

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/l10n/l10n.dart';
 import '../../core/routing/app_router.dart';
+import '../../core/security/master_phrase_field.dart';
 import '../../core/widgets/app_surfaces.dart';
 import 'backup_crypto.dart';
 import 'backup_service.dart';
@@ -9,16 +10,94 @@ import 'backup_service.dart';
 /// [BackupService]'s password prompt for an encrypted backup it has no key
 /// for (GitHub #41) — from Restore, Import from file, onboarding or
 /// Connector alike, so it shows over whatever is on screen. The dialog stays
-/// up while each password is tried, and says so when one is wrong.
-Future<bool> askBackupPassword(BackupPasswordAttempt attempt) async {
+/// up while each password is tried, and says so when one is wrong. A
+/// backup locked with the recovery phrase (GitHub #210) asks for its words.
+Future<bool> askBackupPassword(
+  BackupPasswordAttempt attempt,
+  BackupSecret secret,
+) async {
   final context = appRouter.routerDelegate.navigatorKey.currentContext;
   if (context == null) return false;
   final unlocked = await showAppDialog<bool>(
     context: context,
     barrierDismissible: false,
-    builder: (_) => _UnlockBackupDialog(attempt: attempt),
+    builder: (_) => secret == BackupSecret.recoveryPhrase
+        ? _UnlockWithPhraseDialog(attempt: attempt)
+        : _UnlockBackupDialog(attempt: attempt),
   );
   return unlocked == true;
+}
+
+/// The recovery-phrase version of [_UnlockBackupDialog] (GitHub #210).
+class _UnlockWithPhraseDialog extends StatefulWidget {
+  const _UnlockWithPhraseDialog({required this.attempt});
+
+  final BackupPasswordAttempt attempt;
+
+  @override
+  State<_UnlockWithPhraseDialog> createState() =>
+      _UnlockWithPhraseDialogState();
+}
+
+class _UnlockWithPhraseDialogState extends State<_UnlockWithPhraseDialog> {
+  bool _busy = false;
+  bool _wrong = false;
+
+  Future<void> _submit(List<String> words) async {
+    if (_busy) return;
+    setState(() {
+      _busy = true;
+      _wrong = false;
+    });
+    bool ok;
+    try {
+      ok = await widget.attempt(BackupCrypto.phrasePassword(words));
+    } catch (_) {
+      ok = false;
+    }
+    if (!mounted) return;
+    if (ok) {
+      Navigator.of(context).pop(true);
+      return;
+    }
+    setState(() {
+      _busy = false;
+      _wrong = true;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Tr('Encrypted backup'),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Tr(
+              'This backup is locked with a 10-word recovery phrase. Enter '
+              'the words in order.',
+            ),
+            const SizedBox(height: 16),
+            MasterPhraseField(
+              key: const Key('backup-unlock-phrase'),
+              submitLabel: tr('Unlock'),
+              busy: _busy,
+              error: _wrong ? tr('Wrong phrase. Try again.') : null,
+              onSubmit: _submit,
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _busy ? null : () => Navigator.of(context).pop(false),
+          child: const Tr('Cancel'),
+        ),
+      ],
+    );
+  }
 }
 
 class _UnlockBackupDialog extends StatefulWidget {
@@ -171,16 +250,29 @@ class _BackupPasswordFieldState extends State<BackupPasswordField> {
 
 /// Sets the backup password — turning encryption on, or changing it.
 /// Pops true once [onSave] has saved it.
+///
+/// With a master recovery phrase set up ([onSavePhrase] given), it offers
+/// that phrase as the backup key instead (GitHub #210).
 class BackupPasswordSheet extends StatefulWidget {
   const BackupPasswordSheet({
     required this.changing,
     required this.onSave,
     super.key,
+    this.onSavePhrase,
+    this.startWithPhrase = false,
   });
 
   /// Encryption is already on: this picks a new password.
   final bool changing;
   final Future<void> Function(String password) onSave;
+
+  /// Locks backups with the recovery phrase, given its words as typed.
+  /// Throws [ArgumentError] for a wrong phrase. Null without a phrase set
+  /// up, and then only a password is offered.
+  final Future<void> Function(List<String> words)? onSavePhrase;
+
+  /// Opens on the recovery phrase rather than a password.
+  final bool startWithPhrase;
 
   @override
   State<BackupPasswordSheet> createState() => _BackupPasswordSheetState();
@@ -191,6 +283,30 @@ class _BackupPasswordSheetState extends State<BackupPasswordSheet> {
   final _confirm = TextEditingController();
   bool _saving = false;
   String? _error;
+
+  late bool _usePhrase = widget.onSavePhrase != null && widget.startWithPhrase;
+
+  Future<void> _savePhrase(List<String> words) async {
+    final save = widget.onSavePhrase;
+    if (_saving || save == null) return;
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
+    try {
+      await save(words);
+      if (!mounted) return;
+      Navigator.of(context).pop(true);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _saving = false;
+        _error = e is ArgumentError
+            ? '${e.message}'
+            : tr("Couldn't save: {0}", [e]);
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -250,16 +366,53 @@ class _BackupPasswordSheetState extends State<BackupPasswordSheet> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              widget.changing
-                  ? tr('Change backup password')
-                  : tr('Encrypt backups'),
+              !widget.changing
+                  ? tr('Encrypt backups')
+                  : widget.onSavePhrase != null
+                  ? tr('Change how backups are locked')
+                  : tr('Change backup password'),
               style: theme.textTheme.headlineSmall?.copyWith(
                 fontWeight: FontWeight.w700,
               ),
             ),
+            if (widget.onSavePhrase != null) ...[
+              const SizedBox(height: 12),
+              SegmentedButton<bool>(
+                key: const Key('backup-lock-kind'),
+                segments: const [
+                  ButtonSegment(value: true, label: Tr('Recovery phrase')),
+                  ButtonSegment(value: false, label: Tr('Password')),
+                ],
+                selected: {_usePhrase},
+                showSelectedIcon: false,
+                onSelectionChanged: _saving
+                    ? null
+                    : (s) => setState(() {
+                        _usePhrase = s.first;
+                        _error = null;
+                      }),
+              ),
+              const SizedBox(height: 6),
+            ],
             const SizedBox(height: 6),
             Text(
-              widget.changing
+              _usePhrase
+                  ? widget.changing
+                        ? tr(
+                            'New backups are locked with your 10-word '
+                            'recovery phrase. Backups made before keep what '
+                            'they were locked with — XPENC on this phone '
+                            'still opens them.',
+                          )
+                        : tr(
+                            'Every backup from now on is locked (AES-256) '
+                            'with the 10-word recovery phrase you already '
+                            'use for the lock screen, so there is no second '
+                            'password to keep. Anyone with the file sees '
+                            'only scrambled data. Restoring one on another '
+                            'phone asks for the 10 words.',
+                          )
+                  : widget.changing
                   ? tr(
                       'New backups use the new password. Backups made before '
                       'keep the old one — XPENC on this phone still opens '
@@ -292,10 +445,20 @@ class _BackupPasswordSheetState extends State<BackupPasswordSheet> {
                     ),
                     const SizedBox(width: 10),
                     Expanded(
-                      child: Tr(
-                        'There is no way to reset this password. Forget it '
-                        'and those backups can never be restored — not by '
-                        'you, not by us.',
+                      child: Text(
+                        _usePhrase
+                            ? tr(
+                                'Keep the phrase written down. Turning it '
+                                'off for the lock screen later does not '
+                                'unlock these backups — lose the words and '
+                                'they can never be restored, not by you, '
+                                'not by us.',
+                              )
+                            : tr(
+                                'There is no way to reset this password. '
+                                'Forget it and those backups can never be '
+                                'restored — not by you, not by us.',
+                              ),
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: cs.onErrorContainer,
                           height: 1.4,
@@ -307,59 +470,76 @@ class _BackupPasswordSheetState extends State<BackupPasswordSheet> {
               ),
             ),
             const SizedBox(height: 16),
-            BackupPasswordField(
-              key: const Key('backup-password'),
-              controller: _password,
-              label: widget.changing ? tr('New password') : tr('Password'),
-              autofocus: true,
-              enabled: !_saving,
-              textInputAction: TextInputAction.next,
-              helperText: tr('At least {0} characters.', [
-                BackupCrypto.minPasswordLength,
-              ]),
-              errorText: _password.text.isNotEmpty && !_longEnough
-                  ? tr('Use at least {0} characters.', [
-                      BackupCrypto.minPasswordLength,
-                    ])
-                  : null,
-              onChanged: (_) => setState(() {}),
-            ),
-            const SizedBox(height: 12),
-            BackupPasswordField(
-              key: const Key('backup-password-confirm'),
-              controller: _confirm,
-              label: tr('Type it again'),
-              enabled: !_saving,
-              textInputAction: TextInputAction.done,
-              errorText: _confirm.text.isNotEmpty && !_matches
-                  ? tr("The passwords don't match.")
-                  : null,
-              onChanged: (_) => setState(() {}),
-              onSubmitted: (_) => _save(),
-            ),
-            if (_error != null) ...[
+            if (_usePhrase) ...[
+              Tr(
+                'Type your recovery phrase to confirm it.',
+                style: theme.textTheme.bodyMedium,
+              ),
               const SizedBox(height: 10),
-              Text(
-                _error!,
-                style: theme.textTheme.bodySmall?.copyWith(color: cs.error),
+              MasterPhraseField(
+                key: const Key('backup-phrase'),
+                submitLabel: widget.changing
+                    ? tr('Use recovery phrase')
+                    : tr('Turn on encryption'),
+                busy: _saving,
+                error: _error,
+                onSubmit: _savePhrase,
+              ),
+            ] else ...[
+              BackupPasswordField(
+                key: const Key('backup-password'),
+                controller: _password,
+                label: widget.changing ? tr('New password') : tr('Password'),
+                autofocus: true,
+                enabled: !_saving,
+                textInputAction: TextInputAction.next,
+                helperText: tr('At least {0} characters.', [
+                  BackupCrypto.minPasswordLength,
+                ]),
+                errorText: _password.text.isNotEmpty && !_longEnough
+                    ? tr('Use at least {0} characters.', [
+                        BackupCrypto.minPasswordLength,
+                      ])
+                    : null,
+                onChanged: (_) => setState(() {}),
+              ),
+              const SizedBox(height: 12),
+              BackupPasswordField(
+                key: const Key('backup-password-confirm'),
+                controller: _confirm,
+                label: tr('Type it again'),
+                enabled: !_saving,
+                textInputAction: TextInputAction.done,
+                errorText: _confirm.text.isNotEmpty && !_matches
+                    ? tr("The passwords don't match.")
+                    : null,
+                onChanged: (_) => setState(() {}),
+                onSubmitted: (_) => _save(),
+              ),
+              if (_error != null) ...[
+                const SizedBox(height: 10),
+                Text(
+                  _error!,
+                  style: theme.textTheme.bodySmall?.copyWith(color: cs.error),
+                ),
+              ],
+              const SizedBox(height: 20),
+              FilledButton(
+                key: const Key('backup-password-save'),
+                onPressed: _saving || !_valid ? null : _save,
+                child: _saving
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Text(
+                        widget.changing
+                            ? tr('Change password')
+                            : tr('Turn on encryption'),
+                      ),
               ),
             ],
-            const SizedBox(height: 20),
-            FilledButton(
-              key: const Key('backup-password-save'),
-              onPressed: _saving || !_valid ? null : _save,
-              child: _saving
-                  ? const SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : Text(
-                      widget.changing
-                          ? tr('Change password')
-                          : tr('Turn on encryption'),
-                    ),
-            ),
           ],
         ),
       ),

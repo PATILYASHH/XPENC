@@ -34,12 +34,32 @@ final _backupFileNamePattern = RegExp(
 );
 
 /// Tries a typed password on an encrypted backup: true when it opened it.
+/// A recovery phrase is tried as [BackupCrypto.phrasePassword].
 typedef BackupPasswordAttempt = Future<bool> Function(String password);
 
-/// Asks for an encrypted backup's password, trying each one typed with
-/// [attempt] until one opens it — true then, false when the user gives up.
+/// What an encrypted backup is locked with, so its prompt asks for the
+/// right thing.
+enum BackupSecret { password, recoveryPhrase }
+
+/// Asks for an encrypted backup's password (or, for [BackupSecret
+/// .recoveryPhrase], its 10 words), trying each one typed with [attempt]
+/// until one opens it — true then, false when the user gives up.
 typedef BackupPasswordPrompt =
-    Future<bool> Function(BackupPasswordAttempt attempt);
+    Future<bool> Function(BackupPasswordAttempt attempt, BackupSecret secret);
+
+/// How new backups are locked, for Backup & Restore to say.
+enum BackupLock {
+  /// Plain files.
+  none,
+  password,
+
+  /// The master recovery phrase set up now (GitHub #210).
+  recoveryPhrase,
+
+  /// A recovery phrase since turned off, or replaced by a restore: backups
+  /// still need those old words.
+  oldRecoveryPhrase,
+}
 
 /// Export, share, back up and restore.
 ///
@@ -302,6 +322,64 @@ class BackupService {
     );
   }
 
+  /// How new backups are locked. A phrase key counts as the current phrase
+  /// only while it was made from the one set up now.
+  Future<BackupLock> backupLock() async {
+    if (_browser) return BackupLock.none;
+    final key = await _keys.active();
+    if (key == null) return BackupLock.none;
+    if (!key.fromRecoveryPhrase) return BackupLock.password;
+    final current = (await _db.getSettings()).masterPhraseHash;
+    return key.phraseHash == current
+        ? BackupLock.recoveryPhrase
+        : BackupLock.oldRecoveryPhrase;
+  }
+
+  /// Locks every backup from now on with the master recovery phrase
+  /// (GitHub #210), instead of a password of its own. Only a hash of the
+  /// phrase is kept, so [words] have to be typed once — and must match
+  /// that hash, or one slipped word would lock backups behind a phrase
+  /// nobody wrote down. Throws [ArgumentError] when they don't.
+  Future<void> encryptBackupsWithRecoveryPhrase(
+    List<String> words, {
+    @visibleForTesting int iterations = BackupCrypto.defaultIterations,
+  }) async {
+    if (_browser) throw UnsupportedError('No backup encryption on the web');
+    if (!await _db.verifyMasterPhrase(words)) {
+      throw ArgumentError(tr('Wrong phrase'));
+    }
+    await _keys.turnOn(
+      await BackupCrypto.newKey(
+        BackupCrypto.phrasePassword(words),
+        iterations: iterations,
+        phraseHash: (await _db.getSettings()).masterPhraseHash,
+      ),
+    );
+  }
+
+  /// Right after a new recovery phrase is set up as [words]: when backups
+  /// were locked with a recovery phrase, new ones are locked with this one.
+  /// Backups made before keep the old phrase (this phone still opens them;
+  /// anywhere else they need the old words). True when it switched.
+  Future<bool> followNewRecoveryPhrase(
+    List<String> words, {
+    @visibleForTesting int iterations = BackupCrypto.defaultIterations,
+  }) async {
+    if (_browser) return false;
+    final active = await _keys.active();
+    if (active == null || !active.fromRecoveryPhrase) return false;
+    final hash = (await _db.getSettings()).masterPhraseHash;
+    if (hash == null || !await _db.verifyMasterPhrase(words)) return false;
+    await _keys.turnOn(
+      await BackupCrypto.newKey(
+        BackupCrypto.phrasePassword(words),
+        iterations: iterations,
+        phraseHash: hash,
+      ),
+    );
+    return true;
+  }
+
   /// Plain backups again. Encrypted ones already made still restore here
   /// without the password; anywhere else they need it.
   Future<void> stopEncryptingBackups() => _keys.turnOff();
@@ -322,20 +400,25 @@ class BackupService {
     String? opened;
     final unlocked =
         ask != null &&
-        await ask((password) async {
-          try {
-            final (json, key) = await sealed.openWithPassword(password);
-            opened = json;
+        await ask(
+          (password) async {
             try {
-              await _keys.remember(key);
-            } catch (_) {
-              // Not remembered: next time it simply asks again.
+              final (json, key) = await sealed.openWithPassword(password);
+              opened = json;
+              try {
+                await _keys.remember(key);
+              } catch (_) {
+                // Not remembered: next time it simply asks again.
+              }
+              return true;
+            } on BackupDecryptError {
+              return false;
             }
-            return true;
-          } on BackupDecryptError {
-            return false;
-          }
-        });
+          },
+          sealed.lockedWithRecoveryPhrase
+              ? BackupSecret.recoveryPhrase
+              : BackupSecret.password,
+        );
     if (!unlocked || opened == null) {
       throw ArgumentError(
         tr('That backup is encrypted, and restoring it needs its password.'),

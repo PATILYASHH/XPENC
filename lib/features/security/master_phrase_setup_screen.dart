@@ -76,12 +76,32 @@ class _MasterPhraseSetupScreenState
   Future<void> _save() async {
     setState(() => _saving = true);
     await ref.read(dbProvider).setMasterPhrase(_words);
+    // Backups locked with a recovery phrase follow the new one (#210).
+    var backupsFollow = false;
+    try {
+      backupsFollow = await ref
+          .read(backupServiceProvider)
+          .followNewRecoveryPhrase(_words);
+    } catch (e) {
+      // The phrase is set either way; backups keep their old lock, which
+      // Backup & Restore shows as an old phrase.
+      debugPrint('Backups not moved to the new phrase: $e');
+    }
     if (!mounted) return;
     Navigator.of(context).pop();
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(
-        const SnackBar(content: Tr('Master recovery phrase set')),
+        SnackBar(
+          content: Text(
+            backupsFollow
+                ? tr(
+                    'Master recovery phrase set. New backups are locked '
+                    'with it; older ones still need the old phrase.',
+                  )
+                : tr('Master recovery phrase set'),
+          ),
+        ),
       );
   }
 

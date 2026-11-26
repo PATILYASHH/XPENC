@@ -22,6 +22,15 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
   no way to reset the password. Backups made before you turn it on stay
   readable. Not available on XPENC web, though web can still open an
   encrypted backup with Import from file.
+- **Lock backups with your recovery phrase** (#210). With a master
+  recovery phrase set up for the lock screen, **Encrypt backups** offers it
+  in place of a separate password: type the 10 words once to confirm, and
+  every backup from then on is locked with them. Restoring on another phone
+  asks for the 10 words (any case or spacing). Set up a new phrase later
+  and new backups follow it; older ones keep the phrase they were made
+  with. Turning the phrase off for the lock screen doesn't unlock the
+  backups, and Backup & Restore says when they're still locked with an old
+  phrase.
 - **Total money, taken apart.** Tapping the dashboard's Total money card
   now zooms into a page of where that money is: every account by kind
   (cash, bank, prepaid, goals, cards, pay later, loans) with each kind's
@@ -54,7 +63,8 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
   says so, its amount must appear in the text word for word, and it never
   posts by itself. Local AI also suggests a category from your own list.
   OTPs, offers and declined payments are still turned away.
-- **Smart tags** (#189). A tag can hold a date part: in More → Tags → +,
+- **Smart tags** (#189). A tag can hold a date part: in More → Categories
+  & Tags → Tags → +,
   tap **Month**, **Short month**, **Year** or **Quarter** to add
   `{month}`, `{mon}`, `{year}` or `{quarter}`, mixed with any text (e.g.
   `{month} {year}` or `Coffee {mon}`). When a transaction is saved it gets
@@ -71,11 +81,12 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
   template to change its name, amount, type, accounts, category, payee,
   note or tags. You no longer have to delete it and save it again from a
   transaction. Transactions already made from it stay as they are.
-- **Search everything** (#209). Hold ➕ to search the whole app: pages
-  and settings, transactions (by note, payee, category, account or exact
-  amount), accounts, categories, people, payees, tags, trips and shopping
-  lists. Type several words to narrow it down. With the radial hold menu
-  on, add **Search** to one of its slots in Settings → Quick Actions.
+- **Search everything** (#209). Search the whole app: pages and settings,
+  transactions (by note, payee, category, account or exact amount),
+  accounts, categories, people, payees, tags, trips and shopping lists.
+  Type several words to narrow it down. Put **Search** in one of the
+  hold-➕ menu's bubbles (hold ➕ → ⚙ Edit) to reach it; with every bubble
+  empty, holding ➕ opens Search straight away.
 - **CSV import reads European dates** (#206). `16.11.2026`, `1.2.2026`
   and `16.11.26` now import, alongside the slash and dash dates that
   already worked.
@@ -90,8 +101,90 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
   cards and wallets (Spotify, YouTube, Visa, PayPal and more). Search looks
   through all of them, and a section name finds its whole section, so
   "food" brings up every food icon. Icons you already picked look the same.
+- **Voice add** (India, Android 12+). Double-tap ➕ and say the
+  transaction. The bottom bar shows what it hears, and the ➕ turns into
+  **Continue**, which opens Add Transaction filled in: money in or out,
+  amount, category, note, payee and day. It understands Indian English and
+  Hinglish, with no AI involved. It uses only Android's on-device speech
+  recognizer, never an online one, and offers the offline language download
+  where Android allows it. It uses the same optional microphone permission
+  as Ask Exo.
+- **Your country, kept.** The country you pick on first run is now saved,
+  and Settings → **Country** changes it. A country switches its payment
+  methods on to start with (UPI in India; Venmo and Cash App in the US;
+  Revolut in Europe), and India's calculators and voice add follow it.
+  Installs from before this count as India when the currency is ₹.
+- **Arabic, and right-to-left layout.** Arabic is a language pack on
+  [xpenc.in/languages](https://xpenc.in/languages). Right-to-left languages
+  now mirror the whole app: pages, dialogs and sheets.
+- **Edit the dashboard where it is.** Hold any Dashboard widget for a
+  second (it swells as it charges) and the Dashboard turns editable in
+  place: widgets wiggle, drag one by its handle to reorder it, ✕ removes
+  it, and **Add widget** above the bottom bar brings removed ones back.
+  **Reset** puts back the original layout, and **Done** or Back finishes.
+  Every change saves as you make it. Each widget now has its own ⚙ options,
+  two or three choices each, the first always the widget as it was: how
+  many to show, filters for People, Groups and Recent, how far Upcoming
+  looks ahead, rings or bars for Budgets, chart or list for Spending, and
+  more. Holding an account on the Dashboard opens the editor too, and
+  **Arrange accounts** is now in the Accounts widget's options.
+- **Edit the bottom bar by holding it.** Hold the bar for a second and
+  each tab becomes a wheel of modules. Pick one for any of the four tabs,
+  Dashboard and More included. Landing on one already on the bar swaps the
+  two, and More always stays on the bar. Labels can be turned off, and
+  **Reset**, **Done** or Back finishes. Not available while a mode is in
+  focus.
+- **Edit the ➕ menu in place.** Hold ➕, slide onto ⚙ **Edit** in the top
+  corner and let go. Every action is laid out in a tray: tap one to add it
+  or take it out, or tap a bubble first to choose what that bubble opens.
+  **Reset**, **Done**, or Back to cancel. Works in Glass and the classic
+  themes.
+- **Calculations, in one place.** More → **Calculations** holds every
+  calculator on one page, by section (Save & grow, Borrow, Tax), instead of
+  six separate tiles. Shortcuts and quick actions you saved still open each
+  calculator. GST, PPF and India's income-tax regimes show only when your
+  country is India; elsewhere Income Tax opens on the US.
+- **Move transactions between categories in bulk.** On a category's page,
+  hold a transaction to select it, pick more, then **Move to…** another
+  category of the same kind (split parts and subcategory lines included).
+  Tapping a tag opens its own page, with the same select-and-move. A
+  category with no transactions can now be deleted straight away from its
+  page's ⋮ menu or the Archive dialog, without archiving it first.
 
 ### Changed
+- **Add Transaction: accounts as cards.** Paid via, Deposit to, and a
+  transfer's From and To are now a row of account cards you swipe through,
+  each with its icon, name and balance (a debit card shows the bank it
+  draws from). Tap one to pick it. Hold a card for a second to arrange the
+  row: ‹ › move a card, ✕ takes it off this row, and ＋ brings it back. The
+  order is the one Dashboard and Accounts share. **N more** opens the full
+  list, so no account is ever out of reach.
+- **Add Transaction, tidier.** Foreign currency is a 🌐 next to the amount,
+  shown once you have another currency (a rate or a custom one in Settings
+  → Currency). The date and time are a small label under the amount; tap it
+  for Today, Yesterday, a calendar and the time. A new entry you don't date
+  is stamped when it's saved. **Done ⌄** above the keypad hides it to show
+  more of the form, and tapping the amount brings it back. **Hide from
+  screenshots** is an eye in the top bar instead of a switch at the bottom.
+- **Dashboard: Spending shows every category.** Under the donut, every
+  category for the month is listed with its amount and share, biggest
+  first, and small ones are no longer folded into a grey "Other". Tap one
+  to open that category at that month.
+- **Dashboard: Total money stays in sight.** Once the Total money card
+  scrolls away, the top bar shows the figure in place of "Dashboard". It's
+  hidden while amounts are hidden.
+- **More, regrouped.** More now has **Everyday** (Accounts, Transactions,
+  Persons, Budgets) and **Plan & Automate** (Auto, Payees, Goals & Loans,
+  Shopping List, Modes), and leaves out whatever your bottom bar already
+  opens. Categories and Tags are one page, with Money out, Money in and
+  Tags tabs.
+- **Settings, in sections.** Settings is grouped into Appearance, Money,
+  Capture & Shortcuts, Security, AI and Data, and Appearance replaces
+  General. Customize bottom nav and Customize dashboard left Settings (hold
+  the bar or a widget instead), Calendar day totals moved onto the
+  Calendar, Persons settings is now **Payment methods**, and OCR
+  corrections has its own row. Holding ➕ always opens the quick-actions
+  menu now; its on/off switch is gone.
 - **Transactions opens on this month.** The card over the list shows the
   month's entries, money in and money out instead of all-time totals. Use
   ‹ › or swipe the card to change month, or tap the month for a picker
