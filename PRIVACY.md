@@ -1,6 +1,6 @@
 # XPENC Privacy Policy
 
-**Effective date:** 17 November 2026
+**Effective date:** 27 November 2026
 **Applies to:** XPENC for Android (package name `com.yash.xpenc`), version 1.1.0 and later
 **Developer:** Yash Patil (individual developer)
 **Contact:** feedback.yashpatil@gmail.com

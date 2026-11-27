@@ -12,9 +12,10 @@
     { "source": "/template", "destination": "/templates", "permanent": true },
     { "source": "/language", "destination": "/languages", "permanent": true },
     { "source": "/lang", "destination": "/languages", "permanent": true },
-    { "source": "/LOCAL-AI", "destination": "/local-ai", "permanent": true },
-    { "source": "/Local-AI", "destination": "/local-ai", "permanent": true },
-    { "source": "/localai", "destination": "/local-ai", "permanent": true }
+    { "source": "/local-ai", "destination": "/", "permanent": false },
+    { "source": "/LOCAL-AI", "destination": "/", "permanent": false },
+    { "source": "/Local-AI", "destination": "/", "permanent": false },
+    { "source": "/localai", "destination": "/", "permanent": false }
   ],
   "rewrites": [
     {
