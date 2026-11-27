@@ -16759,19 +16759,6 @@ class $PendingTxnsTable extends PendingTxns
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
-  static const VerificationMeta _aiReadMeta = const VerificationMeta('aiRead');
-  @override
-  late final GeneratedColumn<bool> aiRead = GeneratedColumn<bool>(
-    'ai_read',
-    aliasedName,
-    false,
-    type: DriftSqlType.bool,
-    requiredDuringInsert: false,
-    defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'CHECK ("ai_read" IN (0, 1))',
-    ),
-    defaultValue: const Constant(false),
-  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -16793,7 +16780,6 @@ class $PendingTxnsTable extends PendingTxns
     dedupeKey,
     createdAt,
     sourceImagePath,
-    aiRead,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -16914,12 +16900,6 @@ class $PendingTxnsTable extends PendingTxns
         ),
       );
     }
-    if (data.containsKey('ai_read')) {
-      context.handle(
-        _aiReadMeta,
-        aiRead.isAcceptableOrUnknown(data['ai_read']!, _aiReadMeta),
-      );
-    }
     return context;
   }
 
@@ -17019,10 +16999,6 @@ class $PendingTxnsTable extends PendingTxns
         DriftSqlType.string,
         data['${effectivePrefix}source_image_path'],
       ),
-      aiRead: attachedDatabase.typeMapping.read(
-        DriftSqlType.bool,
-        data['${effectivePrefix}ai_read'],
-      )!,
     );
   }
 
@@ -17088,9 +17064,6 @@ class PendingTxnRow extends DataClass implements Insertable<PendingTxnRow> {
   /// this path is used directly as the new transaction's `imagePath`.
   final String? sourceImagePath;
 
-  /// Read by Local AI, because the built-in parser couldn't make it out.
-  /// Shown on the card as something to check, and never auto-posted.
-  final bool aiRead;
   const PendingTxnRow({
     required this.id,
     required this.source,
@@ -17111,7 +17084,6 @@ class PendingTxnRow extends DataClass implements Insertable<PendingTxnRow> {
     required this.dedupeKey,
     required this.createdAt,
     this.sourceImagePath,
-    required this.aiRead,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -17169,7 +17141,6 @@ class PendingTxnRow extends DataClass implements Insertable<PendingTxnRow> {
     if (!nullToAbsent || sourceImagePath != null) {
       map['source_image_path'] = Variable<String>(sourceImagePath);
     }
-    map['ai_read'] = Variable<bool>(aiRead);
     return map;
   }
 
@@ -17214,7 +17185,6 @@ class PendingTxnRow extends DataClass implements Insertable<PendingTxnRow> {
       sourceImagePath: sourceImagePath == null && nullToAbsent
           ? const Value.absent()
           : Value(sourceImagePath),
-      aiRead: Value(aiRead),
     );
   }
 
@@ -17253,7 +17223,6 @@ class PendingTxnRow extends DataClass implements Insertable<PendingTxnRow> {
       dedupeKey: serializer.fromJson<String>(json['dedupeKey']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       sourceImagePath: serializer.fromJson<String?>(json['sourceImagePath']),
-      aiRead: serializer.fromJson<bool>(json['aiRead']),
     );
   }
   @override
@@ -17285,7 +17254,6 @@ class PendingTxnRow extends DataClass implements Insertable<PendingTxnRow> {
       'dedupeKey': serializer.toJson<String>(dedupeKey),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'sourceImagePath': serializer.toJson<String?>(sourceImagePath),
-      'aiRead': serializer.toJson<bool>(aiRead),
     };
   }
 
@@ -17309,7 +17277,6 @@ class PendingTxnRow extends DataClass implements Insertable<PendingTxnRow> {
     String? dedupeKey,
     DateTime? createdAt,
     Value<String?> sourceImagePath = const Value.absent(),
-    bool? aiRead,
   }) => PendingTxnRow(
     id: id ?? this.id,
     source: source ?? this.source,
@@ -17346,7 +17313,6 @@ class PendingTxnRow extends DataClass implements Insertable<PendingTxnRow> {
     sourceImagePath: sourceImagePath.present
         ? sourceImagePath.value
         : this.sourceImagePath,
-    aiRead: aiRead ?? this.aiRead,
   );
   PendingTxnRow copyWithCompanion(PendingTxnsCompanion data) {
     return PendingTxnRow(
@@ -17391,7 +17357,6 @@ class PendingTxnRow extends DataClass implements Insertable<PendingTxnRow> {
       sourceImagePath: data.sourceImagePath.present
           ? data.sourceImagePath.value
           : this.sourceImagePath,
-      aiRead: data.aiRead.present ? data.aiRead.value : this.aiRead,
     );
   }
 
@@ -17416,8 +17381,7 @@ class PendingTxnRow extends DataClass implements Insertable<PendingTxnRow> {
           ..write('createdTransactionId: $createdTransactionId, ')
           ..write('dedupeKey: $dedupeKey, ')
           ..write('createdAt: $createdAt, ')
-          ..write('sourceImagePath: $sourceImagePath, ')
-          ..write('aiRead: $aiRead')
+          ..write('sourceImagePath: $sourceImagePath')
           ..write(')'))
         .toString();
   }
@@ -17443,7 +17407,6 @@ class PendingTxnRow extends DataClass implements Insertable<PendingTxnRow> {
     dedupeKey,
     createdAt,
     sourceImagePath,
-    aiRead,
   );
   @override
   bool operator ==(Object other) =>
@@ -17467,8 +17430,7 @@ class PendingTxnRow extends DataClass implements Insertable<PendingTxnRow> {
           other.createdTransactionId == this.createdTransactionId &&
           other.dedupeKey == this.dedupeKey &&
           other.createdAt == this.createdAt &&
-          other.sourceImagePath == this.sourceImagePath &&
-          other.aiRead == this.aiRead);
+          other.sourceImagePath == this.sourceImagePath);
 }
 
 class PendingTxnsCompanion extends UpdateCompanion<PendingTxnRow> {
@@ -17491,7 +17453,6 @@ class PendingTxnsCompanion extends UpdateCompanion<PendingTxnRow> {
   final Value<String> dedupeKey;
   final Value<DateTime> createdAt;
   final Value<String?> sourceImagePath;
-  final Value<bool> aiRead;
   const PendingTxnsCompanion({
     this.id = const Value.absent(),
     this.source = const Value.absent(),
@@ -17512,7 +17473,6 @@ class PendingTxnsCompanion extends UpdateCompanion<PendingTxnRow> {
     this.dedupeKey = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.sourceImagePath = const Value.absent(),
-    this.aiRead = const Value.absent(),
   });
   PendingTxnsCompanion.insert({
     this.id = const Value.absent(),
@@ -17534,7 +17494,6 @@ class PendingTxnsCompanion extends UpdateCompanion<PendingTxnRow> {
     required String dedupeKey,
     this.createdAt = const Value.absent(),
     this.sourceImagePath = const Value.absent(),
-    this.aiRead = const Value.absent(),
   }) : source = Value(source),
        rawBody = Value(rawBody),
        sender = Value(sender),
@@ -17560,7 +17519,6 @@ class PendingTxnsCompanion extends UpdateCompanion<PendingTxnRow> {
     Expression<String>? dedupeKey,
     Expression<DateTime>? createdAt,
     Expression<String>? sourceImagePath,
-    Expression<bool>? aiRead,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -17583,7 +17541,6 @@ class PendingTxnsCompanion extends UpdateCompanion<PendingTxnRow> {
       if (dedupeKey != null) 'dedupe_key': dedupeKey,
       if (createdAt != null) 'created_at': createdAt,
       if (sourceImagePath != null) 'source_image_path': sourceImagePath,
-      if (aiRead != null) 'ai_read': aiRead,
     });
   }
 
@@ -17607,7 +17564,6 @@ class PendingTxnsCompanion extends UpdateCompanion<PendingTxnRow> {
     Value<String>? dedupeKey,
     Value<DateTime>? createdAt,
     Value<String?>? sourceImagePath,
-    Value<bool>? aiRead,
   }) {
     return PendingTxnsCompanion(
       id: id ?? this.id,
@@ -17629,7 +17585,6 @@ class PendingTxnsCompanion extends UpdateCompanion<PendingTxnRow> {
       dedupeKey: dedupeKey ?? this.dedupeKey,
       createdAt: createdAt ?? this.createdAt,
       sourceImagePath: sourceImagePath ?? this.sourceImagePath,
-      aiRead: aiRead ?? this.aiRead,
     );
   }
 
@@ -17705,9 +17660,6 @@ class PendingTxnsCompanion extends UpdateCompanion<PendingTxnRow> {
     if (sourceImagePath.present) {
       map['source_image_path'] = Variable<String>(sourceImagePath.value);
     }
-    if (aiRead.present) {
-      map['ai_read'] = Variable<bool>(aiRead.value);
-    }
     return map;
   }
 
@@ -17732,8 +17684,7 @@ class PendingTxnsCompanion extends UpdateCompanion<PendingTxnRow> {
           ..write('createdTransactionId: $createdTransactionId, ')
           ..write('dedupeKey: $dedupeKey, ')
           ..write('createdAt: $createdAt, ')
-          ..write('sourceImagePath: $sourceImagePath, ')
-          ..write('aiRead: $aiRead')
+          ..write('sourceImagePath: $sourceImagePath')
           ..write(')'))
         .toString();
   }
@@ -28489,259 +28440,6 @@ class TransactionTemplateTagsCompanion
   }
 }
 
-class $AiMemoriesTable extends AiMemories
-    with TableInfo<$AiMemoriesTable, AiMemoryRow> {
-  @override
-  final GeneratedDatabase attachedDatabase;
-  final String? _alias;
-  $AiMemoriesTable(this.attachedDatabase, [this._alias]);
-  static const VerificationMeta _idMeta = const VerificationMeta('id');
-  @override
-  late final GeneratedColumn<int> id = GeneratedColumn<int>(
-    'id',
-    aliasedName,
-    false,
-    hasAutoIncrement: true,
-    type: DriftSqlType.int,
-    requiredDuringInsert: false,
-    defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'PRIMARY KEY AUTOINCREMENT',
-    ),
-  );
-  static const VerificationMeta _contentMeta = const VerificationMeta(
-    'content',
-  );
-  @override
-  late final GeneratedColumn<String> content = GeneratedColumn<String>(
-    'content',
-    aliasedName,
-    false,
-    additionalChecks: GeneratedColumn.checkTextLength(
-      minTextLength: 1,
-      maxTextLength: 300,
-    ),
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
-  );
-  static const VerificationMeta _createdAtMeta = const VerificationMeta(
-    'createdAt',
-  );
-  @override
-  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
-    'created_at',
-    aliasedName,
-    false,
-    type: DriftSqlType.dateTime,
-    requiredDuringInsert: false,
-    defaultValue: currentDateAndTime,
-  );
-  @override
-  List<GeneratedColumn> get $columns => [id, content, createdAt];
-  @override
-  String get aliasedName => _alias ?? actualTableName;
-  @override
-  String get actualTableName => $name;
-  static const String $name = 'ai_memories';
-  @override
-  VerificationContext validateIntegrity(
-    Insertable<AiMemoryRow> instance, {
-    bool isInserting = false,
-  }) {
-    final context = VerificationContext();
-    final data = instance.toColumns(true);
-    if (data.containsKey('id')) {
-      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
-    }
-    if (data.containsKey('content')) {
-      context.handle(
-        _contentMeta,
-        content.isAcceptableOrUnknown(data['content']!, _contentMeta),
-      );
-    } else if (isInserting) {
-      context.missing(_contentMeta);
-    }
-    if (data.containsKey('created_at')) {
-      context.handle(
-        _createdAtMeta,
-        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
-      );
-    }
-    return context;
-  }
-
-  @override
-  Set<GeneratedColumn> get $primaryKey => {id};
-  @override
-  AiMemoryRow map(Map<String, dynamic> data, {String? tablePrefix}) {
-    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
-    return AiMemoryRow(
-      id: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}id'],
-      )!,
-      content: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}content'],
-      )!,
-      createdAt: attachedDatabase.typeMapping.read(
-        DriftSqlType.dateTime,
-        data['${effectivePrefix}created_at'],
-      )!,
-    );
-  }
-
-  @override
-  $AiMemoriesTable createAlias(String alias) {
-    return $AiMemoriesTable(attachedDatabase, alias);
-  }
-}
-
-class AiMemoryRow extends DataClass implements Insertable<AiMemoryRow> {
-  final int id;
-  final String content;
-  final DateTime createdAt;
-  const AiMemoryRow({
-    required this.id,
-    required this.content,
-    required this.createdAt,
-  });
-  @override
-  Map<String, Expression> toColumns(bool nullToAbsent) {
-    final map = <String, Expression>{};
-    map['id'] = Variable<int>(id);
-    map['content'] = Variable<String>(content);
-    map['created_at'] = Variable<DateTime>(createdAt);
-    return map;
-  }
-
-  AiMemoriesCompanion toCompanion(bool nullToAbsent) {
-    return AiMemoriesCompanion(
-      id: Value(id),
-      content: Value(content),
-      createdAt: Value(createdAt),
-    );
-  }
-
-  factory AiMemoryRow.fromJson(
-    Map<String, dynamic> json, {
-    ValueSerializer? serializer,
-  }) {
-    serializer ??= driftRuntimeOptions.defaultSerializer;
-    return AiMemoryRow(
-      id: serializer.fromJson<int>(json['id']),
-      content: serializer.fromJson<String>(json['content']),
-      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
-    );
-  }
-  @override
-  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
-    serializer ??= driftRuntimeOptions.defaultSerializer;
-    return <String, dynamic>{
-      'id': serializer.toJson<int>(id),
-      'content': serializer.toJson<String>(content),
-      'createdAt': serializer.toJson<DateTime>(createdAt),
-    };
-  }
-
-  AiMemoryRow copyWith({int? id, String? content, DateTime? createdAt}) =>
-      AiMemoryRow(
-        id: id ?? this.id,
-        content: content ?? this.content,
-        createdAt: createdAt ?? this.createdAt,
-      );
-  AiMemoryRow copyWithCompanion(AiMemoriesCompanion data) {
-    return AiMemoryRow(
-      id: data.id.present ? data.id.value : this.id,
-      content: data.content.present ? data.content.value : this.content,
-      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
-    );
-  }
-
-  @override
-  String toString() {
-    return (StringBuffer('AiMemoryRow(')
-          ..write('id: $id, ')
-          ..write('content: $content, ')
-          ..write('createdAt: $createdAt')
-          ..write(')'))
-        .toString();
-  }
-
-  @override
-  int get hashCode => Object.hash(id, content, createdAt);
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      (other is AiMemoryRow &&
-          other.id == this.id &&
-          other.content == this.content &&
-          other.createdAt == this.createdAt);
-}
-
-class AiMemoriesCompanion extends UpdateCompanion<AiMemoryRow> {
-  final Value<int> id;
-  final Value<String> content;
-  final Value<DateTime> createdAt;
-  const AiMemoriesCompanion({
-    this.id = const Value.absent(),
-    this.content = const Value.absent(),
-    this.createdAt = const Value.absent(),
-  });
-  AiMemoriesCompanion.insert({
-    this.id = const Value.absent(),
-    required String content,
-    this.createdAt = const Value.absent(),
-  }) : content = Value(content);
-  static Insertable<AiMemoryRow> custom({
-    Expression<int>? id,
-    Expression<String>? content,
-    Expression<DateTime>? createdAt,
-  }) {
-    return RawValuesInsertable({
-      if (id != null) 'id': id,
-      if (content != null) 'content': content,
-      if (createdAt != null) 'created_at': createdAt,
-    });
-  }
-
-  AiMemoriesCompanion copyWith({
-    Value<int>? id,
-    Value<String>? content,
-    Value<DateTime>? createdAt,
-  }) {
-    return AiMemoriesCompanion(
-      id: id ?? this.id,
-      content: content ?? this.content,
-      createdAt: createdAt ?? this.createdAt,
-    );
-  }
-
-  @override
-  Map<String, Expression> toColumns(bool nullToAbsent) {
-    final map = <String, Expression>{};
-    if (id.present) {
-      map['id'] = Variable<int>(id.value);
-    }
-    if (content.present) {
-      map['content'] = Variable<String>(content.value);
-    }
-    if (createdAt.present) {
-      map['created_at'] = Variable<DateTime>(createdAt.value);
-    }
-    return map;
-  }
-
-  @override
-  String toString() {
-    return (StringBuffer('AiMemoriesCompanion(')
-          ..write('id: $id, ')
-          ..write('content: $content, ')
-          ..write('createdAt: $createdAt')
-          ..write(')'))
-        .toString();
-  }
-}
-
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -28809,7 +28507,6 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $TransactionTemplatesTable(this);
   late final $TransactionTemplateTagsTable transactionTemplateTags =
       $TransactionTemplateTagsTable(this);
-  late final $AiMemoriesTable aiMemories = $AiMemoriesTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -28860,7 +28557,6 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     categoryTemplateItems,
     transactionTemplates,
     transactionTemplateTags,
-    aiMemories,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -45126,7 +44822,6 @@ typedef $$PendingTxnsTableCreateCompanionBuilder =
       required String dedupeKey,
       Value<DateTime> createdAt,
       Value<String?> sourceImagePath,
-      Value<bool> aiRead,
     });
 typedef $$PendingTxnsTableUpdateCompanionBuilder =
     PendingTxnsCompanion Function({
@@ -45149,7 +44844,6 @@ typedef $$PendingTxnsTableUpdateCompanionBuilder =
       Value<String> dedupeKey,
       Value<DateTime> createdAt,
       Value<String?> sourceImagePath,
-      Value<bool> aiRead,
     });
 
 final class $$PendingTxnsTableReferences
@@ -45299,11 +44993,6 @@ class $$PendingTxnsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<bool> get aiRead => $composableBuilder(
-    column: $table.aiRead,
-    builder: (column) => ColumnFilters(column),
-  );
-
   $$AccountsTableFilterComposer get matchedAccountId {
     final $$AccountsTableFilterComposer composer = $composerBuilder(
       composer: this,
@@ -45445,11 +45134,6 @@ class $$PendingTxnsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<bool> get aiRead => $composableBuilder(
-    column: $table.aiRead,
-    builder: (column) => ColumnOrderings(column),
-  );
-
   $$AccountsTableOrderingComposer get matchedAccountId {
     final $$AccountsTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -45578,9 +45262,6 @@ class $$PendingTxnsTableAnnotationComposer
     builder: (column) => column,
   );
 
-  GeneratedColumn<bool> get aiRead =>
-      $composableBuilder(column: $table.aiRead, builder: (column) => column);
-
   $$AccountsTableAnnotationComposer get matchedAccountId {
     final $$AccountsTableAnnotationComposer composer = $composerBuilder(
       composer: this,
@@ -45678,7 +45359,6 @@ class $$PendingTxnsTableTableManager
                 Value<String> dedupeKey = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<String?> sourceImagePath = const Value.absent(),
-                Value<bool> aiRead = const Value.absent(),
               }) => PendingTxnsCompanion(
                 id: id,
                 source: source,
@@ -45699,7 +45379,6 @@ class $$PendingTxnsTableTableManager
                 dedupeKey: dedupeKey,
                 createdAt: createdAt,
                 sourceImagePath: sourceImagePath,
-                aiRead: aiRead,
               ),
           createCompanionCallback:
               ({
@@ -45722,7 +45401,6 @@ class $$PendingTxnsTableTableManager
                 required String dedupeKey,
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<String?> sourceImagePath = const Value.absent(),
-                Value<bool> aiRead = const Value.absent(),
               }) => PendingTxnsCompanion.insert(
                 id: id,
                 source: source,
@@ -45743,7 +45421,6 @@ class $$PendingTxnsTableTableManager
                 dedupeKey: dedupeKey,
                 createdAt: createdAt,
                 sourceImagePath: sourceImagePath,
-                aiRead: aiRead,
               ),
           withReferenceMapper: (p0) => p0
               .map(
@@ -57299,163 +56976,6 @@ typedef $$TransactionTemplateTagsTableProcessedTableManager =
       TransactionTemplateTagRow,
       PrefetchHooks Function({bool templateId, bool tagId})
     >;
-typedef $$AiMemoriesTableCreateCompanionBuilder =
-    AiMemoriesCompanion Function({
-      Value<int> id,
-      required String content,
-      Value<DateTime> createdAt,
-    });
-typedef $$AiMemoriesTableUpdateCompanionBuilder =
-    AiMemoriesCompanion Function({
-      Value<int> id,
-      Value<String> content,
-      Value<DateTime> createdAt,
-    });
-
-class $$AiMemoriesTableFilterComposer
-    extends Composer<_$AppDatabase, $AiMemoriesTable> {
-  $$AiMemoriesTableFilterComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  ColumnFilters<int> get id => $composableBuilder(
-    column: $table.id,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get content => $composableBuilder(
-    column: $table.content,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<DateTime> get createdAt => $composableBuilder(
-    column: $table.createdAt,
-    builder: (column) => ColumnFilters(column),
-  );
-}
-
-class $$AiMemoriesTableOrderingComposer
-    extends Composer<_$AppDatabase, $AiMemoriesTable> {
-  $$AiMemoriesTableOrderingComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  ColumnOrderings<int> get id => $composableBuilder(
-    column: $table.id,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get content => $composableBuilder(
-    column: $table.content,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
-    column: $table.createdAt,
-    builder: (column) => ColumnOrderings(column),
-  );
-}
-
-class $$AiMemoriesTableAnnotationComposer
-    extends Composer<_$AppDatabase, $AiMemoriesTable> {
-  $$AiMemoriesTableAnnotationComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  GeneratedColumn<int> get id =>
-      $composableBuilder(column: $table.id, builder: (column) => column);
-
-  GeneratedColumn<String> get content =>
-      $composableBuilder(column: $table.content, builder: (column) => column);
-
-  GeneratedColumn<DateTime> get createdAt =>
-      $composableBuilder(column: $table.createdAt, builder: (column) => column);
-}
-
-class $$AiMemoriesTableTableManager
-    extends
-        RootTableManager<
-          _$AppDatabase,
-          $AiMemoriesTable,
-          AiMemoryRow,
-          $$AiMemoriesTableFilterComposer,
-          $$AiMemoriesTableOrderingComposer,
-          $$AiMemoriesTableAnnotationComposer,
-          $$AiMemoriesTableCreateCompanionBuilder,
-          $$AiMemoriesTableUpdateCompanionBuilder,
-          (
-            AiMemoryRow,
-            BaseReferences<_$AppDatabase, $AiMemoriesTable, AiMemoryRow>,
-          ),
-          AiMemoryRow,
-          PrefetchHooks Function()
-        > {
-  $$AiMemoriesTableTableManager(_$AppDatabase db, $AiMemoriesTable table)
-    : super(
-        TableManagerState(
-          db: db,
-          table: table,
-          createFilteringComposer: () =>
-              $$AiMemoriesTableFilterComposer($db: db, $table: table),
-          createOrderingComposer: () =>
-              $$AiMemoriesTableOrderingComposer($db: db, $table: table),
-          createComputedFieldComposer: () =>
-              $$AiMemoriesTableAnnotationComposer($db: db, $table: table),
-          updateCompanionCallback:
-              ({
-                Value<int> id = const Value.absent(),
-                Value<String> content = const Value.absent(),
-                Value<DateTime> createdAt = const Value.absent(),
-              }) => AiMemoriesCompanion(
-                id: id,
-                content: content,
-                createdAt: createdAt,
-              ),
-          createCompanionCallback:
-              ({
-                Value<int> id = const Value.absent(),
-                required String content,
-                Value<DateTime> createdAt = const Value.absent(),
-              }) => AiMemoriesCompanion.insert(
-                id: id,
-                content: content,
-                createdAt: createdAt,
-              ),
-          withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
-              .toList(),
-          prefetchHooksCallback: null,
-        ),
-      );
-}
-
-typedef $$AiMemoriesTableProcessedTableManager =
-    ProcessedTableManager<
-      _$AppDatabase,
-      $AiMemoriesTable,
-      AiMemoryRow,
-      $$AiMemoriesTableFilterComposer,
-      $$AiMemoriesTableOrderingComposer,
-      $$AiMemoriesTableAnnotationComposer,
-      $$AiMemoriesTableCreateCompanionBuilder,
-      $$AiMemoriesTableUpdateCompanionBuilder,
-      (
-        AiMemoryRow,
-        BaseReferences<_$AppDatabase, $AiMemoriesTable, AiMemoryRow>,
-      ),
-      AiMemoryRow,
-      PrefetchHooks Function()
-    >;
-
 class $AppDatabaseManager {
   final _$AppDatabase _db;
   $AppDatabaseManager(this._db);
@@ -57551,6 +57071,4 @@ class $AppDatabaseManager {
         _db,
         _db.transactionTemplateTags,
       );
-  $$AiMemoriesTableTableManager get aiMemories =>
-      $$AiMemoriesTableTableManager(_db, _db.aiMemories);
 }

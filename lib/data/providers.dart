@@ -1,6 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../core/ai/ai_capture.dart';
 import '../core/budget_cycle.dart';
 import '../core/currency.dart';
 import '../core/home_widget/home_widget_service.dart';
@@ -20,6 +19,7 @@ import '../features/data_export/backup_service.dart';
 import '../features/message_capture/capture_service.dart';
 import '../features/message_capture/message_source.dart';
 import '../features/message_capture/share_intake.dart';
+import '../features/message_capture/sms_inbox.dart';
 import '../features/transactions/transaction_filters.dart';
 import 'card_statement.dart';
 import 'currency_conversion.dart';
@@ -1598,12 +1598,21 @@ final expenseReminderProvider = Provider<ExpenseReminderSettings>((ref) {
 
 // ── Message auto-capture ────────────────────────────────────────────────────
 
-/// Capture is paused: the SMS source was removed in 1.1.0 because Google Play
-/// Protect blocks direct-download APKs that request SMS permissions. The
-/// pipeline behind this provider (parser, dedupe, Review Inbox) is intact —
-/// swap in a Play-compliant source here when capture returns.
+/// The phone's SMS inbox (Auto money tracking). Overridden in tests.
+final smsInboxProvider = Provider<SmsInbox>((ref) => const ChannelSmsInbox());
+
+/// Whether this build may read SMS at all — Android builds made with
+/// XPENC_SMS=on, and debug builds (android/app/build.gradle.kts).
+final smsDeclaredProvider = FutureProvider<bool>(
+  (ref) => ref.watch(smsInboxProvider).declared(),
+);
+
+/// Bank SMS on Android; nothing elsewhere. A build that doesn't declare
+/// READ_SMS reports itself unsupported, so capture stays a no-op there.
 final messageSourceProvider = Provider<MessageSource>(
-  (ref) => const NullMessageSource(),
+  (ref) => PlatformFeatures.smsCapture
+      ? SmsMessageSource(ref.watch(smsInboxProvider))
+      : const NullMessageSource(),
 );
 
 final captureServiceProvider = Provider<CaptureService>(
@@ -1614,11 +1623,7 @@ final captureServiceProvider = Provider<CaptureService>(
 );
 
 final shareIntakeServiceProvider = Provider<ShareIntakeService>(
-  (ref) => ShareIntakeService(
-    db: ref.watch(dbProvider),
-    // What the parsers can't read, Local AI tries — when it's on.
-    ai: LocalAiPaymentReader(ref),
-  ),
+  (ref) => ShareIntakeService(db: ref.watch(dbProvider)),
 );
 
 /// Cards awaiting review, plus auto-filled ones shown for information.

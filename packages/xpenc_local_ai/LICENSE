@@ -1,6 +1,0 @@
-xpenc_local_ai is part of XPENC and shares its license (see the repository
-root). The engines it builds are vendored unmodified, apart from removed GPU
-backends, under their own MIT licenses:
-
-  src/third_party/llama.cpp/LICENSE   (llama.cpp b11446, ggml 0.26.0)
-  src/third_party/whisper.cpp/LICENSE (whisper.cpp v1.9.5)

@@ -1,11 +1,12 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
-    <!-- No SMS permissions — deliberately. READ_SMS made Google Play Protect
-         block direct APK installs (users had to pause protection to install),
-         so bank-SMS auto-capture is paused. The capture pipeline still exists
-         behind the MessageSource interface; do NOT re-add READ_SMS here without
-         re-testing sideload install on a Play-Protect-enabled device.
-         test/native_channel_test.dart fails the build if this returns. -->
+    <!-- No SMS permission here — deliberately. READ_SMS makes Google Play
+         Protect block APKs installed from a browser or file manager, and Play
+         accepts it only with an approved SMS declaration. Auto money tracking
+         (Settings → Advanced Features) gets it from src/sms/AndroidManifest.xml,
+         merged only into builds made with XPENC_SMS=on (and debug builds) —
+         see android/app/build.gradle.kts. test/native_channel_test.dart
+         fails the build if it lands here. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <!-- WorkManager (pulled in transitively by flutter_local_notifications)
          declares this by default for network-constrained jobs. XPENC is
@@ -50,10 +51,9 @@
          picker name-only, exactly as it behaved before this permission
          existed. -->
     <uses-permission android:name="android.permission.READ_CONTACTS"/>
-    <!-- Local AI voice input: asked for the first time 🎤 is held in Ask
-         XPENC, never otherwise. Audio is recorded into memory only, turned
-         into text by the on-device speech model, then dropped — never saved,
-         never sent (VoiceChannel.kt). -->
+    <!-- Voice add (double-tap ➕): asked the first time it listens, never
+         otherwise. The phone's own on-device recognizer turns speech into
+         text; nothing is recorded or sent (SpeechChannel.kt). -->
     <uses-permission android:name="android.permission.RECORD_AUDIO"/>
     <application
         android:label="@string/app_name"

@@ -21,7 +21,7 @@ import 'package:xpenc/features/data_export/backup_screen.dart';
 import 'package:xpenc/features/data_export/download_data_screen.dart';
 import 'package:xpenc/features/guide/guide_data.dart';
 import 'package:xpenc/features/guide/guide_screen.dart';
-import 'package:xpenc/features/message_capture/message_capture_screen.dart';
+import 'package:xpenc/features/message_capture/sms_tracking_screen.dart';
 import 'package:xpenc/features/message_capture/review_inbox_screen.dart';
 import 'package:xpenc/features/message_capture/share_intake.dart';
 import 'package:xpenc/features/more/more_screen.dart';
@@ -34,6 +34,7 @@ import 'package:xpenc/features/reports/xpenc_score_screen.dart';
 import 'package:xpenc/features/savings/archived_goals_loans_screen.dart';
 import 'package:xpenc/features/savings/savings_goal_detail_screen.dart';
 import 'package:xpenc/features/savings/savings_goals_screen.dart';
+import 'package:xpenc/features/settings/advanced_features_screen.dart';
 import 'package:xpenc/features/settings/general_settings_screen.dart';
 import 'package:xpenc/features/settings/mode_budgeting_settings_screen.dart';
 import 'package:xpenc/features/settings/more_screen_layout_sheet.dart';
@@ -1482,9 +1483,21 @@ void main() {
     await unmount(tester);
   });
 
-  testWidgets('Message Capture settings render', (tester) async {
-    await pump(tester, const MessageCaptureScreen());
+  // No SMS channel under `flutter test`: the "not in this version" state.
+  testWidgets('Auto money tracking renders without a platform channel', (
+    tester,
+  ) async {
+    await pump(tester, const SmsTrackingScreen());
     expect(tester.takeException(), isNull);
+    expect(find.text('Not in this version'), findsOneWidget);
+    await unmount(tester);
+  });
+
+  testWidgets('Advanced Features renders', (tester) async {
+    await pump(tester, const AdvancedFeaturesScreen());
+    expect(tester.takeException(), isNull);
+    expect(find.text('Auto money tracking'), findsOneWidget);
+    expect(find.text('BETA'), findsOneWidget);
     await unmount(tester);
   });
 

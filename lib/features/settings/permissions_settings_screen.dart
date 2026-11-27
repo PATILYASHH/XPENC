@@ -108,6 +108,15 @@ class _PermissionsSettingsScreenState
     final muted = theme.textTheme.bodySmall?.copyWith(
       color: cs.onSurfaceVariant,
     );
+    // SMS only in builds that ask for it (XPENC_SMS=on, debug); elsewhere
+    // it's "never requested" — and until the first status read, too.
+    final smsAsked = states != null &&
+        states[AppPermission.sms] != PermissionState.notDeclared &&
+        states[AppPermission.sms] != PermissionState.unavailable;
+    final asked = [
+      for (final p in AppPermission.values)
+        if (p != AppPermission.sms || smsAsked) p,
+    ];
 
     return Scaffold(
       appBar: AppTopBar(title: const Tr('Permissions')),
@@ -130,7 +139,7 @@ class _PermissionsSettingsScreenState
           AppCard(
             child: Column(
               children: [
-                for (final (i, p) in AppPermission.values.indexed) ...[
+                for (final (i, p) in asked.indexed) ...[
                   if (i > 0) Divider(height: 1),
                   _PermissionTile(
                     permission: p,
@@ -171,17 +180,19 @@ class _PermissionsSettingsScreenState
                   subtitle: tr('XPENC cannot connect to the internet — your '
                       'data never leaves this device'),
                 ),
-                Divider(height: 1),
-                _InfoTile(
-                  icon: Icons.sms_outlined,
-                  title: 'SMS',
-                  subtitle: tr('Bank messages come in only when you share one '
-                      'to XPENC'),
-                ),
+                if (!smsAsked) ...[
+                  Divider(height: 1),
+                  _InfoTile(
+                    icon: Icons.sms_outlined,
+                    title: 'SMS',
+                    subtitle: tr('Bank messages come in only when you share '
+                        'one to XPENC'),
+                  ),
+                ],
                 Divider(height: 1),
                 _InfoTile(
                   icon: Icons.location_off_outlined,
-                  title: tr('Location, microphone, phone'),
+                  title: tr('Location, phone'),
                   subtitle: tr('Not used for anything'),
                 ),
               ],
@@ -217,6 +228,7 @@ class _PermissionTile extends StatelessWidget {
     AppPermission.camera => Icons.photo_camera_outlined,
     AppPermission.contacts => Icons.contacts_outlined,
     AppPermission.microphone => Icons.mic_none_rounded,
+    AppPermission.sms => Icons.sms_outlined,
   };
 
   @override

@@ -2,7 +2,6 @@ import 'dart:io';
 
 import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 
-import '../../core/ai/ai_capture.dart';
 import '../../core/platform/platform_features.dart';
 import '../../data/database.dart';
 import '../../data/tables.dart';
@@ -21,12 +20,6 @@ sealed class ShareIntakeResult {
 class ShareIntakeIngested extends ShareIntakeResult {
   const ShareIntakeIngested(this.pendingId);
   final int pendingId;
-}
-
-/// The parser couldn't read it, so Local AI is reading it now — a few
-/// seconds; the final result follows.
-class ShareIntakeReading extends ShareIntakeResult {
-  const ShareIntakeReading();
 }
 
 /// The exact same message (same sender/text/minute) was already queued.
@@ -60,50 +53,12 @@ class ShareIntakeService {
     this.parser = const MessageParser(),
     this.screenshotParser = const ScreenshotParser(),
     this.ocr = const OcrService(),
-    this.ai,
   });
 
   final AppDatabase db;
   final MessageParser parser;
   final ScreenshotParser screenshotParser;
   final OcrService ocr;
-
-  /// Local AI, for what the parsers can't read. Null, or not
-  /// [AiPaymentReader.available], keeps share intake exactly as before.
-  final AiPaymentReader? ai;
-
-  /// What an AI-read card scores: under every parser's, and far under
-  /// [kAutoApproveMinConfidence], so it always waits for the user.
-  static const kAiReadConfidence = 30;
-
-  /// Rejections worth a second opinion. An OTP, a promo, a declined
-  /// payment or a balance alert was understood fine — and isn't money moving.
-  static const _aiRetry = {
-    RejectReason.notATransaction,
-    RejectReason.noAmount,
-    RejectReason.noDirection,
-  };
-
-  /// Local AI's reading of [text], as a parse — null when it can't help.
-  Future<ParsedMessage?> _readWithAi(
-    String text,
-    RejectReason reason,
-    void Function()? onReading,
-  ) async {
-    final reader = ai;
-    if (reader == null || !_aiRetry.contains(reason)) return null;
-    if (!await reader.available) return null;
-    onReading?.call();
-    final read = await reader.read(text);
-    if (read == null) return null;
-    return ParsedMessage(
-      amount: read.amount,
-      direction: read.direction,
-      confidence: kAiReadConfidence,
-      accountHint: read.last4,
-      merchant: read.payee,
-    );
-  }
 
   /// Call once at startup. Covers both a cold start launched *by* a share
   /// and one arriving while the app is already open — mirrors
@@ -141,19 +96,9 @@ class ShareIntakeService {
         case SharedMediaType.text:
           final text = f.path.trim();
           if (text.isEmpty) continue;
-          onResult(
-            await ingest(
-              text,
-              onReading: () => onResult(const ShareIntakeReading()),
-            ),
-          );
+          onResult(await ingest(text));
         case SharedMediaType.image:
-          onResult(
-            await ingestImage(
-              f.path,
-              onReading: () => onResult(const ShareIntakeReading()),
-            ),
-          );
+          onResult(await ingestImage(f.path));
         case SharedMediaType.file:
           if (onFile != null && f.path.isNotEmpty) onFile(f.path);
         case SharedMediaType.video:
@@ -167,13 +112,7 @@ class ShareIntakeService {
   /// unknown once text has left the messaging app, so [_isBankSender]-style
   /// sender gating (used by the bulk scan in `CaptureService`) doesn't apply
   /// here — the user choosing to share *this* message is the trust signal.
-  ///
-  /// What the parser can't read, Local AI gets a go at ([ai]); [onReading]
-  /// fires as it starts.
-  Future<ShareIntakeResult> ingest(
-    String text, {
-    void Function()? onReading,
-  }) async {
+  Future<ShareIntakeResult> ingest(String text) async {
     final msg = RawMessage(
       body: text,
       sender: 'Shared',
@@ -181,17 +120,10 @@ class ShareIntakeService {
       source: MessageSourceKind.shared,
     );
     final result = parser.parse(msg);
-    var aiRead = false;
-    final ParsedMessage parsed;
-    if (result is Rejected) {
-      final read = await _readWithAi(text, result.reason, onReading);
-      if (read == null) return ShareIntakeRejected(result.reason);
-      parsed = read;
-      aiRead = true;
-    } else {
-      parsed = result as ParsedMessage;
-    }
-    final id = await db.ingestMessage(msg, parsed, aiRead: aiRead);
+    if (result is Rejected) return ShareIntakeRejected(result.reason);
+
+    final parsed = result as ParsedMessage;
+    final id = await db.ingestMessage(msg, parsed);
     if (id == null) return const ShareIntakeDuplicate();
     return ShareIntakeIngested(id);
   }
@@ -205,10 +137,7 @@ class ShareIntakeService {
   /// file the sharing plugin may clean up at any time, and an approved card
   /// needs the file to still exist so it can become the transaction's
   /// receipt (see `AppDatabase.approvePending`).
-  Future<ShareIntakeResult> ingestImage(
-    String path, {
-    void Function()? onReading,
-  }) async {
+  Future<ShareIntakeResult> ingestImage(String path) async {
     final stored = await ReceiptStorage.storeExternalFile(File(path));
     final String text;
     try {
@@ -228,25 +157,13 @@ class ShareIntakeService {
       source: MessageSourceKind.screenshot,
     );
     final result = screenshotParser.parse(msg);
-    var aiRead = false;
-    final ParsedMessage parsed;
     if (result is Rejected) {
-      final read = await _readWithAi(text, result.reason, onReading);
-      if (read == null) {
-        await _deleteBestEffort(stored);
-        return ShareIntakeRejected(result.reason, recognizedText: text);
-      }
-      parsed = read;
-      aiRead = true;
-    } else {
-      parsed = result as ParsedMessage;
+      await _deleteBestEffort(stored);
+      return ShareIntakeRejected(result.reason, recognizedText: text);
     }
-    final id = await db.ingestMessage(
-      msg,
-      parsed,
-      sourceImagePath: stored,
-      aiRead: aiRead,
-    );
+
+    final parsed = result as ParsedMessage;
+    final id = await db.ingestMessage(msg, parsed, sourceImagePath: stored);
     if (id == null) {
       // Exact duplicate of an already-queued screenshot — the earlier card
       // already owns a copy of this image, so this one is now unreferenced.

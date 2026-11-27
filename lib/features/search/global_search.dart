@@ -163,12 +163,16 @@ List<SearchPage> searchPages({bool indiaTools = true}) => [
       route: '/more/settings/notifications',
       keywords: ['Settings'],
     ),
-  if (PlatformFeatures.localAi)
+  if (PlatformFeatures.smsCapture)
     const SearchPage(
-      label: 'Local AI',
-      icon: Icons.auto_awesome_rounded,
-      route: '/more/settings/local-ai',
-      keywords: ['Settings', 'Ask about your money, offline · AI Memory'],
+      label: 'Auto money tracking',
+      icon: Icons.sms_rounded,
+      route: '/more/settings/advanced/sms',
+      keywords: [
+        'Settings',
+        'Advanced Features',
+        'Bank SMS, messages, auto capture',
+      ],
     ),
   const SearchPage(
     label: 'Quick Actions',

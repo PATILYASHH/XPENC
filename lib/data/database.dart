@@ -17,7 +17,7 @@ import '../core/security/totp.dart';
 import '../core/security/unlock_method.dart';
 import '../core/smart_tags.dart';
 import '../features/message_capture/parser/bank_message.dart';
-import '../features/message_capture/parser/message_parser.dart';
+import '../features/message_capture/parser/bank_templates.dart';
 import 'currency_conversion.dart';
 import 'card_statement.dart';
 import 'category_template_file.dart';
@@ -254,7 +254,6 @@ List<int>? parseBudgetAlertLevels(String? stored) {
     CategoryTemplateItems,
     TransactionTemplates,
     TransactionTemplateTags,
-    AiMemories,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -287,7 +286,7 @@ class AppDatabase extends _$AppDatabase {
       );
 
   @override
-  int get schemaVersion => 100;
+  int get schemaVersion => 101;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -940,14 +939,9 @@ class AppDatabase extends _$AppDatabase {
         // The interface language (#191); null follows the phone.
         await _addColumnIfMissing(m, settings, settings.languageCode);
       }
-      if (from < 96) {
-        // Local AI's memory.
-        await m.createTable(aiMemories);
-      }
-      if (from < 97) {
-        // A capture card read by Local AI.
-        await _addColumnIfMissing(m, pendingTxns, pendingTxns.aiRead);
-      }
+      // 96 (Local AI's memory) and 97 (`pending_txns.ai_read`) were Local AI,
+      // which is gone — see 101. A database coming from before 96 simply
+      // never gets either.
       if (from < 98) {
         // An account can be taken off Add Transaction's account strip.
         await _addColumnIfMissing(m, accounts, accounts.showOnAddPage);
@@ -963,6 +957,16 @@ class AppDatabase extends _$AppDatabase {
       if (from < 100) {
         // Where the user lives — country-specific defaults and voice add.
         await _addColumnIfMissing(m, settings, settings.countryCode);
+      }
+      if (from < 101) {
+        // Local AI was taken out: its memory goes with it. A beta install
+        // may still carry `pending_txns.ai_read` — nothing reads it, and
+        // its default fills it on every insert, so it can stay.
+        await customStatement('DROP TABLE IF EXISTS ai_memories');
+        // Bank senders added from the templates people shared on GitHub
+        // (#165 HDFC, #211 Federal Bank). Rules already there keep their
+        // on/off; there was no way to delete one before this version.
+        await _seedSenderRules();
       }
     },
     beforeOpen: (details) async {
@@ -1501,9 +1505,6 @@ class AppDatabase extends _$AppDatabase {
   /// expenses, so "Clear all data" died on `DELETE FROM categories`.
   @visibleForTesting
   List<TableInfo> get ledgerTablesChildrenFirst => [
-    // What the user told Local AI to remember is about them, so starting
-    // fresh forgets it too. Nothing points at it.
-    aiMemories,
     budgetAlerts,
     pendingTxns,
     merchantRules,
@@ -2820,40 +2821,6 @@ class AppDatabase extends _$AppDatabase {
     )..where((t) => t.templateId.equals(id))).go();
     await (delete(transactionTemplates)..where((t) => t.id.equals(id))).go();
   });
-
-  // ── Local AI memory ──────────────────────────────────────────────────────
-  //
-  // What the user wants Local AI to keep in mind (see [AiMemories]). Written
-  // only by the user — from AI Memory, or by tapping "Save to memory" — and
-  // read into every AI prompt.
-
-  Stream<List<AiMemoryRow>> watchAiMemories() =>
-      (select(aiMemories)..orderBy([
-            (m) => OrderingTerm(expression: m.createdAt),
-            (m) => OrderingTerm(expression: m.id),
-          ]))
-          .watch();
-
-  Future<int> addAiMemory(String content) => into(
-    aiMemories,
-  ).insert(AiMemoriesCompanion.insert(content: _aiMemoryText(content)));
-
-  Future<void> updateAiMemory(int id, String content) =>
-      (update(aiMemories)..where((m) => m.id.equals(id))).write(
-        AiMemoriesCompanion(content: Value(_aiMemoryText(content))),
-      );
-
-  Future<void> deleteAiMemory(int id) =>
-      (delete(aiMemories)..where((m) => m.id.equals(id))).go();
-
-  /// "Forget everything" in AI Memory.
-  Future<void> clearAiMemories() => delete(aiMemories).go();
-
-  static String _aiMemoryText(String content) {
-    final text = content.trim();
-    if (text.isEmpty) throw ArgumentError(tr('Write something to remember.'));
-    return text.length > 300 ? text.substring(0, 300).trimRight() : text;
-  }
 
   // ── Savings goals ────────────────────────────────────────────────────────
   //
@@ -6699,8 +6666,6 @@ class AppDatabase extends _$AppDatabase {
     RawMessage msg,
     ParsedMessage parsed, {
     String? sourceImagePath,
-    // Read by Local AI rather than the parser — see [PendingTxns.aiRead].
-    bool aiRead = false,
   }) {
     return transaction(() async {
       final key = dedupeKeyFor(msg);
@@ -6731,7 +6696,6 @@ class AppDatabase extends _$AppDatabase {
           confidence: Value(parsed.confidence),
           matchedAccountId: Value(matched?.id),
           sourceImagePath: Value(sourceImagePath),
-          aiRead: Value(aiRead),
           status: Value(
             duplicate ? PendingStatus.duplicate : PendingStatus.pending,
           ),
@@ -7066,10 +7030,68 @@ class AppDatabase extends _$AppDatabase {
 
   Stream<List<SenderRuleRow>> watchSenderRules() => select(senderRules).watch();
 
-  Future<void> setSenderRuleEnabled(int id, bool enabled) =>
-      (update(senderRules)..where((r) => r.id.equals(id))).write(
-        SenderRulesCompanion(enabled: Value(enabled)),
+  /// Switching a sender on also rewinds the scan ([restartMessageScan]),
+  /// so its recent messages are read too.
+  Future<void> setSenderRuleEnabled(int id, bool enabled) async {
+    await (update(senderRules)..where((r) => r.id.equals(id))).write(
+      SenderRulesCompanion(enabled: Value(enabled)),
+    );
+    if (enabled) await restartMessageScan();
+  }
+
+  /// Tracks a bank sender: [pattern] is a sender code (`FEDBNK`, see
+  /// `normalizeSenderPattern`). Returns its row id — an existing rule for
+  /// the same code is switched on and renamed instead of duplicated.
+  Future<int> addSenderRule(String pattern, String bankName) async {
+    final code = normalizeSenderPattern(pattern);
+    if (code == null) {
+      throw ArgumentError(tr('Enter the sender ID, like AX-FEDBNK-S'));
+    }
+    final name = bankName.trim().isEmpty ? code : bankName.trim();
+    final existing = await (select(
+      senderRules,
+    )..where((r) => r.senderPattern.equals(code))).getSingleOrNull();
+    final int id;
+    if (existing != null) {
+      await (update(senderRules)..where((r) => r.id.equals(existing.id)))
+          .write(
+            SenderRulesCompanion(
+              bankName: Value(name),
+              enabled: const Value(true),
+            ),
+          );
+      id = existing.id;
+    } else {
+      id = await into(senderRules).insert(
+        SenderRulesCompanion.insert(senderPattern: code, bankName: name),
       );
+    }
+    await restartMessageScan();
+    return id;
+  }
+
+  Future<void> deleteSenderRule(int id) =>
+      (delete(senderRules)..where((r) => r.id.equals(id))).go();
+
+  /// The next scan starts over from `CaptureService.firstScanWindow` ago.
+  /// Harmless to repeat: a message already read has a card (its
+  /// `dedupeKey`), so it's never queued twice.
+  Future<void> restartMessageScan() => update(
+    settings,
+  ).write(const SettingsCompanion(lastMessageScanAt: Value(null)));
+
+  /// Which of [messages] already have a capture card, by
+  /// [dedupeKeyFor] → the card's status.
+  Future<Map<String, PendingStatus>> captureStatusOf(
+    List<RawMessage> messages,
+  ) async {
+    if (messages.isEmpty) return const {};
+    final keys = {for (final m in messages) dedupeKeyFor(m)};
+    final rows = await (select(
+      pendingTxns,
+    )..where((t) => t.dedupeKey.isIn(keys))).get();
+    return {for (final r in rows) r.dedupeKey: r.status};
+  }
 
   // ── Settings for capture ─────────────────────────────────────────────────
 
@@ -9140,7 +9162,6 @@ class AppDatabase extends _$AppDatabase {
       // and resets the budget-alert dedupe (re-firing alerts already seen).
       'pendingTxns': (await select(pendingTxns).get()).map(m).toList(),
       'budgetAlerts': (await select(budgetAlerts).get()).map(m).toList(),
-      'aiMemories': (await select(aiMemories).get()).map(m).toList(),
       'settings': (await select(
         settings,
       ).get()).map(m).map(_withoutDeviceLock).toList(),
@@ -9345,8 +9366,6 @@ class AppDatabase extends _$AppDatabase {
       // An older backup simply has no rows for them — `rows()` yields nothing.
       await load(pendingTxns, 'pendingTxns');
       await load(budgetAlerts, 'budgetAlerts');
-      // Local AI's memory; nothing to point at. An older backup has none.
-      await load(aiMemories, 'aiMemories');
       // Both reference transactions/categories/tags, so they come after all
       // three are loaded.
       await load(transactionTags, 'transactionTags');

@@ -39,29 +39,23 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
   and people (shown apart, since it isn't in the total). It follows the
   dashboard's month. The card used to open Customize dashboard, which keeps
   its link at the foot of the dashboard.
-- **Local AI, meet Exo** (optional, Android). Settings → **Local AI**
-  turns on **Exo**, the one assistant of every ExoSynk Labs app (✨ Ask Exo
-  on the Dashboard, **Explain my month** in Stats): ask about your money in
-  plain words and get an answer from a model running on the phone. Exo
-  knows who it is and who makes it, so "who built you?" or "does my data
-  leave the phone?" get true answers, from one shared dataset every
-  ExoSynk app will use.
-  XPENC works out the figures itself (this month against last, the pace,
-  budgets, dues, what's coming, balances and goals) and shows them under
-  every answer; the model only puts them into words. It only reads and can't
-  change anything. Models are files you download from
-  [xpenc.in/local-ai](https://xpenc.in/local-ai) and import, so the app stays
-  small and still has no internet permission. **AI Memory** keeps the notes
-  you want it to know (only you add them; they're in backups). With a voice
-  model, tap 🎤 to ask by voice, transcribed on the phone. Built on
-  llama.cpp and whisper.cpp, compiled from source (adds about 4.7 MB to the
-  arm64 APK). Adds the optional microphone permission, for voice input only.
+- **Auto money tracking** (BETA, Android, test builds only). Settings →
+  **Advanced Features** → Auto money tracking reads bank SMS again, on the
+  phone, and turns each payment into a Review Inbox card. Only the senders
+  on its list are read: the banks people shared through the "Bank support"
+  form on GitHub (HDFC #165, Federal Bank #211) and the ones shipped
+  before, plus any you add by sender ID. A bank's adverts (`-P` senders)
+  and messages from phone numbers are never read. The page lists the last
+  30 days of messages from those banks with what XPENC read in each, adds
+  one to the inbox by hand, and suggests other senders whose messages look
+  like payments. Auto-add for payees you taught XPENC is optional and keeps
+  every guardrail. Only builds made with `XPENC_SMS=on` (and debug builds)
+  request `READ_SMS`: on the beta release that's a separate, opt-in
+  `xpenc-beta-sms-arm64-v8a.apk`. The normal beta APKs, stable releases,
+  Play and F-Droid still don't ask for SMS, because Play Protect blocks
+  browser installs of apps that do.
 - **Smarter sharing in.** Categorise in the Review Inbox now starts on the
   category you taught XPENC for that payee ("Remember this merchant").
-  With Local AI on, a shared bank message or payment screenshot the
-  built-in reader can't make out is read by the model instead: the card
-  says so, its amount must appear in the text word for word, and it never
-  posts by itself. Local AI also suggests a category from your own list.
   OTPs, offers and declined payments are still turned away.
 - **Smart tags** (#189). A tag can hold a date part: in More → Categories
   & Tags → Tags → +,
@@ -107,8 +101,8 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
   amount, category, note, payee and day. It understands Indian English and
   Hinglish, with no AI involved. It uses only Android's on-device speech
   recognizer, never an online one, and offers the offline language download
-  where Android allows it. It uses the same optional microphone permission
-  as Ask Exo.
+  where Android allows it. It asks for the optional microphone permission
+  the first time.
 - **Your country, kept.** The country you pick on first run is now saved,
   and Settings → **Country** changes it. A country switches its payment
   methods on to start with (UPI in India; Venmo and Cash App in the US;
@@ -238,7 +232,18 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
   when it lands there: the month folds into its calendar icon as you
   scroll, and the title fades before it can reach the buttons.
 
+### Removed
+- **Local AI and Exo** (from the 1.6.7 betas). Ask Exo, Explain my month,
+  AI Memory, AI-read shared messages and the AI category pick are gone,
+  along with the llama.cpp / whisper.cpp library, so the APK is about
+  5 MB smaller again. Notes saved in AI Memory are deleted when you update.
+  Voice add (double-tap ➕) stays: it never used the AI.
+
 ### Fixed
+- **Bank SMS with TRAI's new sender IDs** (`JD-HDFCBK-S`) count as a
+  bank again, HDFC's `Sent Rs.… From … To …` UPI debits are read, and
+  Federal Bank's `BAL-Rs.` balances and `spent@ SHOP on` card spends come
+  out right. This also helps messages you share in.
 - **CSV import reads decimal commas** (#207). A European statement's
   `-2,10` imported as 210.00. It's 2.10 now. The importer looks at the
   file's amounts and picks `1,234.56` or `1.234,56` for you. You can switch

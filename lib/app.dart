@@ -370,8 +370,6 @@ class _XpencAppState extends ConsumerState<XpencApp>
   /// silently doing nothing with a message the user deliberately picked.
   void _handleShareResult(ShareIntakeResult result) {
     switch (result) {
-      case ShareIntakeReading():
-        showAppSnackBar(tr('Reading it with Local AI…'));
       case ShareIntakeIngested():
         appRouter.go('/inbox');
       case ShareIntakeDuplicate():

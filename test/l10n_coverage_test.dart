@@ -11,9 +11,6 @@ import 'package:xpenc/data/database.dart';
 import 'package:xpenc/data/providers.dart';
 import 'package:xpenc/features/accounts/accounts_screen.dart';
 import 'package:xpenc/features/add_transaction/add_transaction_screen.dart';
-import 'package:xpenc/features/ai/ai_memory_screen.dart';
-import 'package:xpenc/features/ai/ask_exo_screen.dart';
-import 'package:xpenc/features/ai/local_ai_settings_screen.dart';
 import 'package:xpenc/features/auto/auto_screen.dart';
 import 'package:xpenc/features/calendar/calendar_screen.dart';
 import 'package:xpenc/features/categories/categories_screen.dart';
@@ -107,9 +104,6 @@ void main() {
     'Auto': () => const AutoScreen(),
     'Goals & loans': () => const SavingsGoalsScreen(),
     'Archived goals & loans': () => const ArchivedGoalsLoansScreen(),
-    'Local AI': () => const LocalAiSettingsScreen(),
-    'AI Memory': () => const AiMemoryScreen(),
-    'Ask Exo': () => const AskExoScreen(),
     'Calendar': () => const CalendarScreen(),
     'Onboarding': () => const OnboardingScreen(),
     'Add transaction': () => const AddTransactionScreen(),

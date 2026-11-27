@@ -1,3 +1,4 @@
+import java.util.Base64
 import java.util.Properties
 import java.io.FileInputStream
 import com.android.build.gradle.internal.api.ApkVariantOutputImpl
@@ -14,6 +15,33 @@ plugins {
 // (contributor machines, CI without secrets) release builds fall back to debug
 // signing so `flutter run --release` keeps working; such builds cannot be
 // uploaded to Play or ship as GitHub release assets.
+// What `flutter build … --dart-define=K=V` passed — Flutter hands them to
+// Gradle base64-encoded, comma-separated, as the `dart-defines` property.
+val dartDefines: Map<String, String> =
+    (project.findProperty("dart-defines") as String?)
+        ?.split(",")
+        ?.mapNotNull { encoded ->
+            val decoded = try {
+                String(Base64.getDecoder().decode(encoded))
+            } catch (e: IllegalArgumentException) {
+                return@mapNotNull null
+            }
+            val parts = decoded.split("=", limit = 2)
+            if (parts.size == 2) parts[0] to parts[1] else null
+        }
+        ?.toMap()
+        ?: emptyMap()
+
+// Auto money tracking (Settings → Advanced Features) needs READ_SMS, and the
+// permission is what Google acts on, not whether the feature is switched
+// on: Play Protect blocks browser/file-manager installs of an APK that
+// requests it (India and other regions), and Play only accepts it with an
+// approved SMS declaration. So it's a per-build decision, off by default:
+// a release build gets src/sms/AndroidManifest.xml only when built with
+// `--dart-define=XPENC_SMS=on`. Debug builds always have it (src/debug).
+// test/native_channel_test.dart guards which release builds pass it.
+val smsCapture = dartDefines["XPENC_SMS"] == "on"
+
 val keystorePropertiesFile = rootProject.file("key.properties")
 val hasReleaseKeystore = keystorePropertiesFile.exists()
 val keystoreProperties = Properties().apply {
@@ -57,6 +85,10 @@ android {
     dependenciesInfo {
         includeInApk = false
         includeInBundle = false
+    }
+
+    if (smsCapture) {
+        sourceSets.getByName("release").manifest.srcFile("src/sms/AndroidManifest.xml")
     }
 
     signingConfigs {

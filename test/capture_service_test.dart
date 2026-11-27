@@ -250,4 +250,82 @@ void main() {
           reason: 'a UPI double-SMS must never be booked twice');
     });
   });
+
+  // Settings → Advanced Features → Auto money tracking: only the banks on
+  // the list, never "anything that looks like a bank".
+  group('tracked senders only', () {
+    setUp(() => db.setMessageCaptureEnabled(true));
+
+    test('a short code that is not on the list is skipped', () async {
+      final r = await svc([
+        m(swiggy),
+        m(swiggy.replaceAll('A/c XX1234', 'A/c XX9999'), sender: 'AX-SWIGGY-S'),
+      ]).scan();
+      expect(r.ingested, 1);
+      expect(r.skippedSender, 1, reason: 'a shop is not a bank');
+    });
+
+    test('the sender codes reach the source', () async {
+      final source = FakeMessageSource([m(swiggy)]);
+      await CaptureService(db: db, source: source).scan();
+      expect(source.lastSenders, containsAll(['IPPBNK', 'HDFCBK', 'FEDBNK']));
+    });
+
+    test("a bank's adverts (-P) are never read", () async {
+      final r = await svc([m(swiggy, sender: 'AD-IPPBNK-P')]).scan();
+      expect(r.ingested, 0);
+      expect(r.skippedSender, 1);
+    });
+
+    test('a switched-off bank is skipped', () async {
+      for (final rule in await db.watchSenderRules().first) {
+        if (rule.bankName == 'India Post Payments Bank') {
+          await db.setSenderRuleEnabled(rule.id, false);
+        }
+      }
+      final r = await svc([m(swiggy)]).scan();
+      expect(r.ingested, 0);
+      expect(r.skippedSender, 1);
+    });
+
+    test('with no bank on the list, nothing runs', () async {
+      for (final rule in await db.watchSenderRules().first) {
+        await db.deleteSenderRule(rule.id);
+      }
+      final r = await svc([m(swiggy)]).scan();
+      expect(r.didRun, isFalse);
+      expect(r.reason, 'No bank senders picked');
+    });
+
+    test('a sender the user adds is read, its recent past too', () async {
+      final federal =
+          'Debited Rs 274.00 from a/c X9115 on 24Nov26 19:33 via UPI to '
+          'SNAPMINT FIN. Ref 632819821711.Bal Rs 669.95. -Federal Bank';
+      final service = svc([m(federal, sender: 'AX-NEWBNK-S', hoursAgo: 48)]);
+      await db.setLastMessageScanAt(now.subtract(const Duration(hours: 1)));
+      expect((await service.scan()).ingested, 0);
+
+      await db.addSenderRule('AX-NEWBNK-S', 'New Bank');
+      expect((await db.getSettings()).lastMessageScanAt, isNull,
+          reason: 'adding a bank rewinds the scan to read its last 30 days');
+      expect((await service.scan()).ingested, 1);
+    });
+
+    test('adding a code that exists switches it on instead of duplicating',
+        () async {
+      final rules = await db.watchSenderRules().first;
+      final hdfc = rules.firstWhere((r) => r.senderPattern == 'HDFCBK');
+      await db.setSenderRuleEnabled(hdfc.id, false);
+      final id = await db.addSenderRule('JD-HDFCBK-S', 'HDFC');
+      expect(id, hdfc.id);
+      final after = await db.watchSenderRules().first;
+      expect(after.where((r) => r.senderPattern == 'HDFCBK'), hasLength(1));
+      expect(after.firstWhere((r) => r.id == id).enabled, isTrue);
+    });
+
+    test('a phone number can never be added', () async {
+      expect(() => db.addSenderRule('+919876543210', 'Friend'),
+          throwsArgumentError);
+    });
+  });
 }

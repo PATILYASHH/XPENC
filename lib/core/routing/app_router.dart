@@ -11,9 +11,6 @@ import '../../features/more/whats_new_screen.dart';
 import '../../features/accounts/account_detail_screen.dart';
 import '../../features/accounts/accounts_screen.dart';
 import '../../features/accounts/archived_accounts_screen.dart';
-import '../../features/ai/ai_memory_screen.dart';
-import '../../features/ai/ask_exo_screen.dart';
-import '../../features/ai/local_ai_settings_screen.dart';
 import '../../features/add_transaction/add_transaction_screen.dart';
 import '../../features/auto/archived_auto_rules_screen.dart';
 import '../../features/auto/auto_rule_detail_screen.dart';
@@ -27,6 +24,7 @@ import '../../features/calculators/calculator_screen.dart';
 import '../../features/calculators/calculations_screen.dart';
 import '../../features/categories/archived_categories_screen.dart';
 import '../../features/tags/tag_detail_screen.dart';
+import '../../features/settings/advanced_features_screen.dart';
 import '../../features/settings/country_settings_screen.dart';
 import '../../features/categories/categories_screen.dart';
 import '../../features/categories/category_detail_screen.dart';
@@ -41,7 +39,7 @@ import '../../features/dashboard/total_money_screen.dart';
 import '../../features/data_export/backup_screen.dart';
 import '../../features/data_export/csv_import_screen.dart';
 import '../../features/data_export/download_data_screen.dart';
-import '../../features/message_capture/message_capture_screen.dart';
+import '../../features/message_capture/sms_tracking_screen.dart';
 import '../../features/message_capture/ocr_feedback/ocr_correction_capture_screen.dart';
 import '../../features/message_capture/ocr_feedback/ocr_correction_screen.dart';
 import '../../features/message_capture/review_inbox_screen.dart';
@@ -325,14 +323,14 @@ final appRouter = GoRouter(
                       builder: (_, _) => const CountrySettingsScreen(),
                     ),
                     GoRoute(
-                      path: 'local-ai',
+                      path: 'advanced',
                       parentNavigatorKey: _rootKey,
-                      builder: (_, _) => const LocalAiSettingsScreen(),
+                      builder: (_, _) => const AdvancedFeaturesScreen(),
                       routes: [
                         GoRoute(
-                          path: 'memory',
+                          path: 'sms',
                           parentNavigatorKey: _rootKey,
-                          builder: (_, _) => const AiMemoryScreen(),
+                          builder: (_, _) => const SmsTrackingScreen(),
                         ),
                       ],
                     ),
@@ -374,9 +372,11 @@ final appRouter = GoRouter(
                   builder: (_, _) => const GuideScreen(),
                 ),
                 GoRoute(
+                  // The old Bank-SMS capture page's address; OCR corrections
+                  // still live under it.
                   path: 'capture',
                   parentNavigatorKey: _rootKey,
-                  builder: (_, _) => const MessageCaptureScreen(),
+                  builder: (_, _) => const SmsTrackingScreen(),
                   routes: [
                     GoRoute(
                       path: 'ocr-feedback',
@@ -808,14 +808,6 @@ final appRouter = GoRouter(
       path: '/persons/archived',
       parentNavigatorKey: _rootKey,
       builder: (_, _) => const ArchivedPersonsScreen(),
-    ),
-
-    // Ask Exo (Local AI). `?ask=month` asks "Explain my month" on open.
-    GoRoute(
-      path: '/ai',
-      parentNavigatorKey: _rootKey,
-      builder: (_, state) =>
-          AskExoScreen(autoAsk: state.uri.queryParameters['ask']),
     ),
 
     GoRoute(

@@ -31,10 +31,11 @@ class MessageParser {
 
   // ── Direction ────────────────────────────────────────────────────────────
 
-  /// Money out.
+  /// Money out. `Sent Rs.232.00 From HDFC Bank A/C *1234` is HDFC's UPI
+  /// debit (GitHub #165), so a bare "sent" counts.
   static final _debit = RegExp(
     r'\b(debited|debit|spent|withdrawn|withdrawal|paid|purchase|'
-    r'deducted|transferred to|sent to|dr\b)',
+    r'deducted|transferred to|sent\b|dr\b)',
     caseSensitive: false,
   );
 
@@ -60,15 +61,17 @@ class MessageParser {
     caseSensitive: false,
   );
 
-  /// `Avl Bal Rs.5000`, `Available Balance: INR 5,000.00`.
+  /// `Avl Bal Rs.5000`, `Available Balance: INR 5,000.00`,
+  /// `BAL-Rs.1050.95` (Federal Bank, GitHub #211).
   static final _availableBalance = RegExp(
     r'(?:avl\.?\s*bal|available\s*balance|a/?c\s*bal|bal(?:ance)?)'
-    r'[\s:.a-z]*?(?:rs\.?|inr|₹)\s*([0-9][0-9,]*(?:\.[0-9]{1,2})?)',
+    r'[\s:.\-a-z]*?(?:rs\.?|inr|₹)\s*([0-9][0-9,]*(?:\.[0-9]{1,2})?)',
     caseSensitive: false,
   );
 
+  /// `Ref no 9988…`, `UTR 1234…`, `(UPI 123456789012)` (HDFC, GitHub #165).
   static final _reference = RegExp(
-    r'(?:ref(?:erence)?(?:\s*(?:no|id|num))?|txn(?:\s*id)?|utr)'
+    r'(?:ref(?:erence)?(?:\s*(?:no|id|num))?|txn(?:\s*id)?|utr|\(upi)'
     r'[\s.:#no]*([A-Za-z0-9]{6,20})',
     caseSensitive: false,
   );
@@ -76,6 +79,9 @@ class MessageParser {
   /// Merchant / counterparty. Ordered: most specific pattern first.
   static final _merchantPatterns = <RegExp>[
     RegExp(r'\bVPA\s+([a-zA-Z0-9._-]+@[a-zA-Z]+)', caseSensitive: false),
+    // `Rs 1158 spent@ WWW AMAZON on 14OCT26` (Federal Bank card, #211).
+    RegExp(r'\bspent\s*@\s*([A-Za-z0-9 &._-]{3,40}?)\s+on\b',
+        caseSensitive: false),
     RegExp(r'\btrf\s+to\s+([A-Za-z0-9 &._-]{3,40})', caseSensitive: false),
     RegExp(r'\b(?:to|at)\s+([A-Z][A-Za-z0-9 &._-]{2,40}?)\s+on\b'),
     RegExp(r'\bat\s+([A-Za-z0-9 &._-]{3,40}?)(?:\s+on|\.|,|$)',
@@ -148,12 +154,13 @@ class MessageParser {
 
   // ── Helpers ──────────────────────────────────────────────────────────────
 
-  /// Bank sender IDs look like `AD-IPPBNK`, `VM-HDFCBK`, `JD-SBIINB` —
-  /// two letters, a dash, then an alphabetic short code. Never a phone number.
+  /// Bank sender IDs look like `AD-IPPBNK`, `VM-HDFCBK`, `JD-HDFCBK-S` —
+  /// two letters, a dash, an alphabetic short code, and since TRAI's DLT
+  /// rules often a `-S`/`-T`/`-G`/`-P` suffix. Never a phone number.
   static bool looksLikeBankSender(String sender) {
     final s = sender.trim().toUpperCase();
     if (RegExp(r'^\+?\d{6,}$').hasMatch(s)) return false; // a person
-    return RegExp(r'^[A-Z]{2}-[A-Z0-9]{4,10}$').hasMatch(s) ||
+    return RegExp(r'^[A-Z]{2}-[A-Z0-9]{4,10}(?:-[STPG])?$').hasMatch(s) ||
         RegExp(r'^[A-Z]{4,12}$').hasMatch(s);
   }
 
@@ -234,17 +241,4 @@ class MessageParser {
   }
 }
 
-/// Bank templates shipped with the app. Seeded into `sender_rules` on upgrade
-/// so the user can edit them without a code change.
-const kSeedSenderRules = <({String pattern, String bank})>[
-  (pattern: 'IPPB', bank: 'India Post Payments Bank'),
-  (pattern: 'IPPBNK', bank: 'India Post Payments Bank'),
-  (pattern: 'YESBNK', bank: 'Yes Bank'),
-  (pattern: 'HDFCBK', bank: 'HDFC Bank'),
-  (pattern: 'ICICIB', bank: 'ICICI Bank'),
-  (pattern: 'SBIINB', bank: 'State Bank of India'),
-  (pattern: 'SBIUPI', bank: 'State Bank of India'),
-  (pattern: 'AXISBK', bank: 'Axis Bank'),
-  (pattern: 'KOTAKB', bank: 'Kotak Mahindra Bank'),
-  (pattern: 'PNBSMS', bank: 'Punjab National Bank'),
-];
+// The banks XPENC knows, and their sender codes: bank_templates.dart.

@@ -1,0 +1,10 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Auto money tracking (Settings → Advanced Features → BETA): reads
+         bank SMS from the senders the user picks, on the phone, read-only
+         (SmsChannel.kt). Merged into a release build ONLY when it's built
+         with dart-define XPENC_SMS=on: see android/app/build.gradle.kts for
+         why (Play Protect, Play's SMS declaration). Never RECEIVE_SMS —
+         messages are read when XPENC opens, nothing listens in the
+         background. test/native_channel_test.dart guards this file. -->
+    <uses-permission android:name="android.permission.READ_SMS"/>
+</manifest>

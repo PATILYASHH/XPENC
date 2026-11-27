@@ -27,6 +27,9 @@ abstract final class PlatformFeatures {
 
   static bool get _android => !isWeb && !isIOS;
 
+  /// The Android app — for news and guide entries only it has.
+  static bool get isAndroid => _android;
+
   /// Home-screen widgets (Android's AppWidgets — see `HomeWidgetService`).
   static bool get homeWidgets => _android;
 
@@ -37,12 +40,13 @@ abstract final class PlatformFeatures {
   static bool get ocr => _android;
 
   /// Voice add (double-tap ➕): Android's own speech recognizer, kept
-  /// on-device (`SpeechChannel.kt`). Not part of Local AI — no model needed.
+  /// on-device (`SpeechChannel.kt`) — no model needed.
   static bool get voiceAdd => _android;
 
-  /// Local AI (Ask Exo, voice input) — the llama.cpp / whisper.cpp
-  /// library ships for Android only, for now.
-  static bool get localAi => _android;
+  /// Auto money tracking from bank SMS (Settings → Advanced Features).
+  /// iOS gives apps no SMS access at all. Whether *this* build may read
+  /// SMS is decided when it's built — see `SmsInbox.declared`.
+  static bool get smsCapture => _android;
 
   /// The standing quick-add notification. iOS has no ongoing notifications,
   /// and its reply action would need a notification category plus a

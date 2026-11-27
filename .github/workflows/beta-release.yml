@@ -95,6 +95,43 @@ jobs:
           cp build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk release/xpenc-beta-armeabi-v7a.apk
           cp build/app/outputs/flutter-apk/app-x86_64-release.apk      release/xpenc-beta-x86_64.apk
 
+      # The opt-in SMS build: the same app plus READ_SMS, for Auto money
+      # tracking (Settings → Advanced Features). A separate file on purpose —
+      # Play Protect blocks browser/file-manager installs of an APK that asks
+      # for SMS (India and other regions), so the normal APKs above must never
+      # carry it. XPENC_SMS=on is what android/app/build.gradle.kts merges
+      # src/sms/AndroidManifest.xml on; test/native_channel_test.dart lists
+      # this workflow as the one channel allowed to pass it. Same versionCode
+      # as the normal arm64 APK, so either installs over the other.
+      - name: Build the opt-in SMS APK (arm64)
+        run: |
+          flutter build apk --release --split-per-abi --target-platform android-arm64 --build-number=${{ github.run_number }} --dart-define=XPENC_DIST=github --dart-define=XPENC_SMS=on
+          cp build/app/outputs/flutter-apk/app-arm64-v8a-release.apk release/xpenc-beta-sms-arm64-v8a.apk
+
+      # Fails the run if READ_SMS leaked into a normal APK, or is missing
+      # from the SMS one. Here-strings, not `| grep -q`: see verify_apk.sh.
+      - name: Verify the SMS permission (only in the SMS APK)
+        run: |
+          aapt2="$(ls -d "$ANDROID_HOME"/build-tools/*/ | sort -V | tail -1)aapt2"
+          for apk in release/xpenc-beta-arm64-v8a.apk release/xpenc-beta-armeabi-v7a.apk release/xpenc-beta-x86_64.apk; do
+            perms="$("$aapt2" dump permissions "$apk")"
+            if grep -q "_SMS'" <<<"$perms"; then
+              echo "::error::$apk requests an SMS permission"
+              exit 1
+            fi
+            echo "OK  no SMS permission: $apk"
+          done
+          perms="$("$aapt2" dump permissions release/xpenc-beta-sms-arm64-v8a.apk)"
+          if ! grep -q "name='android.permission.READ_SMS'" <<<"$perms"; then
+            echo "::error::the SMS APK doesn't request READ_SMS"
+            exit 1
+          fi
+          if grep -q "RECEIVE_SMS" <<<"$perms"; then
+            echo "::error::the SMS APK requests RECEIVE_SMS"
+            exit 1
+          fi
+          echo "OK  READ_SMS (and only that): release/xpenc-beta-sms-arm64-v8a.apk"
+
       - name: Verify APKs (libsqlite3.so gate)
         run: |
           for apk in release/*.apk; do
@@ -132,6 +169,7 @@ jobs:
             release/xpenc-beta-arm64-v8a.apk
             release/xpenc-beta-armeabi-v7a.apk
             release/xpenc-beta-x86_64.apk
+            release/xpenc-beta-sms-arm64-v8a.apk
             release/SHA256SUMS.txt
           generate_release_notes: false
           body: |
@@ -147,12 +185,20 @@ jobs:
             | **(Android)** | Most phones (2017+) · ⭐ **Recommended** | [`xpenc-beta-arm64-v8a.apk`](https://github.com/PATILYASHH/XPENC/releases/download/beta/xpenc-beta-arm64-v8a.apk) |
             | **(Android)** | Older 32-bit phones | [`xpenc-beta-armeabi-v7a.apk`](https://github.com/PATILYASHH/XPENC/releases/download/beta/xpenc-beta-armeabi-v7a.apk) |
             | **(Android)** | Emulators | [`xpenc-beta-x86_64.apk`](https://github.com/PATILYASHH/XPENC/releases/download/beta/xpenc-beta-x86_64.apk) |
+            | **(Android)** | Most phones, **with SMS** (opt-in, see below) | [`xpenc-beta-sms-arm64-v8a.apk`](https://github.com/PATILYASHH/XPENC/releases/download/beta/xpenc-beta-sms-arm64-v8a.apk) |
             | **(iOS)** | iPhone, iOS 15 or later · ⭐ **Recommended** | [`xpenc-beta-ios.ipa`](https://github.com/PATILYASHH/XPENC/releases/download/beta/xpenc-beta-ios.ipa) |
 
             **iOS:** the `.ipa` is unsigned — open it with [SideStore](https://sidestore.io) or
             [AltStore](https://altstore.io), which sign it with your own Apple ID. It's attached
             a few minutes after the Android files. On iPhone, home screen widgets, sharing into
             XPENC, reading payment screenshots and blocking screenshots aren't there yet.
+
+            **SMS build (opt-in):** the same beta plus **Auto money tracking** (Settings → Advanced
+            Features, BETA), which reads bank SMS from the senders you pick, on your phone, and turns
+            each payment into a Review Inbox card. It asks for the SMS permission, so **Google Play
+            Protect may block installing it** from a browser or file manager (in India it does). If you
+            don't want that, take the normal APK above: it never asks for SMS. Either one installs over
+            the other, and your data stays.
 
             Verify your download against `SHA256SUMS.txt`.
             For the stable release, see the [latest release](https://github.com/PATILYASHH/XPENC/releases/latest) instead.

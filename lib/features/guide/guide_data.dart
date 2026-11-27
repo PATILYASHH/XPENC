@@ -18,8 +18,8 @@ class GuideEntry {
 
   final IconData icon;
 
-  /// A feature only the Android app has (Local AI) — left out of the
-  /// guide on iPhone and XPENC web.
+  /// A feature only the Android app has — left out of the guide on
+  /// iPhone and XPENC web.
   final bool androidOnly;
   final String _title;
   String get title => tr(_title);
@@ -43,7 +43,7 @@ class GuideSection {
   /// [entries] this build has.
   List<GuideEntry> get shown => [
     for (final e in entries)
-      if (!e.androidOnly || PlatformFeatures.localAi) e,
+      if (!e.androidOnly || PlatformFeatures.isAndroid) e,
   ];
 }
 
@@ -413,20 +413,19 @@ const guideSections = <GuideSection>[
       location: 'More → Tags',
     ),
     GuideEntry(
-      icon: Icons.forum_outlined,
-      title: 'Local AI',
+      icon: Icons.sms_outlined,
+      title: 'Auto money tracking (BETA)',
       androidOnly: true,
       whatItDoes:
-          'Ask about your money in plain words — "Where did my money go this '
-          'month?" — and get an answer from a model running on your phone. '
-          'XPENC works out the figures itself and shows them under the '
-          'answer; the AI only reads and never changes anything.',
+          'Reads bank SMS from the senders you choose, on this phone, and '
+          'turns each payment into a card in Review Inbox. Nothing is added '
+          'until you approve it — unless you turn on auto-add for payees '
+          'you have already taught XPENC.',
       howToUse:
-          'Settings → Local AI: turn it on, download a model from '
-          'xpenc.in/local-ai and import it. Then tap ✨ on the Dashboard or '
-          'Explain my month in Stats. Add a voice model to ask with 🎤, and '
-          'tell it what matters in AI Memory. Android only for now.',
-      location: 'Settings → Local AI',
+          'Settings → Advanced Features → Auto money tracking: turn it on '
+          'and allow SMS. Pick your bank from the senders list (or add its '
+          'sender ID). New messages are read each time you open XPENC.',
+      location: 'Settings → Advanced Features',
     ),
     GuideEntry(
       icon: Icons.auto_awesome_outlined,

@@ -26,8 +26,15 @@ enum AppPermission {
     androidName: 'android.permission.RECORD_AUDIO',
     title: 'Microphone',
     reason:
-        'Ask Local AI by voice. The recording is turned into text on this '
-        'phone and never saved or sent',
+        'Voice add: double-tap ➕ and say it. Your phone turns it into text '
+        'on the phone; nothing is recorded or sent',
+  ),
+  sms(
+    androidName: 'android.permission.READ_SMS',
+    title: 'SMS',
+    reason:
+        'Auto money tracking: reads bank messages from the senders you '
+        'pick, on this phone. Never your other messages',
   );
 
   const AppPermission({
@@ -55,6 +62,10 @@ enum PermissionState {
 
   /// No Android host (tests, desktop dev runs).
   unavailable,
+
+  /// This build doesn't ask for it at all (READ_SMS outside builds made
+  /// with XPENC_SMS=on), so nothing can grant it.
+  notDeclared,
 }
 
 /// Talks to `PermissionsChannel.kt`. Android lets an app *ask* for a grant
@@ -64,6 +75,9 @@ class AppPermissions {
   const AppPermissions._();
 
   static const _channel = MethodChannel('xpenc/permissions');
+
+  static Future<PermissionState> status(AppPermission p) async =>
+      (await statuses())[p] ?? PermissionState.unavailable;
 
   static Future<Map<AppPermission, PermissionState>> statuses() async {
     try {
@@ -112,6 +126,7 @@ class AppPermissions {
     'granted' => PermissionState.granted,
     'denied' => PermissionState.denied,
     'blocked' => PermissionState.blocked,
+    'absent' => PermissionState.notDeclared,
     _ => PermissionState.unavailable,
   };
 

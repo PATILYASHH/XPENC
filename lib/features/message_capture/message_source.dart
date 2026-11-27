@@ -6,22 +6,24 @@ import 'parser/bank_message.dart';
 /// capture layer is a swappable module: sources can come and go with nothing
 /// downstream changing.
 ///
-/// There was an `SmsSource` here (READ_SMS via a platform channel). It was
-/// removed in 1.1.0 because Google Play Protect blocks direct-download APKs
-/// that request SMS permissions — users had to pause protection to install.
-/// Capture returns when a Play-compliant source lands (likely a
-/// `NotificationListenerService`); the old implementation is in git history.
+/// The SMS inbox is one (`SmsMessageSource` in sms_inbox.dart, Android
+/// builds that declare READ_SMS). Elsewhere it's [NullMessageSource].
 abstract interface class MessageSource {
   Future<bool> isSupported();
   Future<bool> hasPermission();
   Future<bool> requestPermission();
 
-  /// Messages received strictly after [since], oldest first.
-  Future<List<RawMessage>> messagesSince(DateTime since);
+  /// Messages received strictly after [since], oldest first. [senders] are
+  /// the codes the user tracks (`HDFCBK`); a source may use them to read
+  /// less, but the caller still checks every sender itself.
+  Future<List<RawMessage>> messagesSince(
+    DateTime since, {
+    List<String> senders = const [],
+  });
 }
 
-/// The shipped source while capture is paused, and the graceful fallback on
-/// desktop. Capture simply does nothing.
+/// Where no inbox can be read: iPhone, XPENC web, a build without READ_SMS.
+/// Capture simply does nothing.
 class NullMessageSource implements MessageSource {
   const NullMessageSource();
 
@@ -32,7 +34,10 @@ class NullMessageSource implements MessageSource {
   @override
   Future<bool> requestPermission() async => false;
   @override
-  Future<List<RawMessage>> messagesSince(DateTime since) async => const [];
+  Future<List<RawMessage>> messagesSince(
+    DateTime since, {
+    List<String> senders = const [],
+  }) async => const [];
 }
 
 /// Lets tests drive the whole capture pipeline without Android.
@@ -48,8 +53,18 @@ class FakeMessageSource implements MessageSource {
   Future<bool> hasPermission() async => granted;
   @override
   Future<bool> requestPermission() async => granted = true;
+  /// The [senders] the last scan asked for.
+  List<String> lastSenders = const [];
+
+  /// Hands over every message after [since] — [senders] untouched, like a
+  /// source that can't filter — so the caller's own sender check is tested.
   @override
-  Future<List<RawMessage>> messagesSince(DateTime since) async =>
-      messages.where((m) => m.receivedAt.isAfter(since)).toList()
-        ..sort((a, b) => a.receivedAt.compareTo(b.receivedAt));
+  Future<List<RawMessage>> messagesSince(
+    DateTime since, {
+    List<String> senders = const [],
+  }) async {
+    lastSenders = senders;
+    return messages.where((m) => m.receivedAt.isAfter(since)).toList()
+      ..sort((a, b) => a.receivedAt.compareTo(b.receivedAt));
+  }
 }

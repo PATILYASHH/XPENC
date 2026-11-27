@@ -4,4 +4,8 @@
          to allow setting breakpoints, to provide hot reload, etc.
     -->
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- Auto money tracking, so it can be tried on a phone with
+         `flutter run`. Release builds carry it only with XPENC_SMS=on —
+         see src/sms/AndroidManifest.xml. -->
+    <uses-permission android:name="android.permission.READ_SMS"/>
 </manifest>

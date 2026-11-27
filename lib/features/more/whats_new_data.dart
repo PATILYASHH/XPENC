@@ -35,8 +35,8 @@ class WhatsNewEntry {
   /// builds that mustn't promote it ([Distribution.promotesConectr]).
   final bool aboutConectr;
 
-  /// News of what only the Android app has (Local AI, sharing into
-  /// XPENC) — left out on iPhone and XPENC web.
+  /// News of what only the Android app has (sharing into XPENC, bank-SMS
+  /// tracking) — left out on iPhone and XPENC web.
   final bool androidOnly;
 }
 
@@ -44,7 +44,7 @@ class WhatsNewEntry {
 List<WhatsNewEntry> get whatsNewEntries => [
   for (final e in _whatsNewEntries)
     if ((!e.aboutConectr || Distribution.promotesConectr) &&
-        (!e.androidOnly || PlatformFeatures.localAi))
+        (!e.androidOnly || PlatformFeatures.isAndroid))
       e,
 ];
 
@@ -70,25 +70,24 @@ const _whatsNewEntries = <WhatsNewEntry>[
         'reset.',
   ),
   WhatsNewEntry(
-    icon: Icons.auto_awesome_outlined,
+    icon: Icons.sms_outlined,
+    title: 'Auto money tracking (BETA)',
+    androidOnly: true,
+    location: 'Settings → Advanced Features',
+    description:
+        'XPENC can read bank SMS again — only from the bank senders you '
+        'pick, only on this phone. Each payment waits in Review Inbox for '
+        'you to approve. Sender IDs and formats come from the bank '
+        'templates people shared on GitHub.',
+  ),
+  WhatsNewEntry(
+    icon: Icons.ios_share_rounded,
     title: 'Sharing in, made smarter',
     androidOnly: true,
     location: 'Share a bank message or screenshot → XPENC',
     description:
-        'Categorise now starts on the category you used for that payee before. '
-        'With Local AI on, it also reads messages and screenshots XPENC '
-        "couldn't, and suggests a category. You still check and tap Add.",
-  ),
-  WhatsNewEntry(
-    icon: Icons.forum_outlined,
-    title: 'Ask about your money, offline',
-    androidOnly: true,
-    location: 'Settings → Local AI',
-    description:
-        'Optional Local AI runs on your phone: ask "Where did my money go?" '
-        'or tap Explain my month in Stats. It only reads, shows the figures '
-        'behind every answer, and nothing leaves the phone. Get a model from '
-        'xpenc.in/local-ai; add a voice model to ask with 🎤.',
+        'Categorise now starts on the category you used for that payee '
+        'before. You still check and tap Add.',
   ),
   WhatsNewEntry(
     icon: Icons.auto_awesome_outlined,

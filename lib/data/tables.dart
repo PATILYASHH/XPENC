@@ -1637,10 +1637,6 @@ class PendingTxns extends Table {
   /// this path is used directly as the new transaction's `imagePath`.
   TextColumn get sourceImagePath => text().nullable()();
 
-  /// Read by Local AI, because the built-in parser couldn't make it out.
-  /// Shown on the card as something to check, and never auto-posted.
-  BoolColumn get aiRead => boolean().withDefault(const Constant(false))();
-
   @override
   List<Set<Column>> get uniqueKeys => [
     {dedupeKey},
@@ -1841,17 +1837,6 @@ class TransactionTemplateTags extends Table {
 
   @override
   Set<Column> get primaryKey => {templateId, tagId};
-}
-
-/// Local AI's memory: things the user wants the AI to keep in mind ("salary
-/// comes on the 1st", "I'm saving for a bike"). Read into every AI prompt.
-/// Only the user adds, edits or removes them, from AI Memory or by tapping
-/// "Save to memory"; the AI never writes here on its own.
-@DataClassName('AiMemoryRow')
-class AiMemories extends Table {
-  IntColumn get id => integer().autoIncrement()();
-  TextColumn get content => text().withLength(min: 1, max: 300)();
-  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 }
 
 /// One named shopping list (e.g. "Weekly groceries", "Diwali"). A user can

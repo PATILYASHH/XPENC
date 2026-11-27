@@ -2,9 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
-import '../../core/ai/ai_capture.dart';
-import '../../core/ai/ai_providers.dart';
-import '../../core/ai/ai_store.dart';
 import '../../core/l10n/l10n.dart';
 import '../../core/money.dart';
 import '../../core/platform/stored_images.dart';
@@ -292,10 +289,6 @@ class PendingCard extends ConsumerWidget {
               ],
             ),
             const SizedBox(height: 10),
-            if (pending.aiRead) ...[
-              _AiReadNote(theme: theme),
-              const SizedBox(height: 8),
-            ],
             _statusStrip(context, ref, theme),
             _MessageDisclosure(pending: pending),
           ],
@@ -383,42 +376,6 @@ class PendingCard extends ConsumerWidget {
     }
   }
 }
-
-/// On a card Local AI read (the parser couldn't): a reminder that a small
-/// model read it, so the amount and details are worth a look.
-class _AiReadNote extends StatelessWidget {
-  const _AiReadNote({required this.theme});
-
-  final ThemeData theme;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = theme.colorScheme;
-    return Container(
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
-      decoration: BoxDecoration(
-        color: cs.primary.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Row(
-        children: [
-          AppIcon(Icons.auto_awesome_outlined, size: 18, color: cs.primary),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              tr('Read by Local AI — check the amount and details before '
-                  'adding.'),
-              style: theme.textTheme.bodySmall,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Where the approve sheet's preselected category came from.
-enum _CategorySource { remembered, ai }
 
 /// A rounded, tinted info strip with a trailing action button.
 class _Banner extends StatelessWidget {
@@ -524,9 +481,9 @@ class _ApproveSheetState extends ConsumerState<_ApproveSheet> {
   bool _remember = true;
   final _payeeController = TextEditingController();
 
-  /// Why [_categoryId] is already set, until the user picks one themself.
-  _CategorySource? _suggested;
-  bool _aiPicking = false;
+  /// [_categoryId] was preselected from a remembered payee, until the user
+  /// picks one themself.
+  bool _remembered = false;
 
   PendingTxnRow get _p => widget.pending;
   bool get _isOut => _p.parsedDirection == TxDirection.debit;
@@ -548,10 +505,10 @@ class _ApproveSheetState extends ConsumerState<_ApproveSheet> {
     _suggestCategory();
   }
 
-  /// Preselects a category: the one the user taught XPENC for this payee
-  /// ("Remember this merchant") if there is one, else Local AI's pick from
-  /// their own categories. Only ever a starting point — tapping another
-  /// replaces it, and nothing is added until "Add transaction".
+  /// Preselects the category the user taught XPENC for this payee
+  /// ("Remember this merchant"), if there is one. Only ever a starting
+  /// point — tapping another replaces it, and nothing is added until
+  /// "Add transaction".
   Future<void> _suggestCategory() async {
     final db = ref.read(dbProvider);
     final kind = _isOut ? CategoryKind.expense : CategoryKind.income;
@@ -563,46 +520,11 @@ class _ApproveSheetState extends ConsumerState<_ApproveSheet> {
       if (category != null && category.kind == kind && !category.isArchived) {
         setState(() {
           _categoryId = category.id;
-          _suggested = _CategorySource.remembered;
+          _remembered = true;
           _accountId ??= rule.accountId;
         });
-        return;
       }
     }
-
-    final device = await ref.read(aiStateProvider.future).catchError(
-      (_) => const AiDeviceState(),
-    );
-    if (!mounted || !device.ready || _categoryId != null) return;
-    setState(() => _aiPicking = true);
-    final controller = ref.read(aiStateProvider.notifier);
-    int? picked;
-    try {
-      final categories = await ref.read(categoriesProvider(kind).future);
-      final engine = await controller.ready(AiModelKind.chat);
-      try {
-        picked = await AiCapture.pickCategory(
-          engine,
-          categories: categories,
-          kind: kind,
-          amount: _p.parsedAmount ?? const Money.zero(),
-          payee: _p.parsedMerchant,
-          text: _p.rawBody,
-        );
-      } finally {
-        await engine.unloadChat();
-      }
-    } catch (_) {
-      picked = null;
-    }
-    if (!mounted) return;
-    setState(() {
-      _aiPicking = false;
-      if (picked != null && _categoryId == null) {
-        _categoryId = picked;
-        _suggested = _CategorySource.ai;
-      }
-    });
   }
 
   @override
@@ -726,32 +648,19 @@ class _ApproveSheetState extends ConsumerState<_ApproveSheet> {
                 style: theme.textTheme.titleSmall
                     ?.copyWith(color: cs.onSurfaceVariant),
               ),
-              if (_aiPicking || _suggested != null) ...[
+              if (_remembered) ...[
                 const SizedBox(height: 6),
                 Row(
                   children: [
-                    if (_aiPicking)
-                      const SizedBox(
-                        width: 14,
-                        height: 14,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    else
-                      AppIcon(
-                        _suggested == _CategorySource.ai
-                            ? Icons.auto_awesome_outlined
-                            : Icons.history_rounded,
-                        size: 16,
-                        color: cs.primary,
-                      ),
+                    AppIcon(
+                      Icons.history_rounded,
+                      size: 16,
+                      color: cs.primary,
+                    ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        _aiPicking
-                            ? tr('Local AI is picking a category…')
-                            : _suggested == _CategorySource.ai
-                            ? tr('Suggested by Local AI — tap another to change')
-                            : tr('Remembered for this payee — tap another to change'),
+                        tr('Remembered for this payee — tap another to change'),
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: cs.onSurfaceVariant,
                         ),
@@ -894,7 +803,7 @@ class _ApproveSheetState extends ConsumerState<_ApproveSheet> {
               borderRadius: BorderRadius.circular(16),
               onTap: () => setState(() {
                 _categoryId = c.id;
-                _suggested = null;
+                _remembered = false;
               }),
               child: Column(
                 mainAxisSize: MainAxisSize.min,

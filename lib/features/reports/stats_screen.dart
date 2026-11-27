@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
-import '../../core/ai/ai_providers.dart';
 import '../../core/budget_cycle.dart';
 import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/module_shortcuts.dart';
@@ -48,25 +46,6 @@ class StatsScreen extends ConsumerWidget {
         32,
       ).plusNavBar(context).plusTopBar(context),
       children: [
-        // Local AI's "smarter analysis" of the month, worked out from the
-        // same figures as below.
-        if (ref.watch(aiOnProvider)) ...[
-          AppCard(
-            child: AppListTile(
-              leading: AppIcon(
-                Icons.auto_awesome_outlined,
-                color: theme.colorScheme.primary,
-              ),
-              title: const Tr('Explain my month'),
-              subtitle: const Tr(
-                'What changed, what stands out, what to watch — offline',
-              ),
-              trailing: const AppIcon(Icons.chevron_right_rounded),
-              onTap: () => context.push('/ai?ask=month'),
-            ),
-          ),
-          const SizedBox(height: 12),
-        ],
         const XpencScoreCard(),
         const SizedBox(height: 12),
         ModuleShortcuts([

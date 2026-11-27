@@ -10,6 +10,7 @@ import '../../data/providers.dart';
 import '../../core/platform/distribution.dart';
 import '../../core/platform/platform_features.dart';
 import '../../core/widgets/app_surfaces.dart';
+import '../../core/widgets/beta_badge.dart';
 import '../../core/widgets/open_link.dart';
 import '../../core/l10n/l10n.dart';
 
@@ -85,12 +86,6 @@ class SettingsScreen extends ConsumerWidget {
             ),
           ]),
           _ModuleGroup(title: tr('Capture & Shortcuts'), [
-            _ModuleTile(
-              icon: Icons.sms_outlined,
-              title: tr('Bank-SMS capture'),
-              subtitle: tr('Coming soon'),
-              onTap: () => context.push('/more/capture'),
-            ),
             if (PlatformFeatures.ocr)
               _ModuleTile(
                 icon: Icons.rate_review_outlined,
@@ -133,14 +128,15 @@ class SettingsScreen extends ConsumerWidget {
                 onTap: () => context.push('/more/settings/permissions'),
               ),
           ]),
-          // Optional, on-device; Android only for now.
-          if (PlatformFeatures.localAi)
-            _ModuleGroup(title: tr('AI'), [
+          // BETA features that may still change. Android only, for now.
+          if (PlatformFeatures.smsCapture)
+            _ModuleGroup(title: tr('Advanced'), [
               _ModuleTile(
-                icon: Icons.auto_awesome_outlined,
-                title: tr('Local AI'),
-                subtitle: tr('Ask about your money, offline · AI Memory'),
-                onTap: () => context.push('/more/settings/local-ai'),
+                icon: Icons.science_outlined,
+                title: tr('Advanced Features'),
+                subtitle: tr('Auto money tracking from bank SMS'),
+                beta: true,
+                onTap: () => context.push('/more/settings/advanced'),
               ),
             ]),
           _ModuleGroup(title: tr('Data'), [
@@ -217,6 +213,7 @@ class _ModuleTile extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.onTap,
+    this.beta = false,
   });
 
   final IconData icon;
@@ -224,13 +221,29 @@ class _ModuleTile extends StatelessWidget {
   final String subtitle;
   final VoidCallback onTap;
 
+  /// Shows a [BetaBadge] after the title.
+  final bool beta;
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     return AppListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       leading: AppIcon(icon),
-      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
+      title: beta
+          ? Row(
+              children: [
+                Flexible(
+                  child: Text(
+                    title,
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                const BetaBadge(),
+              ],
+            )
+          : Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
       subtitle: Text(
         subtitle,
         style: Theme.of(

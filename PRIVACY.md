@@ -26,7 +26,6 @@ When you use XPENC you create financial records:
 - persons and dues/loans you record against them
 - reminders and calendar entries
 - app settings
-- if you use Local AI: the notes you save in **AI Memory** (see below)
 
 All of this is stored in a private SQLite database inside the app's private
 storage area, which Android sandboxes from other apps. It is **never
@@ -53,42 +52,19 @@ same way.
 | `RECEIVE_BOOT_COMPLETED` | To re-schedule your local reminders after the phone restarts. |
 | `CAMERA` (optional, asked at runtime) | Only if you tap "Take photo" when attaching a receipt to a transaction. The photo is copied straight into the app's own private storage and never leaves the device. If you deny it, or just attach from your gallery instead, the app works normally — nothing about the camera is used anywhere else. |
 | `READ_CONTACTS` (optional, asked at runtime) | Only if you tap "Pick from contacts" when adding a person, to bring in that contact's name, phone number and photo. If you deny it, or turn it off later, XPENC never opens your contacts and hides every "from contacts" button — you type names and numbers by hand instead. Nothing from your address book is read except the one contact you explicitly pick, and it's copied into the app's own private storage, never transmitted anywhere. |
-| `RECORD_AUDIO` (optional, asked at runtime) | Only for voice input, and only the first time you use it: 🎤 in Ask Exo (Local AI), or voice add (double-tap ➕, India only for now). Ask Exo's sound is held in the phone's memory, turned into text by the speech model on the phone, and then thrown away. Voice add uses Android's **on-device** speech recognizer only (Android 12+) — XPENC never falls back to an online one, so the audio stays on the phone. Neither is ever saved to storage or sent anywhere by XPENC. If you deny it, or never use voice input, nothing else changes. |
+| `RECORD_AUDIO` (optional, asked at runtime) | Only for voice add (double-tap ➕, India only for now), and only the first time you use it. Voice add uses Android's **on-device** speech recognizer only (Android 12+) — XPENC never falls back to an online one, so the audio stays on the phone. It is never saved to storage or sent anywhere by XPENC. If you deny it, or never use voice add, nothing else changes. |
 | `USE_BIOMETRIC` | Only if you turn on fingerprint/face unlock for the app lock. The app never sees your biometric data — Android only tells it whether the check passed. |
 
 You can review each permission, and turn the optional ones on or off, in
 **Settings → Permissions** inside the app.
 
-XPENC requests **no** SMS, location, storage, or internet permission. The
-microphone is used for nothing but the optional voice input above (Ask Exo and voice add). (The final app package also contains `VIBRATE`,
+XPENC requests **no** SMS, location, storage, or internet permission (for the
+one exception, test builds of Auto money tracking, see the last section). The
+microphone is used for nothing but voice add. (The final app package also contains `VIBRATE`,
 `WAKE_LOCK` and `FOREGROUND_SERVICE` — standard, install-time permissions the
 notifications library uses to deliver reminders on time — and an internal
 Android-library permission scoped to the app itself. None of them gives access
 to any of your data.)
-
-## Local AI (optional)
-
-Local AI is off until you turn it on in **Settings → Local AI**. It runs
-entirely on your phone:
-
-- **The models are files you import.** [xpenc.in/local-ai](https://xpenc.in/local-ai)
-  lists open models (made by other developers) with download links to
-  Hugging Face; your browser downloads them, and you import the file into
-  XPENC. XPENC itself downloads nothing — it still has no internet permission.
-  The model files stay in the app's private storage, are never put in a
-  backup, and are deleted when you remove them or uninstall XPENC.
-- **It only reads.** To answer a question, XPENC works out the figures from
-  your data on the phone (totals, budgets, dues, upcoming payments) and gives
-  them to the model. The model cannot add, change or delete anything.
-- **Conversations are not kept.** Questions and answers live in the phone's
-  memory only while you use Ask Exo, and are gone when you start a new chat
-  or close the app.
-- **AI Memory is yours.** Notes you save there (for example "my salary comes
-  on the 1st") are stored with the rest of your data, included in your
-  backups, and erased by "Clear all data" or "Forget everything". Only you
-  add them; the AI never saves anything by itself.
-- **Reporting an answer** opens your mail app with that one question and
-  answer filled in. Nothing is sent unless you send that email yourself.
 
 ## XPENC web and Connector
 
@@ -161,13 +137,31 @@ never by the Android app.
 XPENC is open source under the MIT license. Every claim in this policy can be
 verified by reading the code: <https://github.com/PATILYASHH/XPENC>.
 
-## Future features: bank-message capture
+## Bank-message capture (BETA, test builds only)
 
 Version 1.0 offered on-device scanning of bank SMS to pre-fill transactions; it
-was removed in version 1.1.0 and the current app requests no SMS permission.
-If this feature returns, it will be announced in the release notes, this policy
-and the Play Store Data safety section will be updated **before** release, and
-processing will remain fully on-device.
+was removed in version 1.1.0. The XPENC released on Google Play, F-Droid and
+GitHub requests no SMS permission.
+
+It is coming back as **Auto money tracking** (Settings → Advanced Features,
+marked BETA). Only builds made specially to test it request `READ_SMS`: today
+that is one opt-in file on the GitHub beta pre-release,
+`xpenc-beta-sms-arm64-v8a.apk`, which you have to choose over the normal beta
+APK. In every other build the screen says it isn't available. Where it works:
+
+- it reads only messages from the bank senders you keep switched on (for
+  example `JD-HDFCBK-S`), never a message from a phone number, and never a
+  bank's adverts;
+- it only reads: XPENC never sends, changes or deletes a message, and does
+  not listen for new ones in the background (no `RECEIVE_SMS`) — it reads
+  when you open the app;
+- each payment it finds becomes a card in Review Inbox, stored with the rest
+  of your on-device data; the message text itself is never transmitted.
+
+Before a stable release or the Play Store version carries `READ_SMS`, it
+will be announced in the release notes, and this policy and the Play Store
+Data safety section will be updated **before** that release. Processing stays
+fully on-device.
 
 ## Changes to this policy
 

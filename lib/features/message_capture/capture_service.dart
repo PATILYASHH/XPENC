@@ -3,6 +3,7 @@ import '../../data/modes_db.dart';
 import '../../data/tables.dart';
 import 'message_source.dart';
 import 'parser/bank_message.dart';
+import 'parser/bank_templates.dart';
 import 'parser/message_parser.dart';
 
 /// What a scan did. Surfaced to the user so capture is never a black box.
@@ -58,12 +59,20 @@ class CaptureService {
     if (!await source.hasPermission()) {
       return const CaptureResult(reason: 'SMS permission not granted');
     }
+    // Only the senders the user tracks — never "anything that looks like a
+    // bank", which let in shops' and apps' short codes too.
+    final senders = [
+      for (final r in await db.watchSenderRules().first)
+        if (r.enabled) r.senderPattern,
+    ];
+    if (senders.isEmpty) {
+      return const CaptureResult(reason: 'No bank senders picked');
+    }
 
     final since = settings.lastMessageScanAt ??
         DateTime.now().subtract(firstScanWindow);
 
-    final messages = await source.messagesSince(since);
-    final senderRules = await db.watchSenderRules().first;
+    final messages = await source.messagesSince(since, senders: senders);
 
     var ingested = 0;
     var autoFilled = 0;
@@ -71,7 +80,7 @@ class CaptureService {
     var rejected = 0;
 
     for (final msg in messages) {
-      if (!_isBankSender(msg.sender, senderRules)) {
+      if (!tracksSender(msg.sender, senders)) {
         skippedSender++;
         continue;
       }
@@ -117,18 +126,6 @@ class CaptureService {
     );
   }
 
-  /// A message counts as a bank message if its sender matches an enabled bank
-  /// rule, or simply *looks* like a bank short code (`AD-IPPBNK`). A phone
-  /// number never does — that's a person texting you.
-  bool _isBankSender(String sender, List<SenderRuleRow> rules) {
-    final s = sender.toUpperCase();
-    for (final r in rules) {
-      if (!r.enabled) continue;
-      if (s.contains(r.senderPattern.toUpperCase())) return true;
-    }
-    return MessageParser.looksLikeBankSender(sender);
-  }
-
   /// Returns true when the card was auto-filled and posted.
   Future<bool> _tryAutoApprove(int pendingId, ParsedMessage parsed) async {
     // Guardrail 1: a shaky parse never posts by itself.
@@ -153,10 +150,6 @@ class CaptureService {
     // scan path — see `share_intake.dart`) but kept as a hard stop so a
     // future wiring change can't silently start auto-posting them.
     if (card?.source == MessageSourceKind.screenshot) return false;
-
-    // Guardrail 4c: Local AI's reading is a suggestion for a human to
-    // check, never a basis for posting on its own.
-    if (card?.aiRead ?? false) return false;
 
     // Guardrail 5: the learned category must match the message direction.
     final category = await db.categoryById(rule.categoryId);

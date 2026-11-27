@@ -22,8 +22,11 @@ private val KNOWN = setOf(
     NOTIFICATIONS,
     "android.permission.CAMERA",
     "android.permission.READ_CONTACTS",
-    // Local AI voice input only (VoiceChannel).
+    // Voice add (SpeechChannel).
     "android.permission.RECORD_AUDIO",
+    // Auto money tracking (SmsChannel) — only in builds that declare it;
+    // see [status]'s "absent".
+    "android.permission.READ_SMS",
 )
 
 /**
@@ -73,8 +76,13 @@ class PermissionsChannel(private val activity: FragmentActivity) {
         }
     }
 
-    /** `granted`, `denied`, or `blocked` (denied and Android won't ask again). */
+    /**
+     * `granted`, `denied`, `blocked` (denied and Android won't ask again), or
+     * `absent`: this build doesn't declare it at all (READ_SMS outside the
+     * builds made with XPENC_SMS=on), so no dialog could ever show.
+     */
     private fun status(name: String): String {
+        if (name != NOTIFICATIONS && !declares(activity, name)) return "absent"
         val granted = if (name == NOTIFICATIONS) {
             NotificationManagerCompat.from(activity).areNotificationsEnabled()
         } else {
@@ -100,6 +108,10 @@ class PermissionsChannel(private val activity: FragmentActivity) {
         }
         if (name == NOTIFICATIONS && Build.VERSION.SDK_INT < 33) {
             result.success(status(name))
+            return
+        }
+        if (status(name) == "absent") {
+            result.success("absent")
             return
         }
         if (pending != null) {

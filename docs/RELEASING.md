@@ -38,7 +38,13 @@ bump version → commit → tag vX.Y.Z → push tag
 ```
 
 Every push to `BETA` does the same into the rolling `beta` pre-release
-(`beta-release.yml`): `xpenc-beta-*.apk`, then `xpenc-beta-ios.ipa`.
+(`beta-release.yml`): `xpenc-beta-*.apk`, then `xpenc-beta-ios.ipa`. It also
+builds one opt-in `xpenc-beta-sms-arm64-v8a.apk` with `--dart-define=XPENC_SMS=on`
+— the only shipped file that requests `READ_SMS` (Auto money tracking). An
+aapt2 step fails the run if a normal APK has an SMS permission or the SMS one
+lacks READ_SMS. Don't add `XPENC_SMS` to `release.yml` or the Play build
+without updating PRIVACY.md and Play's Data safety + SMS declaration first;
+`test/native_channel_test.dart` enforces it.
 
 If the iOS step fails, the Android release is already out. Fix it and re-run
 *Release iOS* by hand (Actions → Release iOS → Run workflow, with the tag).
