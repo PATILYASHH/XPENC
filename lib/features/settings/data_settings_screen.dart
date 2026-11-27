@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/connector/connector_platform.dart';
 import '../../core/platform/platform_features.dart';
 import '../../core/widgets/app_surfaces.dart';
 import '../../data/providers.dart';
 import '../../core/l10n/l10n.dart';
+import '../connector/connector_controller.dart';
 
 /// Data — the two irreversible-adjacent actions: recalculating balances
 /// (safe, idempotent) and clearing all data (destructive, backed up first).
@@ -117,6 +119,10 @@ class DataSettingsScreen extends ConsumerWidget {
     try {
       await ref.read(backupServiceProvider).createBackup();
       await ref.read(dbProvider).clearAllData();
+      // XPENC web: the wiped ledger mustn't sync out over GitHub's backup.
+      if (connectorPlatform != null) {
+        ref.read(connectorProvider.notifier).ledgerCleared();
+      }
       messenger
         ..hideCurrentSnackBar()
         ..showSnackBar(

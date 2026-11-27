@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/connector/sync/backup_meta.dart';
 import '../../core/connector/sync/connector_engine.dart' show connectorRepo;
+import '../../core/connector/sync/ledger_summary.dart';
 import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/nav_bar_inset.dart';
 import '../../data/providers.dart';
@@ -80,6 +81,8 @@ class ConnectorScreen extends ConsumerWidget {
               if (view.waiting case final remote?)
                 _WaitingCard(
                   remote: remote,
+                  emptyHere: view.waitingEmpty,
+                  lastUploadAt: s.lastUploadAt,
                   busy: view.busy,
                   onUse: () => _confirmUse(context, ref, remote),
                   onKeep: () => _confirmKeep(context, ref, remote),
@@ -132,19 +135,53 @@ class ConnectorScreen extends ConsumerWidget {
     );
   }
 
+  /// Opens GitHub's backup first and shows what's in it beside what's
+  /// here, so a stale or near-empty one is seen before it replaces
+  /// anything.
   Future<void> _confirmUse(
     BuildContext context,
     WidgetRef ref,
     RemoteBackup remote,
   ) async {
+    final controller = ref.read(connectorProvider.notifier);
+    final fetched = await controller.fetchRemote(remote);
+    if (fetched == null || !context.mounted) return;
+    final theirs = LedgerSummary.of(fetched.opened.dump);
+    final ours = LedgerSummary.of(await ref.read(dbProvider).exportAll());
+    if (!context.mounted) return;
+    final theme = Theme.of(context);
     final ok = await showAppDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text(tr('Use the backup from {0}?', [_from(remote)])),
-        content: const Tr(
-          'Everything in this browser is replaced with it. A copy of what '
-          'is here now downloads first, so this can be undone with Import '
-          'from file.',
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _SummaryLine(
+              label: tr('On GitHub, made {0}', [_when(remote.backupModifiedAt)]),
+              summary: theirs,
+            ),
+            const SizedBox(height: 10),
+            _SummaryLine(label: tr('In this browser'), summary: ours),
+            if (theirs.transactions < ours.transactions) ...[
+              const SizedBox(height: 12),
+              Text(
+                tr('It has fewer transactions than this browser. Anything '
+                    'only here will be gone.'),
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.error,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+            const SizedBox(height: 12),
+            const Tr(
+              'Everything in this browser is replaced with it. A copy of what '
+              'is here now downloads first, so this can be undone with Import '
+              'from file.',
+            ),
+          ],
         ),
         actions: [
           TextButton(
@@ -161,7 +198,7 @@ class ConnectorScreen extends ConsumerWidget {
     if (ok != true) return;
     // The safety copy — the same one Import from file takes.
     await ref.read(backupServiceProvider).createBackup();
-    await ref.read(connectorProvider.notifier).useRemote(remote);
+    await controller.useFetched(fetched);
   }
 
   Future<void> _confirmKeep(
@@ -257,8 +294,9 @@ class _Disconnected extends StatelessWidget {
         point(
           Icons.cloud_upload_outlined,
           tr('Once connected, your backup — the same JSON file XPENC makes — '
-          'goes to {0} on GitHub, private to you. It isn\'t '
-          'encrypted there.', [connectorRepo]),
+          'goes to {0} on GitHub, private to you. If your phones encrypt '
+          'their backups, this browser locks its uploads the same way; '
+          'otherwise they aren\'t encrypted there.', [connectorRepo]),
         ),
         point(
           Icons.key_outlined,
@@ -344,9 +382,52 @@ class _StatusCard extends StatelessWidget {
   }
 }
 
+/// One side of "Use it"'s comparison: what a ledger holds.
+class _SummaryLine extends StatelessWidget {
+  const _SummaryLine({required this.label, required this.summary});
+
+  final String label;
+  final LedgerSummary summary;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final latest = summary.latestEntry;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: theme.textTheme.labelLarge?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          tr('{0} transactions · {1} accounts · {2} people', [
+            summary.transactions,
+            summary.accounts,
+            summary.people,
+          ]),
+          style: theme.textTheme.bodyMedium?.copyWith(
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        if (latest != null)
+          Text(
+            tr('Latest entry {0}', [DateFormat('d MMM y').format(latest)]),
+            style: theme.textTheme.bodySmall,
+          ),
+      ],
+    );
+  }
+}
+
 class _WaitingCard extends StatelessWidget {
   const _WaitingCard({
     required this.remote,
+    required this.emptyHere,
+    required this.lastUploadAt,
     required this.busy,
     required this.onUse,
     required this.onKeep,
@@ -354,6 +435,13 @@ class _WaitingCard extends StatelessWidget {
   });
 
   final RemoteBackup remote;
+
+  /// This browser has nothing in it; the backup may well be its own.
+  final bool emptyHere;
+
+  /// This browser's own last upload — a backup made before it is likely
+  /// older than what's here.
+  final DateTime? lastUploadAt;
   final bool busy;
   final VoidCallback onUse;
   final VoidCallback onKeep;
@@ -363,6 +451,12 @@ class _WaitingCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
+    final made = _when(remote.backupModifiedAt);
+    // The phone's clock against this browser's: good enough to flag a
+    // backup months old, which is what went wrong on 2026-11-27.
+    final uploadedHere = lastUploadAt;
+    final older =
+        uploadedHere != null && remote.backupModifiedAt.isBefore(uploadedHere);
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: Card(
@@ -373,7 +467,9 @@ class _WaitingCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                tr('A newer backup from {0}', [_from(remote)]),
+                emptyHere
+                    ? tr('This browser is empty')
+                    : tr('A backup from {0} is waiting', [_from(remote)]),
                 style: theme.textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.w700,
                   color: cs.onSecondaryContainer,
@@ -381,13 +477,29 @@ class _WaitingCard extends StatelessWidget {
               ),
               const SizedBox(height: 6),
               Text(
-                tr('Made {0}. This browser hasn\'t '
-                'taken it in, so its own changes wait to upload until you '
-                'choose.', [_when(remote.backupModifiedAt)]),
+                emptyHere
+                    ? tr('GitHub has the backup from {0}, made {1}. Use it to '
+                          'fill this browser, or replace it with this empty '
+                          'one.', [_from(remote), made])
+                    : tr('Made {0}. This browser hasn\'t '
+                          'taken it in, so its own changes wait to upload '
+                          'until you choose.', [made]),
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: cs.onSecondaryContainer,
                 ),
               ),
+              if (older) ...[
+                const SizedBox(height: 8),
+                Text(
+                  tr('It was made before this browser last uploaded ({0}), '
+                      'so it may be older than what\'s here. Use it shows '
+                      'what\'s in it first.', [_when(uploadedHere)]),
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: cs.error,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
               const SizedBox(height: 14),
               Wrap(
                 spacing: 8,

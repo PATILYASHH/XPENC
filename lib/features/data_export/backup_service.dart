@@ -384,20 +384,27 @@ class BackupService {
   /// without the password; anywhere else they need it.
   Future<void> stopEncryptingBackups() => _keys.turnOff();
 
-  /// [sealed]'s JSON: opened with a key this phone remembers, else with the
-  /// password [_askPassword] gets. Throws [ArgumentError] when there's no
-  /// way to ask, or the user gives up.
-  Future<String> _open(EncryptedBackup sealed) async {
-    final known = await _keys.keyFor(sealed);
-    if (known != null) {
+  /// [sealed]'s JSON, and the key that opened it: [alsoTry] if it fits,
+  /// else a key this phone remembers, else one from the password
+  /// [_askPassword] gets. Throws [ArgumentError] when there's no way to
+  /// ask, or the user gives up.
+  Future<(String, BackupKey)> _open(
+    EncryptedBackup sealed, {
+    BackupKey? alsoTry,
+  }) async {
+    for (final known in [
+      if (alsoTry != null && alsoTry.opens(sealed)) alsoTry,
+      ?await _keys.keyFor(sealed),
+    ]) {
       try {
-        return await compute(_openWith, (sealed, known));
+        return (await compute(_openWith, (sealed, known)), known);
       } on BackupDecryptError {
         // A remembered key that doesn't fit after all — ask, as if unknown.
       }
     }
     final ask = _askPassword;
     String? opened;
+    BackupKey? openedWith;
     final unlocked =
         ask != null &&
         await ask(
@@ -405,6 +412,7 @@ class BackupService {
             try {
               final (json, key) = await sealed.openWithPassword(password);
               opened = json;
+              openedWith = key;
               try {
                 await _keys.remember(key);
               } catch (_) {
@@ -419,12 +427,12 @@ class BackupService {
               ? BackupSecret.recoveryPhrase
               : BackupSecret.password,
         );
-    if (!unlocked || opened == null) {
+    if (!unlocked || opened == null || openedWith == null) {
       throw ArgumentError(
         tr('That backup is encrypted, and restoring it needs its password.'),
       );
     }
-    return opened!;
+    return (opened!, openedWith!);
   }
 
   static String _openWith((EncryptedBackup, BackupKey) args) =>
@@ -516,8 +524,18 @@ class BackupService {
   /// corrupt file changes nothing. Throws [ArgumentError] with a
   /// user-facing message on bad input.
   ///
-  /// An encrypted backup (GitHub #41) is opened first — see [_open].
-  Future<void> restoreFromContent(String content) async {
+  /// An encrypted backup (GitHub #41) is opened first — see [openBackup].
+  Future<void> restoreFromContent(String content) async =>
+      _db.importAll((await openBackup(content)).dump);
+
+  /// [content], a backup file's text, read without importing it: its dump,
+  /// and — when it was encrypted — the key that opened it ([alsoTry] first,
+  /// see [_open]). Throws [ArgumentError] with a user-facing message when
+  /// it isn't JSON, can't be opened, or isn't a backup's shape.
+  Future<({Map<String, dynamic> dump, BackupKey? key})> openBackup(
+    String content, {
+    BackupKey? alsoTry,
+  }) async {
     Object? decoded;
     try {
       decoded = jsonDecode(content);
@@ -530,11 +548,30 @@ class BackupService {
     } on FormatException catch (e) {
       throw ArgumentError(tr(e.message));
     }
-    if (sealed != null) decoded = jsonDecode(await _open(sealed));
+    BackupKey? key;
+    if (sealed != null) {
+      final (json, opener) = await _open(sealed, alsoTry: alsoTry);
+      decoded = jsonDecode(json);
+      key = opener;
+    }
     if (decoded is! Map<String, dynamic>) {
       throw ArgumentError(tr('That file is not an XPENC backup.'));
     }
-    await _db.importAll(decoded);
+    return (dump: decoded, key: key);
+  }
+
+  /// The key [content] is encrypted with — [alsoTry], a remembered one, or
+  /// one from its password, as [openBackup] finds it — or null if it isn't
+  /// an encrypted backup at all.
+  Future<BackupKey?> lockOf(String content, {BackupKey? alsoTry}) async {
+    final EncryptedBackup? sealed;
+    try {
+      sealed = EncryptedBackup.tryParse(jsonDecode(content));
+    } on FormatException {
+      return null;
+    }
+    if (sealed == null) return null;
+    return (await _open(sealed, alsoTry: alsoTry)).$2;
   }
 
   /// Hands a copy of the backup to the system share sheet.

@@ -694,6 +694,93 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump(Duration.zero);
   });
+
+  group("XPENC web's Connector", () {
+    /// A browser: no files, so no key store — the key lives in Connector's
+    /// own state and comes back as `alsoTry`.
+    ({AppDatabase db, BackupService service, List<bool> results}) browser({
+      List<String>? prompt,
+    }) {
+      final db = AppDatabase(NativeDatabase.memory());
+      dbs.add(db);
+      final results = <bool>[];
+      final service = BackupService(
+        db,
+        appFolder: AppFolderBackups(root: () async => root),
+        keys: BackupKeys(
+          root: () async => throw UnsupportedError('no files in a browser'),
+        ),
+        askPassword: prompt == null
+            ? null
+            : (attempt, secret) async {
+                for (final p in prompt) {
+                  final ok = await attempt(p);
+                  results.add(ok);
+                  if (ok) return true;
+                }
+                return false;
+              },
+      );
+      return (db: db, service: service, results: results);
+    }
+
+    test('opening a locked backup hands back its key; with it the next one '
+        'opens unasked, and what it seals opens on the phone unasked', () async {
+      final phoneA = phone('a', prompt: const []);
+      await addAccount(phoneA.db, 'Joint account');
+      await phoneA.service.encryptBackups(_password, iterations: _iterations);
+
+      final web = browser(prompt: [_password]);
+      final opened = await web.service.openBackup(
+        await backupText(phoneA.service),
+      );
+      expect(web.results, [true]);
+      expect(opened.key, isNotNull);
+      expect(
+        (opened.dump['accounts'] as List).map((a) => a['name']),
+        contains('Joint account'),
+      );
+
+      // The key store can't keep it, so a second open would ask again —
+      // unless Connector passes the key it kept.
+      await addAccount(phoneA.db, 'Second account');
+      final again = await web.service.openBackup(
+        await backupText(phoneA.service),
+        alsoTry: opened.key,
+      );
+      expect(web.results, [true], reason: 'not asked again');
+      expect(
+        (again.dump['accounts'] as List).map((a) => a['name']),
+        contains('Second account'),
+      );
+
+      // The browser's upload, locked with that key, opens on phone A
+      // without a prompt (it has no passwords left to give).
+      final upload = BackupCrypto.seal(jsonEncode(again.dump), opened.key!);
+      expect(upload, isNot(contains('Joint account')));
+      await phoneA.service.restoreFromContent(upload);
+      expect(phoneA.results, isEmpty);
+    });
+
+    test('lockOf: the key of a locked backup, null for a plain one', () async {
+      final phoneA = phone('a', prompt: const []);
+      await addAccount(phoneA.db, 'Plain');
+      final plain = await backupText(phoneA.service);
+      await phoneA.service.encryptBackups(_password, iterations: _iterations);
+      final locked = await backupText(phoneA.service);
+
+      final web = browser(prompt: [_password]);
+      expect(await web.service.lockOf(plain), isNull);
+      expect(await web.service.lockOf('not json'), isNull);
+      final key = await web.service.lockOf(locked);
+      expect(key, isNotNull);
+      expect(await web.service.lockOf(locked, alsoTry: key), isNotNull);
+      expect(web.results, [true], reason: 'the known key needs no prompt');
+
+      final noPrompt = browser();
+      await expectLater(noPrompt.service.lockOf(locked), throwsArgumentError);
+    });
+  });
 }
 
 /// The screen's service, with test-speed key derivation.

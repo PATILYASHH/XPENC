@@ -28,17 +28,25 @@ enum UploadVerdict {
   /// GitHub's backup came from elsewhere; uploading would throw its data
   /// away.
   notImported,
+
+  /// This browser's ledger is empty (cleared, or its storage wiped) while
+  /// GitHub holds a backup. That's this browser's own change, so the rule
+  /// above allows it, but an empty upload is almost never what anyone
+  /// meant, so it waits for the user.
+  emptyHere,
 }
 
 /// The upload rule for XPENC web, which has no backup files to date — it
 /// compares the ledger itself ([dataSha], see `ledgerFingerprint`) with what
-/// it last uploaded or imported ([baselineDataSha]).
+/// it last uploaded or imported ([baselineDataSha]). [hasData] is
+/// `ledgerHasData` of that same ledger.
 UploadVerdict uploadVerdict({
   required RemoteBackup? remote,
   required String dataSha,
   required String? baselineDataSha,
   required String thisDeviceId,
   required String? baseCommitSha,
+  bool hasData = true,
 }) {
   // Nothing on GitHub (a new repo, or one emptied by hand): nothing to lose.
   if (remote == null) return UploadVerdict.upload;
@@ -50,5 +58,6 @@ UploadVerdict uploadVerdict({
     return UploadVerdict.notImported;
   }
   if (dataSha == baselineDataSha) return UploadVerdict.upToDate;
+  if (!hasData) return UploadVerdict.emptyHere;
   return UploadVerdict.upload;
 }

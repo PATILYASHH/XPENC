@@ -31,6 +31,13 @@ class ConnectorState {
   DateTime? lastUploadAt;
   DateTime? lastCheckAt;
 
+  /// The key GitHub's backup was locked with when this browser took it in
+  /// or kept its own over it (the ledger's own key format, opaque here).
+  /// Uploads are locked with it too, so a phone that encrypts its backups
+  /// never finds this browser's in plain text in the repo's history. Null:
+  /// that backup wasn't locked, and neither are uploads.
+  Map<String, dynamic>? lock;
+
   /// Why sync is stuck, for the Connector page. Null when fine.
   String? problem;
 
@@ -46,6 +53,7 @@ class ConnectorState {
     'dismissedCommitSha': dismissedCommitSha,
     'lastUploadAt': lastUploadAt?.toIso8601String(),
     'lastCheckAt': lastCheckAt?.toIso8601String(),
+    'lock': lock,
     'problem': problem,
   };
 
@@ -62,6 +70,7 @@ class ConnectorState {
       ..dismissedCommitSha = json['dismissedCommitSha'] as String?
       ..lastUploadAt = time('lastUploadAt')
       ..lastCheckAt = time('lastCheckAt')
+      ..lock = (json['lock'] as Map?)?.cast<String, dynamic>()
       ..problem = json['problem'] as String?;
   }
 }

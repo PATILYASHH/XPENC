@@ -7,6 +7,7 @@ import 'package:xpenc/core/connector/sync/backup_meta.dart';
 import 'package:xpenc/core/connector/sync/connector_engine.dart';
 import 'package:xpenc/core/connector/sync/connector_state.dart';
 import 'package:xpenc/core/connector/sync/github_backup_api.dart';
+import 'package:xpenc/core/connector/sync/ledger_summary.dart';
 
 /// XPENC web's built-in Connector against a fake GitHub that keeps commits
 /// and refuses stale writes the way the Contents API does.
@@ -139,6 +140,210 @@ void main() {
     expect(after.baseCommitSha, before.baseCommitSha);
   });
 
+  group('an empty browser never syncs out over a backup', () {
+    final withData = {
+      'formatVersion': 1,
+      'accounts': [
+        {'id': 1, 'name': 'Cash'},
+        {'id': 2, 'name': 'Bank'},
+      ],
+      'transactions': [
+        {'id': 1, 'amount': 500, 'date': '2026-11-20T10:00:00.000'},
+      ],
+    };
+
+    test('its own upload, then wiped: asked, not uploaded', () async {
+      ledger.data = jsonDecode(jsonEncode(withData)) as Map<String, dynamic>;
+      await engine.sync();
+      // Clear all data's fresh ledger: the seeded Cash account, no more.
+      ledger.data = {
+        'formatVersion': 1,
+        'accounts': [
+          {'id': 1, 'name': 'Cash'},
+        ],
+        'transactions': <Object>[],
+      };
+
+      final outcome = await engine.sync();
+      expect(outcome, isA<RemoteWaiting>());
+      expect((outcome as RemoteWaiting).emptyHere, isTrue);
+      expect(github.commits, hasLength(1), reason: 'nothing overwritten');
+
+      // "Use it" brings the browser's own last upload back.
+      await engine.importRemote(outcome.remote);
+      expect(ledger.data['transactions'], withData['transactions']);
+      expect(await engine.sync(), isA<UpToDate>());
+    });
+
+    test('"Keep this browser\'s" still can, on purpose', () async {
+      ledger.data = jsonDecode(jsonEncode(withData)) as Map<String, dynamic>;
+      await engine.sync();
+      ledger.data = {'formatVersion': 1, 'accounts': <Object>[]};
+      final waiting = await engine.sync() as RemoteWaiting;
+
+      await engine.overwriteRemote(waiting.remote);
+      expect(github.commits, hasLength(2));
+      expect(github.headJson['accounts'], isEmpty);
+    });
+
+    test('a fresh repo still gets its first, empty, backup', () async {
+      expect(await engine.sync(), isA<Uploaded>());
+    });
+  });
+
+  test('after Clear all data its old uploads count as another device\'s, '
+      'so a new entry made before the next check stays here', () async {
+    ledger.data['transactions'] = [
+      {'id': 1, 'amount': 500},
+    ];
+    await engine.sync();
+    final before = store.load().deviceId;
+
+    engine.startOver();
+    ledger.data = {
+      'formatVersion': 1,
+      'accounts': [
+        {'id': 1, 'name': 'Cash'},
+      ],
+      'transactions': [
+        {'id': 1, 'amount': 20},
+      ],
+    };
+    final outcome = await engine.sync();
+    expect(outcome, isA<RemoteWaiting>());
+    expect((outcome as RemoteWaiting).emptyHere, isFalse);
+    expect(store.load().deviceId, isNot(before));
+    expect(github.commits, hasLength(1), reason: 'nothing overwritten');
+  });
+
+  group('a locked backup stays locked', () {
+    test('taken in with its password, then this browser\'s uploads are '
+        'locked the same way', () async {
+      await engine.sync();
+      github.pushFromPhone({
+        'formatVersion': 1,
+        'accounts': [
+          {'id': 7, 'name': 'Bank'},
+        ],
+      }, lockedWith: 'phone-key');
+      final waiting = await engine.sync() as RemoteWaiting;
+
+      ledger.password = 'phone-key';
+      final fetched = await engine.fetch(waiting.remote);
+      expect(fetched.opened.dump['accounts'], [
+        {'id': 7, 'name': 'Bank'},
+      ]);
+      expect(
+        ledger.data['accounts'],
+        isNot(fetched.opened.dump['accounts']),
+        reason: 'fetching changes nothing yet',
+      );
+      await engine.importFetched(fetched);
+      expect(ledger.data['accounts'], fetched.opened.dump['accounts']);
+
+      ledger.data['transactions'] = [
+        {'id': 2, 'amount': 90},
+      ];
+      expect(await engine.sync(), isA<Uploaded>());
+      expect(github.headJson['lockedWith'], 'phone-key');
+      expect(github.headJson['data']['transactions'], [
+        {'id': 2, 'amount': 90},
+      ]);
+      expect(ledger.prompts, 1, reason: 'the key is kept, not asked again');
+    });
+
+    test('no password, no import — and nothing changes', () async {
+      await engine.sync();
+      github.pushFromPhone({'formatVersion': 1}, lockedWith: 'phone-key');
+      final waiting = await engine.sync() as RemoteWaiting;
+      await expectLater(engine.fetch(waiting.remote), throwsArgumentError);
+      expect(store.load().lock, isNull);
+      expect(ledger.data['accounts'], hasLength(1));
+    });
+
+    test('"Keep this browser\'s" over a locked backup locks its upload, and '
+        'over a plain one never unlocks it', () async {
+      await engine.sync();
+      github.pushFromPhone({'formatVersion': 1}, lockedWith: 'phone-key');
+      ledger.password = 'phone-key';
+      ledger.data['transactions'] = [
+        {'id': 1, 'amount': 500},
+      ];
+      var waiting = await engine.sync() as RemoteWaiting;
+      await engine.overwriteRemote(waiting.remote);
+      expect(github.headJson['lockedWith'], 'phone-key');
+
+      // A phone with encryption off pushes a plain one; keeping this
+      // browser's over it still goes up locked.
+      github.pushFromPhone({'formatVersion': 1});
+      waiting = await engine.sync() as RemoteWaiting;
+      await engine.overwriteRemote(waiting.remote);
+      expect(github.headJson['lockedWith'], 'phone-key');
+      expect(ledger.prompts, 1);
+    });
+
+    test('a plain backup taken in makes uploads plain again', () async {
+      await engine.sync();
+      github.pushFromPhone({'formatVersion': 1}, lockedWith: 'phone-key');
+      ledger.password = 'phone-key';
+      await engine.importRemote((await engine.sync() as RemoteWaiting).remote);
+      expect(store.load().lock, isNotNull);
+
+      github.pushFromPhone({
+        'formatVersion': 1,
+        'accounts': [
+          {'id': 3, 'name': 'Card'},
+        ],
+      });
+      await engine.importRemote((await engine.sync() as RemoteWaiting).remote);
+      expect(store.load().lock, isNull);
+      ledger.data['transactions'] = [
+        {'id': 4, 'amount': 1},
+      ];
+      await engine.sync();
+      expect(github.headJson.containsKey('lockedWith'), isFalse);
+    });
+  });
+
+  test('LedgerSummary counts what a dump holds; ledgerHasData knows a '
+      'fresh ledger', () {
+    final summary = LedgerSummary.of({
+      'accounts': [{}, {}, {}],
+      'persons': [{}],
+      'transactions': [
+        {'date': '2026-08-04T08:26:22.000'},
+        {'date': '2026-11-15T09:18:39.000'},
+        {'date': 'not a date'},
+      ],
+    });
+    expect(summary.transactions, 3);
+    expect(summary.accounts, 3);
+    expect(summary.people, 1);
+    expect(summary.latestEntry, DateTime(2026, 11, 15, 9, 18, 39));
+
+    expect(
+      ledgerHasData({
+        'accounts': [{}],
+        'categories': [{}, {}],
+        'transactions': <Object>[],
+      }),
+      isFalse,
+    );
+    expect(
+      ledgerHasData({
+        'accounts': [{}, {}],
+      }),
+      isTrue,
+    );
+    expect(
+      ledgerHasData({
+        'accounts': [{}],
+        'personEntries': [{}],
+      }),
+      isTrue,
+    );
+  });
+
   test("reads a commit message the Connector app wrote", () {
     // Written by CONECTR's BackupMeta.toCommitMessage on a phone.
     const message =
@@ -172,15 +377,25 @@ class _FakeGithub implements HttpTransport {
 
   String get _repoPath => '/repos/$owner/$connectorRepo';
 
-  void pushFromPhone(Map<String, dynamic> data) {
+  void pushFromPhone(Map<String, dynamic> data, {String? lockedWith}) {
     final meta = BackupMeta(
       deviceId: 'phone-1',
       deviceName: 'Pixel 8',
       backupModifiedAt: DateTime.utc(2026, 10, 24, 9),
       sourceFileName: '241026XPENCEBACKUP.json',
     );
-    _append(meta.toCommitMessage(), utf8.encode(jsonEncode(data)));
+    _append(
+      meta.toCommitMessage(),
+      utf8.encode(
+        lockedWith == null
+            ? jsonEncode(data)
+            : _FakeLedger.locked(data, lockedWith),
+      ),
+    );
   }
+
+  Map<String, dynamic> get headJson =>
+      jsonDecode(utf8.decode(commits.last.bytes)) as Map<String, dynamic>;
 
   String _append(String message, List<int> bytes) {
     final sha = 'c${commits.length + 1}';
@@ -291,9 +506,19 @@ class _MemoryStore implements ConnectorStore {
   }
 }
 
+/// The ledger, with a toy lock standing in for XPENC's encryption: a locked
+/// file is `{"lockedWith": <key>, "data": <dump>}`, opened with a known
+/// lock, or one the user "types" ([password]).
 class _FakeLedger implements ConnectorLedger {
   _FakeLedger(this.data);
   Map<String, dynamic> data;
+
+  /// What the password prompt gets; null: the user gives up.
+  String? password;
+  int prompts = 0;
+
+  static String locked(Map<String, dynamic> dump, String key) =>
+      jsonEncode({'lockedWith': key, 'data': dump});
 
   @override
   Future<Map<String, dynamic>> export() async => {
@@ -302,7 +527,45 @@ class _FakeLedger implements ConnectorLedger {
   };
 
   @override
-  Future<void> import(String backupJson) async =>
-      data = (jsonDecode(backupJson) as Map<String, dynamic>)
+  Future<OpenedBackup> open(
+    String fileText, {
+    Map<String, dynamic>? knownLock,
+  }) async {
+    final json = jsonDecode(fileText) as Map<String, dynamic>;
+    final key = json['lockedWith'] as String?;
+    if (key == null) return OpenedBackup(json);
+    return OpenedBackup(
+      json['data'] as Map<String, dynamic>,
+      lock: _unlock(key, knownLock),
+    );
+  }
+
+  @override
+  Future<Map<String, dynamic>?> lockOf(
+    String fileText, {
+    Map<String, dynamic>? knownLock,
+  }) async {
+    final key =
+        (jsonDecode(fileText) as Map<String, dynamic>)['lockedWith'] as String?;
+    return key == null ? null : _unlock(key, knownLock);
+  }
+
+  Map<String, dynamic> _unlock(String key, Map<String, dynamic>? knownLock) {
+    if (knownLock?['key'] == key) return knownLock!;
+    prompts++;
+    if (password != key) throw ArgumentError('needs its password');
+    return {'key': key};
+  }
+
+  @override
+  Future<void> import(Map<String, dynamic> dump) async =>
+      data = (jsonDecode(jsonEncode(dump)) as Map<String, dynamic>)
         ..remove('exportedAt');
+
+  @override
+  Future<String> fileText(
+    Map<String, dynamic> dump, {
+    Map<String, dynamic>? lock,
+  }) async =>
+      lock == null ? jsonEncode(dump) : locked(dump, lock['key'] as String);
 }
