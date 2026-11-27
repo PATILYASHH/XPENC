@@ -108,8 +108,18 @@ void main() {
     // The SMS build ships under its own name, never as a normal asset.
     expect(beta, contains('release/xpenc-beta-sms-arm64-v8a.apk'));
     expect(beta, contains('Verify the SMS permission (only in the SMS APK)'));
-    // Stable releases never carry it.
-    expect(read('.github/workflows/release.yml').contains('XPENC_SMS'), isFalse);
+    // verify_apk.sh lets READ_SMS through for that one file only.
+    final allow = beta
+        .split('\n')
+        .where((l) => l.contains('--allow-read-sms'))
+        .toList();
+    expect(allow, hasLength(1));
+    expect(allow.single, contains('release/xpenc-beta-sms-arm64-v8a.apk)'));
+    expect(read('tool/verify_apk.sh'), contains('READ_SMS declared -- only'));
+    // Stable releases never carry it, nor let it through.
+    final stable = read('.github/workflows/release.yml');
+    expect(stable.contains('XPENC_SMS'), isFalse);
+    expect(stable.contains('allow-read-sms'), isFalse);
   });
 
   test('MainActivity carries no SMS code', () {

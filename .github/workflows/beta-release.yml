@@ -132,10 +132,15 @@ jobs:
           fi
           echo "OK  READ_SMS (and only that): release/xpenc-beta-sms-arm64-v8a.apk"
 
+      # The opt-in SMS APK is the one file allowed (and required) to declare
+      # READ_SMS; every other one still fails on it.
       - name: Verify APKs (libsqlite3.so gate)
         run: |
           for apk in release/*.apk; do
-            bash tool/verify_apk.sh "$apk"
+            case "$apk" in
+              release/xpenc-beta-sms-arm64-v8a.apk) bash tool/verify_apk.sh "$apk" --allow-read-sms ;;
+              *) bash tool/verify_apk.sh "$apk" ;;
+            esac
           done
 
       - name: Checksums

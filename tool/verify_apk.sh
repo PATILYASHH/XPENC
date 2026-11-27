@@ -7,7 +7,11 @@
 # with "dlopen failed: library libsqlite3.so not found" — every screen stuck on
 # a loading spinner. `flutter analyze` and 77 green tests said nothing.
 #
-# Usage: bash tool/verify_apk.sh [path/to/app.apk]
+# Usage: bash tool/verify_apk.sh [path/to/app.apk] [--allow-read-sms]
+#
+# --allow-read-sms is for the beta's opt-in SMS APK only
+# (xpenc-beta-sms-arm64-v8a.apk, Auto money tracking): it must then declare
+# READ_SMS. Every other APK still fails if it does.
 set -uo pipefail
 # Checks below feed grep a here-string, never `printf | grep -q`: under
 # pipefail, grep -q exiting on its first match can SIGPIPE the printf and
@@ -15,6 +19,8 @@ set -uo pipefail
 # libflutter.so as missing that way.
 
 APK="${1:-build/app/outputs/flutter-apk/app-release.apk}"
+allow_read_sms=0
+[ "${2:-}" = "--allow-read-sms" ] && allow_read_sms=1
 fail=0
 
 say()  { printf '%s\n' "$*"; }
@@ -70,7 +76,13 @@ if command -v aapt2 >/dev/null 2>&1 || command -v aapt >/dev/null 2>&1; then
   AAPT=$(command -v aapt2 || command -v aapt)
   perms=$("$AAPT" dump permissions "$APK" 2>/dev/null || true)
   if grep -q 'android.permission.READ_SMS' <<<"$perms"; then
-    bad "READ_SMS declared -- paused in 1.1.0: Play Protect blocks sideloads and Play rejects it"
+    if [ "$allow_read_sms" -eq 1 ]; then
+      ok "READ_SMS declared (the opt-in SMS build, --allow-read-sms)"
+    else
+      bad "READ_SMS declared -- only the opt-in SMS beta APK may: Play Protect blocks sideloads of it and Play needs an SMS declaration"
+    fi
+  elif [ "$allow_read_sms" -eq 1 ]; then
+    bad "READ_SMS missing from the opt-in SMS build (was it built with XPENC_SMS=on?)"
   else
     ok "READ_SMS absent (as designed since 1.1.0)"
   fi
