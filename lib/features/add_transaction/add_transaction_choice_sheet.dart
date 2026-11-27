@@ -12,8 +12,8 @@ import '../../data/providers.dart';
 import '../../core/widgets/nav_bar_inset.dart';
 import '../../core/l10n/l10n.dart';
 
-/// The ➕ button's entry point (GitHub #125): "start from scratch" or pick a
-/// saved template to prefill from. Only ever called when
+/// The ➕ button's entry point (GitHub #125): type it in a few words (GitHub
+/// #213), "start from scratch" or pick a saved template to prefill from. Only ever called when
 /// [hasTransactionTemplatesProvider] is true — a user with no templates yet
 /// still gets the old one-tap-straight-to-`/add` behaviour, unchanged.
 ///
@@ -47,6 +47,7 @@ Future<void> openAddTransactionChoiceSheet(
     );
   }
   router.push(switch (result) {
+    _AddChoiceResult(typeIt: true) => '/type',
     _AddChoiceResult(templateId: null) => '/add',
     _AddChoiceResult(:final templateId, edit: true) =>
       '/add?editTemplate=$templateId',
@@ -55,13 +56,29 @@ Future<void> openAddTransactionChoiceSheet(
 }
 
 class _AddChoiceResult {
-  const _AddChoiceResult.blank() : templateId = null, edit = false;
-  const _AddChoiceResult.template(int id) : templateId = id, edit = false;
+  const _AddChoiceResult.blank()
+    : templateId = null,
+      edit = false,
+      typeIt = false;
+  const _AddChoiceResult.template(int id)
+    : templateId = id,
+      edit = false,
+      typeIt = false;
 
   /// Opens the template itself for editing (GitHub #205).
-  const _AddChoiceResult.editTemplate(int id) : templateId = id, edit = true;
+  const _AddChoiceResult.editTemplate(int id)
+    : templateId = id,
+      edit = true,
+      typeIt = false;
+
+  /// "34 supermarket" and it's saved (GitHub #213).
+  const _AddChoiceResult.typeIt()
+    : templateId = null,
+      edit = false,
+      typeIt = true;
   final int? templateId;
   final bool edit;
+  final bool typeIt;
 }
 
 class _AddChoiceSheet extends ConsumerWidget {
@@ -101,6 +118,15 @@ class _AddChoiceSheet extends ConsumerWidget {
                   ),
                 ),
               ),
+            ),
+            // First, so a few words never means hunting for a template.
+            AppListTile(
+              key: const Key('add-choice-type-it'),
+              leading: const AppIcon(Icons.keyboard_alt_outlined),
+              title: const Tr('Type it'),
+              subtitle: const Tr('"34 supermarket" — saved in one go.'),
+              onTap: () =>
+                  Navigator.of(context).pop(const _AddChoiceResult.typeIt()),
             ),
             AppListTile(
               leading: const AppIcon(Icons.add_circle_outline_rounded),

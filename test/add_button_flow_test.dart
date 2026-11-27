@@ -11,6 +11,7 @@ import 'package:xpenc/data/database.dart';
 import 'package:xpenc/data/providers.dart';
 import 'package:xpenc/data/tables.dart';
 import 'package:xpenc/features/add_transaction/add_transaction_screen.dart';
+import 'package:xpenc/features/quick_entry/type_it_screen.dart';
 
 /// The ➕ in the real shell: a tap opens Add Transaction — or, once a
 /// template exists, the "blank or template" sheet, whose either choice must
@@ -97,6 +98,22 @@ void main() {
       await tester.tap(find.text('Start from scratch'));
       await settle(tester);
       expect(find.byType(AddTransactionScreen), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await unmount(tester);
+    });
+
+    testWidgets('$style: ➕ → Type it opens the few-words page (#213)', (
+      tester,
+    ) async {
+      final db = (await tester.runAsync(() => seed(withTemplate: true)))!;
+      addTearDown(db.close);
+      await pumpShell(tester, db);
+
+      await tester.tap(addButton());
+      await settle(tester);
+      await tester.tap(find.byKey(const Key('add-choice-type-it')));
+      await settle(tester);
+      expect(find.byType(TypeItScreen), findsOneWidget);
       expect(tester.takeException(), isNull);
       await unmount(tester);
     });

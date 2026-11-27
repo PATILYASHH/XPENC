@@ -6990,9 +6990,72 @@ class AppDatabase extends _$AppDatabase {
           categoryId: Value(categoryId),
           accountId: Value(accountId),
           hitCount: Value(existing.hitCount + 1),
+          // Remembering a capture is what lets it auto-approve — even when
+          // the same word was first typed in as a category keyword, which
+          // only ever suggests (see [setCategoryKeywords]).
+          autoApprove: const Value(true),
         ),
       );
     }
+  }
+
+  // ── Category keywords (GitHub #213) ──────────────────────────────────────
+  //
+  // "supermarket, market, groceries" → Food. A keyword is a merchant rule by
+  // another name: the same "this word means this category" mapping message
+  // capture learns, so one list serves typed entries, voice add and the
+  // review inbox's suggestions, and backups already carry it.
+
+  /// The words that file an entry under [categoryId], as typed.
+  Future<List<String>> categoryKeywords(int categoryId) async => [
+    for (final r
+        in await (select(merchantRules)
+              ..where((r) => r.categoryId.equals(categoryId))
+              ..orderBy([(r) => OrderingTerm.asc(r.id)]))
+            .get())
+      r.matchPattern,
+  ];
+
+  /// Makes [words] exactly [categoryId]'s keywords: ones no longer listed
+  /// go, new ones are added, and a word that belonged to another category
+  /// moves here — a word means one category. Added ones never auto-approve
+  /// a captured message; they only suggest, until a capture is remembered.
+  Future<void> setCategoryKeywords(int categoryId, Iterable<String> words) =>
+      transaction(() async {
+        final wanted = <String>{
+          for (final w in words)
+            if (normalizeCategoryKeyword(w).isNotEmpty)
+              normalizeCategoryKeyword(w),
+        };
+        final rules = await select(merchantRules).get();
+        for (final r in rules) {
+          final word = _normalizeMerchant(r.matchPattern);
+          final listed = wanted.contains(word);
+          if (r.categoryId == categoryId && !listed) {
+            await (delete(merchantRules)..where((x) => x.id.equals(r.id)))
+                .go();
+          } else if (r.categoryId != categoryId && listed) {
+            await (update(merchantRules)..where((x) => x.id.equals(r.id)))
+                .write(MerchantRulesCompanion(categoryId: Value(categoryId)));
+          }
+        }
+        final known = {for (final r in rules) _normalizeMerchant(r.matchPattern)};
+        for (final word in wanted.difference(known)) {
+          await into(merchantRules).insert(
+            MerchantRulesCompanion.insert(
+              matchPattern: word,
+              categoryId: categoryId,
+              autoApprove: const Value(false),
+            ),
+          );
+        }
+      });
+
+  /// A keyword as it's kept and matched: trimmed, lower-case, single-spaced,
+  /// at most 40 characters.
+  static String normalizeCategoryKeyword(String word) {
+    final w = _normalizeMerchant(word);
+    return w.length > 40 ? w.substring(0, 40).trim() : w;
   }
 
   Stream<List<MerchantRuleRow>> watchMerchantRules() =>
@@ -8163,6 +8226,8 @@ class AppDatabase extends _$AppDatabase {
     )..where((l) => l.categoryId.equals(id))).go();
     await (update(modePlannedCosts)..where((c) => c.categoryId.equals(id)))
         .write(const ModePlannedCostsCompanion(categoryId: Value(null)));
+    // Its keywords (merchant rules) mean nothing without it (GitHub #213).
+    await (delete(merchantRules)..where((r) => r.categoryId.equals(id))).go();
     await (delete(categories)..where((c) => c.id.equals(id))).go();
   });
 
@@ -8224,9 +8289,6 @@ class AppDatabase extends _$AppDatabase {
     if (await any(select(reminders)..where((r) => r.categoryId.equals(id))) ||
         await any(
           select(recurringRules)..where((r) => r.categoryId.equals(id)),
-        ) ||
-        await any(
-          select(merchantRules)..where((r) => r.categoryId.equals(id)),
         ) ||
         await any(
           select(transactionTemplates)..where((t) => t.categoryId.equals(id)),

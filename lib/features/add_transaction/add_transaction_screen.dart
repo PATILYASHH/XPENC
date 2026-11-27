@@ -24,6 +24,7 @@ import '../../data/modes_db.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
 import '../accounts/envelope_outflow.dart';
+import '../categories/categories_screen.dart' show openCategoryEditor;
 import '../payees/payee_picker_sheet.dart';
 import '../persons/person_avatar.dart';
 import '../settings/currency_picker_sheet.dart';
@@ -3576,6 +3577,10 @@ class _AccountPickerSheet extends ConsumerWidget {
 /// has subcategories drills into a second grid of its children (with a "Use
 /// [parent]" chip to pick the parent directly); a childless one is picked on the
 /// spot. Popping returns the chosen category id.
+///
+/// The grid ends in a ＋ New chip that makes a category (a subcategory when
+/// drilled in) and picks it; holding a category edits it — no trip to
+/// More → Categories mid-entry (GitHub #212).
 class _CategoryPickerSheet extends ConsumerStatefulWidget {
   const _CategoryPickerSheet({
     required this.kind,
@@ -3650,19 +3655,25 @@ class _CategoryPickerSheetState extends ConsumerState<_CategoryPickerSheet> {
     );
   }
 
-  Widget _content(ThemeData theme, List<CategoryRow> cats) {
-    if (cats.isEmpty) {
-      return Padding(
-        padding: const EdgeInsets.all(32),
-        child: Tr(
-          'No categories yet',
-          style: theme.textTheme.bodyMedium?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
-        ),
-      );
-    }
+  /// Makes a category without leaving the entry and picks it (GitHub #212):
+  /// top-level from the first grid, or under [parentId] when drilled in.
+  Future<void> _newCategory({int? parentId}) async {
+    final id = await openCategoryEditor(
+      context,
+      kind: _kind,
+      initialParentId: parentId,
+    );
+    if (id == null || !mounted) return;
+    Navigator.of(context).pop(id);
+  }
 
+  /// Hold a category to rename, recolour or move it, staying in the picker.
+  /// A mode's own categories are edited in that mode, not here.
+  VoidCallback? _editCategory(CategoryRow c) => c.modeId != null
+      ? null
+      : () => openCategoryEditor(context, kind: c.kind, existing: c);
+
+  Widget _content(ThemeData theme, List<CategoryRow> cats) {
     final childrenByParent = <int, List<CategoryRow>>{};
     for (final c in cats) {
       if (c.parentId != null) {
@@ -3737,7 +3748,9 @@ class _CategoryPickerSheetState extends ConsumerState<_CategoryPickerSheet> {
                 Navigator.of(context).pop(c.id);
               }
             },
+            onLongPress: _editCategory(c),
           ),
+        _newCell(theme, onTap: _newCategory),
       ];
     } else {
       header = Padding(
@@ -3769,6 +3782,7 @@ class _CategoryPickerSheetState extends ConsumerState<_CategoryPickerSheet> {
           colorValue: drillParent.colorValue,
           label: tr('All {0}', [drillParent.name]),
           onTap: () => Navigator.of(context).pop(drillParent.id),
+          onLongPress: _editCategory(drillParent),
         ),
         for (final c in childrenByParent[drillParent.id] ?? const [])
           _cell(
@@ -3778,6 +3792,13 @@ class _CategoryPickerSheetState extends ConsumerState<_CategoryPickerSheet> {
             colorValue: c.colorValue,
             label: c.name,
             onTap: () => Navigator.of(context).pop(c.id),
+            onLongPress: _editCategory(c),
+          ),
+        // A mode's own category can't take everyday subcategories.
+        if (drillParent.modeId == null)
+          _newCell(
+            theme,
+            onTap: () => _newCategory(parentId: drillParent.id),
           ),
       ];
     }
@@ -3804,6 +3825,42 @@ class _CategoryPickerSheetState extends ConsumerState<_CategoryPickerSheet> {
     );
   }
 
+  /// The last chip in the grid: an outlined ＋ that makes a new category
+  /// (GitHub #212). Same footprint as a category chip so the grid stays even.
+  Widget _newCell(ThemeData theme, {required VoidCallback onTap}) {
+    final cs = theme.colorScheme;
+    return InkWell(
+      key: const Key('category-picker-new'),
+      borderRadius: BorderRadius.circular(16),
+      onTap: onTap,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 52,
+            height: 52,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: cs.outline, width: 1.5),
+            ),
+            child: AppIcon(Icons.add_rounded, color: cs.primary, size: 26),
+          ),
+          const SizedBox(height: 6),
+          Flexible(
+            child: Tr(
+              'New',
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.bodySmall?.copyWith(color: cs.primary),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   /// One tappable category chip. A small dot marks a parent that opens into
   /// subcategories rather than being picked directly. When [categoryId]
   /// names a category and the sheet was opened for an Envelope Mode account,
@@ -3815,12 +3872,14 @@ class _CategoryPickerSheetState extends ConsumerState<_CategoryPickerSheet> {
     required int colorValue,
     required String label,
     required VoidCallback onTap,
+    VoidCallback? onLongPress,
     bool hasChildren = false,
   }) {
     final envelopeAccountId = widget.envelopeAccountId;
     return InkWell(
       borderRadius: BorderRadius.circular(16),
       onTap: onTap,
+      onLongPress: onLongPress,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [

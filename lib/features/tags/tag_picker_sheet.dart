@@ -8,9 +8,11 @@ import '../../data/mode_providers.dart';
 import '../../data/providers.dart';
 import '../../core/widgets/nav_bar_inset.dart';
 import '../../core/l10n/l10n.dart';
+import 'tags_screen.dart';
 
-/// Bottom sheet: pick any number of tags as toggleable filter chips. New tags
-/// are created from **More → Tags**, not from here — this sheet only selects.
+/// Bottom sheet: pick any number of tags as toggleable filter chips. "New
+/// tag" makes one on the spot and picks it, and holding a tag edits it, so a
+/// tag never needs a trip to More → Tags mid-entry (GitHub #212).
 /// Shared by [AddTransactionScreen] and [RecurringRuleSheet] (GitHub #63).
 class TagPickerSheet extends ConsumerStatefulWidget {
   const TagPickerSheet({
@@ -36,6 +38,13 @@ class _TagPickerSheetState extends ConsumerState<TagPickerSheet> {
   void initState() {
     super.initState();
     _selected.addAll(widget.initiallySelected);
+  }
+
+  /// Makes a tag without leaving the entry, and picks it (GitHub #212).
+  Future<void> _newTag() async {
+    final id = await openTagEditor(context);
+    if (id == null || !mounted) return;
+    setState(() => _selected.add(id));
   }
 
   @override
@@ -107,53 +116,76 @@ class _TagPickerSheetState extends ConsumerState<TagPickerSheet> {
                     style: theme.textTheme.bodyMedium,
                   ),
                 ),
-                data: (tags) {
-                  if (tags.isEmpty) {
-                    return Padding(
-                      padding: const EdgeInsets.all(32),
-                      child: Tr(
-                        'No tags yet — add one from More → Tags.',
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    );
-                  }
-                  return SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 20).plusNavBar(context),
-                    child: Wrap(
-                      spacing: 10,
-                      runSpacing: 10,
-                      children: [
-                        for (final tag in tags)
-                          FilterChip(
-                            // A smart tag (GitHub #189) fills in from the
-                            // date when saved.
-                            avatar: SmartTags.isSmart(tag.name)
-                                ? AppIcon(
-                                    Icons.auto_awesome_outlined,
-                                    size: 16,
-                                    color: Color(tag.colorValue),
-                                  )
-                                : null,
-                            label: Text(tag.name),
-                            selected: _selected.contains(tag.id),
-                            selectedColor: Color(
-                              tag.colorValue,
-                            ).withValues(alpha: 0.22),
-                            checkmarkColor: Color(tag.colorValue),
-                            onSelected: (v) => setState(() {
-                              if (v) {
-                                _selected.add(tag.id);
-                              } else {
-                                _selected.remove(tag.id);
-                              }
-                            }),
+                data: (tags) => SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(
+                    20,
+                    0,
+                    20,
+                    20,
+                  ).plusNavBar(context),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (tags.isEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 16),
+                          child: Tr(
+                            'No tags yet — make your first one here.',
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
                           ),
-                      ],
-                    ),
-                  );
-                },
+                        ),
+                      Wrap(
+                        spacing: 10,
+                        runSpacing: 10,
+                        children: [
+                          for (final tag in tags)
+                            // Hold to rename or recolour it (GitHub #212).
+                            GestureDetector(
+                              key: ValueKey('tag-picker-${tag.id}'),
+                              onLongPress: () =>
+                                  openTagEditor(context, existing: tag),
+                              child: FilterChip(
+                                // A smart tag (GitHub #189) fills in from the
+                                // date when saved.
+                                avatar: SmartTags.isSmart(tag.name)
+                                    ? AppIcon(
+                                        Icons.auto_awesome_outlined,
+                                        size: 16,
+                                        color: Color(tag.colorValue),
+                                      )
+                                    : null,
+                                label: Text(tag.name),
+                                selected: _selected.contains(tag.id),
+                                selectedColor: Color(
+                                  tag.colorValue,
+                                ).withValues(alpha: 0.22),
+                                checkmarkColor: Color(tag.colorValue),
+                                onSelected: (v) => setState(() {
+                                  if (v) {
+                                    _selected.add(tag.id);
+                                  } else {
+                                    _selected.remove(tag.id);
+                                  }
+                                }),
+                              ),
+                            ),
+                          ActionChip(
+                            key: const Key('tag-picker-new'),
+                            avatar: AppIcon(
+                              Icons.add_rounded,
+                              size: 18,
+                              color: theme.colorScheme.primary,
+                            ),
+                            label: const Tr('New tag'),
+                            onPressed: _newTag,
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ),
           ],

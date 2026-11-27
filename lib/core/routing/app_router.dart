@@ -5,6 +5,7 @@ import '../../data/tables.dart';
 import '../money.dart';
 import '../../features/about/about_screen.dart';
 import '../../features/search/global_search_screen.dart';
+import '../../features/quick_entry/type_it_screen.dart';
 import '../../features/guide/guide_screen.dart';
 import '../../features/more/whats_new_screen.dart';
 import '../../features/accounts/account_detail_screen.dart';
@@ -747,6 +748,14 @@ final appRouter = GoRouter(
       path: '/search',
       parentNavigatorKey: _rootKey,
       builder: (_, _) => const GlobalSearchScreen(),
+    ),
+
+    // "34 supermarket" and it's saved — the ➕ sheet or a quick action
+    // (GitHub #213).
+    GoRoute(
+      path: '/type',
+      parentNavigatorKey: _rootKey,
+      builder: (_, _) => const TypeItScreen(),
     ),
 
     GoRoute(

@@ -9,6 +9,7 @@ import '../../core/voice/speech_input.dart';
 import '../../core/voice/voice_parser.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
+import '../quick_entry/entry_sources.dart';
 
 /// Where voice add is: hearing, done hearing (text ready to continue
 /// with), or stopped by a problem ([VoiceAddState.error]).
@@ -167,6 +168,7 @@ String voiceAddRoute(VoiceDraft draft) {
       'type': draft.type == TxType.income ? 'income' : 'expense',
       if (amount != null) 'amount': (amount.paise / 100).toString(),
       if (draft.categoryId != null) 'category': '${draft.categoryId}',
+      if (draft.accountId != null) 'from': '${draft.accountId}',
       if (draft.note != null) 'note': draft.note!,
       if (draft.payee != null) 'payee': draft.payee!,
       if (date != null)
@@ -184,9 +186,13 @@ Future<void> continueVoiceAdd(BuildContext context, WidgetRef ref) async {
     router.push('/add');
     return;
   }
+  // The person's own category keywords and account names count when spoken
+  // too (GitHub #213).
   final draft = parseVoiceEntry(
     text,
     categories: voiceCategories(ref),
+    keywords: ref.read(entryKeywordsProvider),
+    accounts: ref.read(entryAccountsProvider),
     now: DateTime.now(),
   );
   router.push(voiceAddRoute(draft));

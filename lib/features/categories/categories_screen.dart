@@ -122,11 +122,11 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen>
             ? tr('New tag')
             : tr('New category'),
         onPressed: () => switch (_tab) {
-          CategoriesTab.moneyOut => _openCategoryEditor(
+          CategoriesTab.moneyOut => openCategoryEditor(
             context,
             kind: CategoryKind.expense,
           ),
-          CategoriesTab.moneyIn => _openCategoryEditor(
+          CategoriesTab.moneyIn => openCategoryEditor(
             context,
             kind: CategoryKind.income,
           ),
@@ -295,7 +295,7 @@ class _CategoryTile extends ConsumerWidget {
               icon: const AppIcon(Icons.add),
               tooltip: tr('Add subcategory'),
               visualDensity: VisualDensity.compact,
-              onPressed: () => _openCategoryEditor(
+              onPressed: () => openCategoryEditor(
                 context,
                 kind: category.kind,
                 initialParentId: category.id,
@@ -305,7 +305,7 @@ class _CategoryTile extends ConsumerWidget {
             icon: const AppIcon(Icons.edit_outlined),
             tooltip: tr('Edit'),
             visualDensity: VisualDensity.compact,
-            onPressed: () => _openCategoryEditor(
+            onPressed: () => openCategoryEditor(
               context,
               kind: category.kind,
               existing: category,
@@ -358,14 +358,16 @@ class _EmptyCategories extends StatelessWidget {
 }
 
 /// Opens the create/edit editor sheet. [initialParentId] preselects a parent
-/// when adding a subcategory from a parent row.
-Future<void> _openCategoryEditor(
+/// when adding a subcategory from a parent row. Completes with the saved
+/// category's id, or null if the sheet was closed without saving — the add
+/// page's picker uses it to pick a category made on the spot (GitHub #212).
+Future<int?> openCategoryEditor(
   BuildContext context, {
   required CategoryKind kind,
   CategoryRow? existing,
   int? initialParentId,
 }) {
-  return showAppSheet<void>(
+  return showAppSheet<int>(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,
@@ -495,6 +497,14 @@ class _CategoryEditorSheetState extends ConsumerState<_CategoryEditorSheet> {
   late int? _parentId;
   bool _submitting = false;
 
+  /// Words that file a typed entry here — "supermarket" (GitHub #213).
+  final _keywordController = TextEditingController();
+  final List<String> _keywords = [];
+
+  /// False until an edited category's keywords have loaded — saving before
+  /// then must leave them alone rather than wipe them.
+  late bool _keywordsReady = widget.existing == null;
+
   bool get _isEdit => widget.existing != null;
 
   @override
@@ -505,12 +515,43 @@ class _CategoryEditorSheetState extends ConsumerState<_CategoryEditorSheet> {
     _colorValue = existing?.colorValue ?? _presetColors.first;
     _iconKey = existing?.iconKey ?? AppIcons.allKeys.first;
     _parentId = existing?.parentId ?? widget.initialParentId;
+    if (existing != null) {
+      ref.read(dbProvider).categoryKeywords(existing.id).then((words) {
+        if (!mounted) return;
+        setState(() {
+          for (final w in words) {
+            final k = AppDatabase.normalizeCategoryKeyword(w);
+            if (k.isNotEmpty && !_keywords.contains(k)) _keywords.add(k);
+          }
+          _keywordsReady = true;
+        });
+      });
+    }
   }
 
   @override
   void dispose() {
     _nameController.dispose();
+    _keywordController.dispose();
     super.dispose();
+  }
+
+  /// Adds each comma-separated word in [raw] that isn't there yet.
+  void _addKeywords(String raw) {
+    setState(() {
+      for (final part in raw.split(',')) {
+        final k = AppDatabase.normalizeCategoryKeyword(part);
+        if (k.isNotEmpty && !_keywords.contains(k)) _keywords.add(k);
+      }
+    });
+  }
+
+  /// A comma ends a keyword as it's typed; the rest stays in the field.
+  void _onKeywordTyped(String text) {
+    final cut = text.lastIndexOf(',');
+    if (cut < 0) return;
+    _addKeywords(text.substring(0, cut));
+    _keywordController.text = text.substring(cut + 1);
   }
 
   void _showError(String message) {
@@ -529,16 +570,18 @@ class _CategoryEditorSheetState extends ConsumerState<_CategoryEditorSheet> {
     setState(() => _submitting = true);
     final db = ref.read(dbProvider);
     try {
+      final int id;
       if (_isEdit) {
+        id = widget.existing!.id;
         await db.updateCategory(
-          id: widget.existing!.id,
+          id: id,
           name: name,
           colorValue: _colorValue,
           iconKey: _iconKey,
           parentId: Value(_parentId),
         );
       } else {
-        await db.addCategory(
+        id = await db.addCategory(
           name: name,
           kind: widget.kind,
           colorValue: _colorValue,
@@ -546,8 +589,15 @@ class _CategoryEditorSheetState extends ConsumerState<_CategoryEditorSheet> {
           parentId: _parentId,
         );
       }
+      if (_keywordsReady) {
+        // A word still in the field counts — Save shouldn't drop it.
+        await db.setCategoryKeywords(id, [
+          ..._keywords,
+          ..._keywordController.text.split(','),
+        ]);
+      }
       if (!mounted) return;
-      Navigator.of(context).pop();
+      Navigator.of(context).pop(id);
     } on ArgumentError catch (e) {
       if (!mounted) return;
       setState(() => _submitting = false);
@@ -598,6 +648,10 @@ class _CategoryEditorSheetState extends ConsumerState<_CategoryEditorSheet> {
             ),
             const SizedBox(height: 20),
             _buildParentField(theme),
+            _fieldLabel(theme, tr('Keywords')),
+            const SizedBox(height: 8),
+            _keywordsField(theme),
+            const SizedBox(height: 24),
             _fieldLabel(theme, tr('Colour')),
             const SizedBox(height: 12),
             Wrap(
@@ -692,6 +746,77 @@ class _CategoryEditorSheetState extends ConsumerState<_CategoryEditorSheet> {
         ],
         onChanged: (v) => setState(() => _parentId = v),
       ),
+    );
+  }
+
+  /// The category's keywords as chips, and a field to add more. A word
+  /// another category has is moved here on Save — the note says from where.
+  Widget _keywordsField(ThemeData theme) {
+    final cs = theme.colorScheme;
+    final rules = ref.watch(merchantRulesProvider).valueOrNull ?? const [];
+    final categories = ref.watch(categoryMapProvider);
+    final selfId = widget.existing?.id;
+    final moves = <String>[
+      for (final k in _keywords)
+        for (final r in rules)
+          if (r.categoryId != selfId &&
+              AppDatabase.normalizeCategoryKeyword(r.matchPattern) == k &&
+              categories[r.categoryId] != null)
+            tr('"{0}" moves here from {1}.', [k, categories[r.categoryId]!.name]),
+    ];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (_keywords.isNotEmpty) ...[
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final k in _keywords)
+                InputChip(
+                  key: ValueKey('category-keyword-$k'),
+                  label: Text(k),
+                  onDeleted: () => setState(() => _keywords.remove(k)),
+                ),
+            ],
+          ),
+          const SizedBox(height: 10),
+        ],
+        TextField(
+          key: const Key('category-keyword-field'),
+          controller: _keywordController,
+          enabled: _keywordsReady,
+          textInputAction: TextInputAction.done,
+          decoration: InputDecoration(
+            hintText: tr('e.g. supermarket, market'),
+            helperText: tr(
+              'Type "34 supermarket" in Type it and it files here.',
+            ),
+            helperMaxLines: 2,
+            suffixIcon: IconButton(
+              icon: const AppIcon(Icons.add_rounded),
+              tooltip: tr('Add keyword'),
+              onPressed: () {
+                _addKeywords(_keywordController.text);
+                _keywordController.clear();
+              },
+            ),
+          ),
+          onChanged: _onKeywordTyped,
+          onSubmitted: (text) {
+            _addKeywords(text);
+            _keywordController.clear();
+          },
+        ),
+        for (final m in moves)
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Text(
+              m,
+              style: theme.textTheme.bodySmall?.copyWith(color: cs.primary),
+            ),
+          ),
+      ],
     );
   }
 

@@ -230,9 +230,11 @@ Future<void> _confirmDelete(
     ..showSnackBar(const SnackBar(content: Tr('Tag deleted')));
 }
 
-/// A new tag, or [existing] to edit.
-Future<void> openTagEditor(BuildContext context, {TagRow? existing}) {
-  return showAppSheet<void>(
+/// A new tag, or [existing] to edit. Completes with the saved tag's id, or
+/// null if the sheet was closed without saving — the tag picker selects a
+/// tag made on the spot (GitHub #212).
+Future<int?> openTagEditor(BuildContext context, {TagRow? existing}) {
+  return showAppSheet<int>(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,
@@ -312,17 +314,15 @@ class _TagEditorSheetState extends ConsumerState<_TagEditorSheet> {
     setState(() => _submitting = true);
     final db = ref.read(dbProvider);
     try {
+      final int id;
       if (_isEdit) {
-        await db.updateTag(
-          id: widget.existing!.id,
-          name: name,
-          colorValue: _colorValue,
-        );
+        id = widget.existing!.id;
+        await db.updateTag(id: id, name: name, colorValue: _colorValue);
       } else {
-        await db.addTag(name: name, colorValue: _colorValue);
+        id = await db.addTag(name: name, colorValue: _colorValue);
       }
       if (!mounted) return;
-      Navigator.of(context).pop();
+      Navigator.of(context).pop(id);
     } catch (_) {
       if (!mounted) return;
       setState(() => _submitting = false);

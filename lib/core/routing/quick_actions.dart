@@ -108,6 +108,14 @@ final List<QuickActionSpec> quickActionCatalog = [
     route: '/add?type=income',
     group: 'Add',
   ),
+  // "34 supermarket" and it's saved (GitHub #213).
+  const QuickActionSpec(
+    id: 'type-it',
+    label: 'Type it',
+    icon: Icons.keyboard_alt_outlined,
+    route: '/type',
+    group: 'Add',
+  ),
   const QuickActionSpec(
     id: 'transactions',
     label: 'Transactions',

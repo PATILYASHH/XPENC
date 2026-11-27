@@ -7,6 +7,7 @@ import '../../core/money.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
 import '../../core/l10n/l10n.dart';
+import '../quick_entry/entry_sources.dart';
 import 'voice_add_controller.dart';
 
 /// What the bottom bar turns into while voice add is open: ✕ to stop, a
@@ -110,9 +111,12 @@ class _Preview extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    // Same reading as Continue's, keywords and account names included.
     final draft = parseVoiceEntry(
       text,
-      categories: voiceCategories(ref),
+      categories: ref.watch(entryCategoriesProvider),
+      keywords: ref.watch(entryKeywordsProvider),
+      accounts: ref.watch(entryAccountsProvider),
       now: DateTime.now(),
     );
     final category = ref.watch(categoryMapProvider)[draft.categoryId];
