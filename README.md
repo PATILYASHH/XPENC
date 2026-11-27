@@ -62,9 +62,9 @@ Everything lives in the app's private on-device SQLite database. No SMS permissi
 
 ## CONECTR — backup & sync
 
-**CONECTR** is XPENC's optional companion app for Android. It saves the backup file XPENC already makes to a **private repo in your own GitHub account**, and brings it back on your other phones. XPENC itself still uploads nothing — CONECTR only moves the backup you already have, to a place you own.
+**CONECTR** is XPENC's optional, open-source companion app for Android. It takes the backup file XPENC already makes to **Google Drive**, **ExoCloud** (end-to-end encrypted) or a **private repo in your own GitHub account**, and brings it back on your other phones. XPENC itself still uploads nothing — CONECTR only moves the backup you already have. XPENC web has the same sync built in (Settings → Connector, through GitHub).
 
-**[⬇️ Get CONECTR](https://exosynk.com/exosynk-labs#conectr)**
+**[⬇️ Get CONECTR](https://github.com/PATILYASHH/CONECTR/releases/latest)** · [Source](https://github.com/PATILYASHH/CONECTR)
 
 ## Contributing
 

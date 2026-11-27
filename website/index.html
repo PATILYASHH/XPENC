@@ -659,7 +659,7 @@
       { "@type": "Question", "name": "Is XPENC available on iPhone?",
         "acceptedAnswer": { "@type": "Answer", "text": "Yes. XPENC for iPhone (iOS 15 or later) installs with SideStore or AltStore: add the source https://xpenc.in/ios/source.json and new versions arrive there. Or sideload the .ipa from GitHub Releases with your own Apple ID. It isn't on the App Store. A backup made on Android restores on iPhone, and the other way round." } },
       { "@type": "Question", "name": "What is CONECTR?",
-        "acceptedAnswer": { "@type": "Answer", "text": "XPENC's optional backup and sync companion app for Android, from ExoSynk Labs. It saves the backup file XPENC already makes to a private repo in your own GitHub account and brings it back on your other phone. XPENC itself still has no internet access; only CONECTR goes online, and only if you install it." } },
+        "acceptedAnswer": { "@type": "Answer", "text": "XPENC's optional backup and sync companion app for Android, from ExoSynk Labs — free and open source. It takes the backup file XPENC already makes to Google Drive, ExoCloud (end-to-end encrypted) or a private repo in your own GitHub account, and brings it back on your other phone. XPENC itself still has no internet access; only CONECTR goes online, and only if you install it. Download: https://github.com/PATILYASHH/CONECTR/releases/latest" } },
       { "@type": "Question", "name": "Who makes XPENC?",
         "acceptedAnswer": { "@type": "Answer", "text": "Yash Patil, as part of ExoSynk Labs — the ExoSynk team's small, offline-first apps. XPENC is free and open source under the MIT license." } }
     ]
@@ -698,7 +698,7 @@
       <div class="hero-copy">
         <div class="hero-pills">
           <span class="pill"><span class="dot"></span>Latest release <b id="version">v1.6.6</b> · Android, iPhone &amp; web</span>
-          <a class="pill pill-new" href="#conectr"><span class="tag-new">New</span>CONECTR · backup &amp; sync
+          <a class="pill pill-new" href="#conectr"><span class="tag-new">New</span>CONECTR 1.4 · back up to Google Drive
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
           </a>
         </div>
@@ -992,18 +992,18 @@
           </div>
           <div class="kicker" style="color:#7ee8b4">Backup &amp; sync for XPENC</div>
           <h2>XPENC stays offline.<br>CONECTR carries the backup.</h2>
-          <p>CONECTR is XPENC's separate online half. It saves the backup file XPENC already makes to a private repo in your own GitHub account, then brings it back on your other phone. It never opens XPENC's database — it only moves that file.</p>
+          <p>CONECTR is XPENC's separate online half. It takes the backup file XPENC already makes to Google Drive, ExoCloud or a private GitHub repo — your pick — then brings it back on your other phone. It never opens XPENC's database — it only moves that file.</p>
           <div class="btn-row cx-ctas">
-            <a class="btn btn-light" href="https://exosynk.com/exosynk-labs#conectr" target="_blank" rel="noopener">Download CONECTR
+            <a class="btn btn-light" href="https://github.com/PATILYASHH/CONECTR/releases/latest" target="_blank" rel="noopener">Download CONECTR
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v12M6 10l6 6 6-6M5 20h14"/></svg>
             </a>
-            <a class="btn btn-ghost-night" href="https://github.com/PATILYASHH/conectr-releases/releases/tag/v1.2.0" target="_blank" rel="noopener">Release notes</a>
+            <a class="btn btn-ghost-night" href="https://github.com/PATILYASHH/CONECTR" target="_blank" rel="noopener">Source on GitHub</a>
           </div>
-          <div class="cx-meta"><span>Android</span><span>v1.2.0</span><span>56 MB</span><span>Free</span></div>
+          <div class="cx-meta"><span>Android</span><span>v1.4.0</span><span>57 MB</span><span>Free · MIT</span></div>
         </div>
         <div style="position:relative;z-index:1">
           <div class="sheet-mock sync-mock" aria-hidden="true">
-            <div class="bar"><span>XPENC-BACKUP</span><span>Private · yours</span></div>
+            <div class="bar"><span>XPENC Backup</span><span>Google Drive · yours</span></div>
             <table>
               <tr><th>Device</th><th>Last backup</th><th>Status</th></tr>
               <tr><td>Pixel 8</td><td>9:41 AM</td><td>✓ Up to date</td></tr>
@@ -1018,8 +1018,8 @@
       <div class="feat-grid cx-feats">
         <div class="feat" data-reveal>
           <div class="fi"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="10.5" width="14" height="10" rx="2"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/></svg></div>
-          <h4>Your own private repo</h4>
-          <p>Sign in with GitHub and your backups go to a private repo in your account — yours to open, download or delete.</p>
+          <h4>Back up where you like</h4>
+          <p>Google Drive, ExoCloud — end-to-end encrypted, so not even ExoSynk can read it — or a private repo in your own GitHub. All your phones follow the one you pick.</p>
         </div>
         <div class="feat" data-reveal style="--d:80ms">
           <div class="fi"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h10v10"/><path d="M7 17 17 7"/></svg></div>
@@ -1033,8 +1033,8 @@
         </div>
         <div class="feat" data-reveal style="--d:240ms">
           <div class="fi"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.4 3.4-5.5 6.5-5.5s5.7 2.1 6.5 5.5"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18.5 14.8c1.6.9 2.6 2.6 3 5.2"/></svg></div>
-          <h4>Friends by username</h4>
-          <p>Add friends in CONECTR by username, then link them to your people in XPENC.</p>
+          <h4>Friends &amp; shared entries</h4>
+          <p>Add friends in CONECTR by username, link them to your people in XPENC, and share dues entries that each side accepts.</p>
         </div>
       </div>
 
@@ -1042,19 +1042,20 @@
         <div class="cx-box" data-reveal>
           <h3>Set up in three steps</h3>
           <ol class="cx-steps">
-            <li><div><b>Install CONECTR</b><span>Download the APK on your Android phone. Android may ask you to allow installing apps from your browser.</span></div></li>
-            <li><div><b>Sign in with GitHub</b><span>CONECTR keeps XPENC's backups in a private repo of yours, <code>XPENC-BACKUP</code>.</span></div></li>
-            <li><div><b>Open XPENC on your other phone</b><span>The newest backup comes in by itself — on a computer, XPENC web joins in from Settings → Connector.</span></div></li>
+            <li><div><b>Install CONECTR</b><span>Download the APK on your Android phone from GitHub. Android may ask you to allow installing apps from your browser.</span></div></li>
+            <li><div><b>Sign in and pick a place</b><span>Continue with Google, email or GitHub, then choose Google Drive, ExoCloud or GitHub. With ExoCloud, save the recovery key it shows — your other phones need it.</span></div></li>
+            <li><div><b>Open XPENC on your other phone</b><span>The newest backup comes in by itself. On a computer, XPENC web joins in from Settings → Connector, through GitHub for now.</span></div></li>
           </ol>
         </div>
         <div class="cx-box" data-reveal style="--d:80ms">
           <h3>Good to know</h3>
           <ul class="cx-notes">
             <li><b>XPENC itself still has no internet access.</b> Only CONECTR goes online, and only if you install it.</li>
-            <li>Your backup sits in your repo as the same file XPENC writes — private to you, but not encrypted. Sign-in runs through Supabase.</li>
-            <li>Automatic import needs XPENC 1.6.6 or later (GitHub or F-Droid build). With older XPENC, use Import from file.</li>
-            <li>XPENC from the Play Store isn't recognised yet.</li>
-            <li>CONECTR is free and Android-only for now.</li>
+            <li>ExoCloud backups are encrypted on your phone before they leave it. On Google Drive or GitHub the backup is the file XPENC writes — turn on Encrypt backups in XPENC (1.6.7 beta) and it's locked there too.</li>
+            <li>Google Drive access covers only the files CONECTR made, never the rest of your Drive. Sign-in runs through Supabase.</li>
+            <li>Coming from CONECTR 1.3.1 or older? Uninstall it once, then install the new one — it's signed with a new key.</li>
+            <li>Automatic import needs XPENC 1.6.6 or later (GitHub or F-Droid build). With older XPENC, use Import from file. XPENC from the Play Store isn't recognised yet.</li>
+            <li>CONECTR is free, open source (MIT) and Android-only for now.</li>
           </ul>
         </div>
       </div>
@@ -1386,8 +1387,13 @@
       <div class="rmap">
         <div class="rm" data-reveal>
           <div class="rm-head"><span class="rm-ver">CONECTR</span><span class="lbl">Out now</span></div>
-          <div class="rm-date" style="margin:-4px 0 10px">v1.2.0 · Android · from ExoSynk Labs</div>
-          <p>Backup &amp; sync for XPENC: backups in a private GitHub repo of yours, the newest one on your other phone, and friends by username that you link to your people.</p>
+          <div class="rm-date" style="margin:-4px 0 10px">v1.4.0 · Android · open source</div>
+          <p>Backup &amp; sync for XPENC: back up to Google Drive, ExoCloud (end-to-end encrypted) or your own GitHub repo, sign in with Google, and the newest backup lands on your other phone. Friends by username share entries with you.</p>
+        </div>
+        <div class="rm" data-reveal>
+          <div class="rm-head"><span class="rm-ver">v1.6.7</span><span class="lbl">Beta</span></div>
+          <div class="rm-date" style="margin:-4px 0 10px">Testing now · <a href="https://github.com/PATILYASHH/XPENC/releases/tag/beta" target="_blank" rel="noopener">beta build</a> · XPENC web runs it</div>
+          <p>Encrypted backups, locked with a password or your recovery phrase. Search everything, smart tags, a page for your Total money, and the dashboard, bottom bar and ➕ menu edited where they are. Voice add (India), Arabic right to left, and a layout for tablets.</p>
         </div>
         <div class="rm latest" data-reveal>
           <div class="rm-head"><span class="rm-ver">v1.6.6</span><span class="lbl">Latest</span></div>
@@ -1398,10 +1404,6 @@
           <div class="rm-head"><span class="rm-ver">v1.6.5</span></div>
           <div class="rm-date" style="margin:-4px 0 10px">23 Oct 2026</div>
           <p>Modes for a trip or an event — budget, limits, people and a trip wallet. Pay straight from a savings goal, a running balance on account pages, Transfer in / out in one tap, a page for every category, transfer rules in Auto, your own currencies and colours, and "Money in / out" instead of Income / Expense.</p>
-        </div>
-        <div class="rm" data-reveal>
-          <div class="rm-head"><span class="rm-ver">v1.6.4</span><span class="rm-date">10 Oct 2026 · first on iPhone</span></div>
-          <p>XPENC on iPhone, the Liquid Glass theme, sharing as a PDF or an image, hiding transactions from screenshots, a customizable dashboard with past months, a country step on first run and your own emoji as category icons.</p>
         </div>
       </div>
       <a class="btn btn-ghost rmap-more" href="https://github.com/PATILYASHH/XPENC/blob/master/CHANGELOG.md" target="_blank" rel="noopener">Full changelog on GitHub →</a>
@@ -1529,11 +1531,11 @@
         </details>
         <details class="faq-item" data-reveal>
           <summary>Can I use XPENC on my computer?</summary>
-          <p>Yes. Open <a href="/web">xpenc.in/web</a> in Chrome, Edge, Firefox or Safari — nothing to install. It lays out for a big screen and works offline after the first visit. Your data stays in that browser; bring a phone's backup over with More › Backup &amp; Restore › Import from file. Things that need a phone — sharing SMS or screenshots in, fingerprint unlock, widgets and notifications — aren't there.</p>
+          <p>Yes. Open <a href="/web">xpenc.in/web</a> in Chrome, Edge, Firefox or Safari — nothing to install. It lays out for a big screen and works offline after the first visit. Your data stays in that browser; bring a phone's backup over with More › Backup &amp; Restore › Import from file, or keep it in step with your phones from Settings › Connector (through GitHub). Things that need a phone — sharing SMS or screenshots in, fingerprint unlock, widgets and notifications — aren't there.</p>
         </details>
         <details class="faq-item" data-reveal>
           <summary>What is CONECTR?</summary>
-          <p>XPENC's optional backup &amp; sync companion for Android, from ExoSynk Labs. It saves the backup file XPENC already makes to a private repo in your own GitHub account, brings it back on your other phone, and lets you link friends to your people. XPENC itself still has no internet access — only CONECTR goes online, and only if you install it. <a href="#conectr">More about CONECTR</a>.</p>
+          <p>XPENC's optional backup &amp; sync companion for Android, from ExoSynk Labs — free and <a href="https://github.com/PATILYASHH/CONECTR" target="_blank" rel="noopener">open source</a>. It takes the backup file XPENC already makes to Google Drive, ExoCloud (end-to-end encrypted) or a private repo in your own GitHub account, brings it back on your other phone, and lets you link friends to your people. XPENC itself still has no internet access — only CONECTR goes online, and only if you install it. <a href="#conectr">More about CONECTR</a>.</p>
         </details>
         <details class="faq-item" data-reveal>
           <summary>Who makes XPENC?</summary>
@@ -1584,8 +1586,8 @@
         <a class="lab" href="#conectr" data-reveal style="--d:80ms">
           <div class="lab-ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 0 0-14.3-4.9L4 9"/><path d="M4 4v5h5"/><path d="M4 12a8 8 0 0 0 14.3 4.9L20 15"/><path d="M20 20v-5h-5"/></svg></div>
           <h4>CONECTR</h4>
-          <p>Backup and sync for XPENC: your backups in your own private GitHub repo, and on your other phone.</p>
-          <div class="tags"><span>Android</span><span>v1.2.0</span><span>Free</span></div>
+          <p>Backup and sync for XPENC: your backups on Google Drive, ExoCloud or your own GitHub, and on your other phone.</p>
+          <div class="tags"><span>Android</span><span>v1.4.0</span><span>Open source</span></div>
           <span class="go">See CONECTR ↑</span>
         </a>
         <a class="lab" href="https://github.com/parthmagdum/FITNS" target="_blank" rel="noopener" data-reveal style="--d:160ms">

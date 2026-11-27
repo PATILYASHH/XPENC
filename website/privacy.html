@@ -253,9 +253,20 @@
         only if you turn on <strong>Connector</strong> yourself, in Settings &rarr; Connector.
         Then, to keep it in step with XPENC on your phones, it signs you in with GitHub
         (through the Connector sign-in, run on Supabase) and keeps your backup — the same JSON
-        file XPENC makes — in a private GitHub repository of yours, <code>XPENC-BACKUP</code>. It
-        isn't encrypted there. It also reads your Connector friends' usernames, to link people.
-        Disconnect at any time; your data in the browser and on GitHub stays.
+        file XPENC makes — in a private GitHub repository of yours, <code>XPENC-BACKUP</code>. If
+        the backup it takes in from your phones is encrypted (Encrypt backups, 1.6.7 beta), it
+        keeps that backup's key in the browser and encrypts its own uploads the same way;
+        otherwise the backup isn't encrypted there. It also reads your Connector friends'
+        usernames, to link people. Disconnect at any time; your data in the browser and on
+        GitHub stays.
+      </p>
+      <p>
+        <strong>The Connector app</strong> (CONECTR) is a separate, open-source app with its own
+        choices: it can keep your backups in your own Google Drive, in your own GitHub, or in
+        ExoCloud, run by ExoSynk Labs, where they're end-to-end encrypted on your phone first.
+        What it stores and where is set out in
+        <a href="https://github.com/PATILYASHH/CONECTR#privacy--security" target="_blank" rel="noopener">its
+        own privacy notes</a>. XPENC itself never talks to any of them.
       </p>
       <p>
         <strong>Connector friends.</strong> On Android, if the separate Connector app is

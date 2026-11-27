@@ -26,7 +26,7 @@
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
   <meta property="og:locale" content="en_IN">
-  <meta property="article:modified_time" content="2026-11-06">
+  <meta property="article:modified_time" content="2026-11-27">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="XPENC features — the complete list">
   <meta name="twitter:description" content="Every feature of XPENC, the free, offline-first money app for Android, iPhone and the web.">
@@ -288,15 +288,16 @@
         "@id": "https://xpenc.in/features#conectr-app",
         "name": "CONECTR",
         "alternateName": ["Connector", "XPENC Connector"],
-        "url": "https://exosynk.com/exosynk-labs#conectr",
-        "downloadUrl": "https://exosynk.com/exosynk-labs#conectr",
+        "url": "https://github.com/PATILYASHH/CONECTR",
+        "downloadUrl": "https://github.com/PATILYASHH/CONECTR/releases/latest",
         "applicationCategory": "UtilitiesApplication",
         "applicationSubCategory": "Backup and sync",
         "operatingSystem": "Android",
-        "softwareVersion": "1.2.0",
-        "fileSize": "56 MB",
-        "releaseNotes": "https://github.com/PATILYASHH/conectr-releases/releases/tag/v1.2.0",
-        "description": "CONECTR is XPENC's optional backup and sync companion app from ExoSynk Labs. It saves the backup file XPENC makes to a private XPENC-BACKUP repository in the user's own GitHub account and brings it back on their other phone. It never opens XPENC's database; it only moves the backup file.",
+        "softwareVersion": "1.4.0",
+        "fileSize": "57 MB",
+        "releaseNotes": "https://github.com/PATILYASHH/CONECTR/releases/tag/v1.4.0",
+        "license": "https://opensource.org/licenses/MIT",
+        "description": "CONECTR is XPENC's optional backup and sync companion app from ExoSynk Labs, free and open source under MIT. It takes the backup file XPENC makes to the place the user picks — Google Drive, ExoCloud (end-to-end encrypted, kept by ExoSynk Labs) or a private XPENC-BACKUP repository in their own GitHub account — and brings it back on their other phone. It never opens XPENC's database; it only moves the backup file.",
         "offers": { "@type": "Offer", "price": "0", "priceCurrency": "INR" },
         "isAccessibleForFree": true,
         "publisher": { "@id": "https://exosynk.com/exosynk-labs#org" },
@@ -310,7 +311,7 @@
         "isPartOf": { "@id": "https://xpenc.in/#website" },
         "about": { "@id": "https://xpenc.in/#app" },
         "mentions": [{ "@id": "https://xpenc.in/features#conectr-app" }, { "@id": "https://xpenc.in/web#webapp" }, { "@id": "https://exosynk.com/exosynk-labs#org" }],
-        "dateModified": "2026-11-06",
+        "dateModified": "2026-11-27",
         "inLanguage": "en",
         "breadcrumb": {
           "@type": "BreadcrumbList",
@@ -327,13 +328,13 @@
           { "@type": "Question", "name": "What platforms does XPENC run on?",
             "acceptedAnswer": { "@type": "Answer", "text": "Android 7.0 and later (Google Play, F-Droid or a direct APK), iPhone on iOS 15 and later (SideStore, AltStore or a sideloaded .ipa, not the App Store), and any current browser at xpenc.in/web. A backup made on one restores on the others." } },
           { "@type": "Question", "name": "Does XPENC sync between phones?",
-            "acceptedAnswer": { "@type": "Answer", "text": "XPENC itself has no internet access. Sync is done by CONECTR, an optional Android companion app from ExoSynk Labs, which saves XPENC's backup file to a private repo in your own GitHub account and brings it back on your other phone. XPENC web has the same Connector built in." } },
+            "acceptedAnswer": { "@type": "Answer", "text": "XPENC itself has no internet access. Sync is done by CONECTR, an optional, open-source Android companion app from ExoSynk Labs, which takes XPENC's backup file to Google Drive, ExoCloud (end-to-end encrypted) or a private repo in your own GitHub account and brings it back on your other phone. XPENC web has the Connector built in and syncs through the GitHub option." } },
           { "@type": "Question", "name": "What is the difference between Basic, Medium and Pro in XPENC?",
             "acceptedAnswer": { "@type": "Answer", "text": "They are app levels, set in Settings → Level & Budgeting. Basic is transactions and people only. Medium, the default, adds accounts, balances, net worth and category budgets. Pro adds Ready to Assign envelope budgeting, budget Rollover and Overflow." } },
           { "@type": "Question", "name": "What are Modes in XPENC?",
             "acceptedAnswer": { "@type": "Answer", "text": "A Mode is a trip or an event you switch on. While it is on, everything you add joins it and the whole app shows only that mode: its budget, limits, accounts, people and spends. When it ends you get a summary you can share as a PDF or an image." } },
           { "@type": "Question", "name": "Does XPENC read my SMS?",
-            "acceptedAnswer": { "@type": "Answer", "text": "No. XPENC does not request the SMS permission. On Android you can share a bank SMS or a payment screenshot into XPENC from the Share sheet, and it is read on the phone." } },
+            "acceptedAnswer": { "@type": "Answer", "text": "No. XPENC from Google Play, F-Droid and GitHub stable releases does not request the SMS permission. On Android you can share a bank SMS or a payment screenshot into XPENC from the Share sheet, and it is read on the phone. Only a separate, opt-in 1.6.7 beta test build reads bank SMS, on the phone, for Auto money tracking." } },
           { "@type": "Question", "name": "Can XPENC connect to my bank account?",
             "acceptedAnswer": { "@type": "Answer", "text": "No. XPENC has no bank connection or automatic bank feed. Transactions come from you, from bank messages or screenshots you share in, from a CSV bank statement, or from Auto rules." } },
           { "@type": "Question", "name": "Is XPENC free?",
@@ -372,7 +373,7 @@
       <div class="kicker">Complete feature reference</div>
       <h1>XPENC features: the complete list</h1>
       <p class="lede">XPENC is a free, open-source, offline-first personal finance app for Android, iPhone and the web, made by Yash Patil at ExoSynk Labs. This page lists every feature, where it lives in the app, which platforms have it, and what XPENC deliberately does not do. It is written to be read by people, search engines and AI assistants alike.</p>
-      <p class="meta">Last updated <time datetime="2026-11-06">6 November 2026</time> · Stable release <b>1.6.6</b> (15 November 2026) · Features marked <span class="tag">1.6.6</span> are in the beta and not yet in a stable release. A plain-text copy is at <a href="/llms-full.txt">xpenc.in/llms-full.txt</a>.</p>
+      <p class="meta">Last updated <time datetime="2026-11-27">27 November 2026</time> · Stable release <b>1.6.6</b> (15 November 2026) · Features marked <span class="tag">1.6.6</span> arrived in that release; ones marked <span class="tag">1.6.7 beta</span> are in the beta and not yet in a stable release. A plain-text copy is at <a href="/llms-full.txt">xpenc.in/llms-full.txt</a>.</p>
     </header>
 
     <nav class="toc" aria-label="On this page">
@@ -422,12 +423,12 @@
             <dt>Platforms</dt><dd>Android 7.0+, iPhone on iOS 15+, and the web at <a href="/web">xpenc.in/web</a> (Chrome, Edge, Firefox, Safari).</dd>
             <dt>Price</dt><dd>Free. No ads, no in-app purchases, no subscription, no paid tier.</dd>
             <dt>License</dt><dd>MIT open source. Code at <a href="https://github.com/PATILYASHH/XPENC">github.com/PATILYASHH/XPENC</a>.</dd>
-            <dt>Versions</dt><dd>Stable 1.6.6 (15 November 2026). New work ships first as a GitHub beta pre-release.</dd>
+            <dt>Versions</dt><dd>Stable 1.6.6 (15 November 2026). New work ships first as a GitHub beta pre-release: 1.6.7 is in beta now, and XPENC web runs it. Features tagged <span class="tag">1.6.7 beta</span> below are in that beta only.</dd>
             <dt>Where data lives</dt><dd>An on-device SQLite database. Amounts are stored as whole minor units (paise, cents), never as floating point.</dd>
             <dt>Network access</dt><dd>Android release builds request no INTERNET permission. The iPhone app makes no network requests. XPENC web is offline after the first visit and sends nothing unless its built-in Connector is turned on.</dd>
             <dt>Sign-up</dt><dd>None. No user account exists.</dd>
             <dt>Tracking</dt><dd>No analytics, no trackers, no ads, no crash reporting service.</dd>
-            <dt>Language</dt><dd>English.</dd>
+            <dt>Language</dt><dd>English, Hindi, German, Japanese and Russian built in (since 1.6.6), plus language packs from <a href="/languages">xpenc.in/languages</a>: Bengali, and Arabic with a right-to-left layout (1.6.7 beta). Packs for Marathi, Tamil, Telugu, French, Spanish, Italian and Portuguese are only started (about 3% translated).</dd>
             <dt>Ledger rule</dt><dd>Net worth is the sum of all account balances. A transfer leaves it unchanged, money in raises it, money out lowers it. Lending to a person is not spending, and being repaid is not income.</dd>
           </dl>
         </section>
@@ -452,13 +453,13 @@
             <li><strong>Not on iPhone yet:</strong> home screen widgets, sharing into XPENC, reading payment screenshots, screenshot blocking and the quick-add notification.</li>
           </ul>
 
-          <h3 id="web">XPENC web <span class="tag">preview · 1.6.6</span></h3>
+          <h3 id="web">XPENC web <span class="tag">preview · 1.6.7 beta</span></h3>
           <ul>
             <li><strong>Address:</strong> <a href="/web">xpenc.in/web</a>. Nothing to install. Works in current Chrome, Edge, Firefox and Safari.</li>
             <li><strong>Offline:</strong> fully offline after the first visit. Data stays in that browser.</li>
             <li><strong>PC layout:</strong> on a computer-sized window it shows a sidebar with every module, a two-column dashboard, transactions as a table with right-click quick actions, sheets as dialogs, and amounts typed on the keyboard.</li>
-            <li><strong>Backups:</strong> downloaded as the same <code>DDMMYYXPENCEBACKUP.json</code> file the phones make; a phone's backup comes in with Import from file.</li>
-            <li><strong>Sync:</strong> a built-in Connector (Settings → Connector, off until turned on) syncs through the same private GitHub repo as CONECTR on the phones.</li>
+            <li><strong>Backups:</strong> downloaded as the same <code>DDMMYYXPENCEBACKUP.json</code> file the phones make; a phone's backup comes in with Import from file, encrypted ones too (it asks for the password or recovery phrase).</li>
+            <li><strong>Sync:</strong> a built-in Connector (Settings → Connector, off until turned on) syncs through the same private GitHub repo as CONECTR's GitHub option. Google Drive and ExoCloud are phone-only for now. Before taking a backup in it shows what's in it beside what's in the browser, it never uploads an empty browser over a backup by itself, and if your phones encrypt their backups its uploads are encrypted the same way.</li>
             <li><strong>Not on the web:</strong> everything missing on iPhone, plus notifications, fingerprint or face unlock, phone contacts and USSD payments.</li>
           </ul>
 
@@ -478,7 +479,7 @@
                 <tr><td>On-device screenshot text recognition (OCR)</td><td class="y">Yes</td><td class="n">No</td><td class="n">No</td></tr>
                 <tr><td>Block screenshots and screen recording</td><td class="y">Yes</td><td class="n">No</td><td class="n">No</td></tr>
                 <tr><td>Quick-add notification</td><td class="y">Yes</td><td class="n">No</td><td class="n">No</td></tr>
-                <tr><td>Sync via Connector</td><td class="y">Yes, with the CONECTR app</td><td class="n">No</td><td class="y">Yes, built in</td></tr>
+                <tr><td>Sync via Connector</td><td class="y">Yes, with the CONECTR app (Google Drive, ExoCloud or GitHub)</td><td class="n">No</td><td class="y">Yes, built in (GitHub)</td></tr>
                 <tr><td>PC layout (sidebar, table, keyboard entry)</td><td class="n">—</td><td class="n">—</td><td class="y">Yes</td></tr>
               </tbody>
             </table>
@@ -645,13 +646,18 @@
             <li><strong>Shortcuts</strong> on every module to its related pages.</li>
             <li><strong>Display:</strong> app-wide text size, boldness and font family; your own colours for money in, money out, transfers and people; week starts on Sunday or Monday.</li>
             <li><strong>Hide amounts:</strong> one tap hides balances on screen.</li>
+            <li><strong>Edit in place:</strong> hold a Dashboard widget to rearrange, remove or add widgets right there, each with its own ⚙ options; hold the bottom bar to pick any module for any of its four tabs; hold ➕ and slide onto ⚙ Edit to choose what each bubble opens. <span class="tag">1.6.7 beta</span></li>
+            <li><strong>Total money, taken apart:</strong> tap the Total money card for every account by kind with each kind's share, what you own against what you owe, goal and loan progress, and what's between you and people. <span class="tag">1.6.7 beta</span></li>
+            <li><strong>Search everything:</strong> pages and settings, transactions (by note, payee, category, account or exact amount), accounts, categories, people, payees, tags, trips and shopping lists. <span class="tag">1.6.7 beta</span></li>
           </ul>
         </section>
 
         <section id="capture" aria-labelledby="h-capture">
           <h2 id="h-capture">Faster entry and capture</h2>
           <ul>
-            <li><strong>Share a bank SMS in</strong> (Android): share the message to XPENC from the Share sheet; it is parsed on the phone and lands in the Review Inbox. XPENC has no SMS permission and never reads the inbox itself.</li>
+            <li><strong>Share a bank SMS in</strong> (Android): share the message to XPENC from the Share sheet; it is parsed on the phone and lands in the Review Inbox. XPENC from Google Play, F-Droid and GitHub stable has no SMS permission and never reads the inbox itself.</li>
+            <li><strong>Auto money tracking</strong> (Android, test builds only): Settings → Advanced Features reads payments from the banks on its list, on the phone, into the Review Inbox. Only a separate, opt-in beta APK (<code>xpenc-beta-sms-arm64-v8a.apk</code>) asks for <code>READ_SMS</code>; see <a href="/privacy#bank-messages">privacy</a>. <span class="tag">1.6.7 beta</span></li>
+            <li><strong>Voice add</strong> (India, Android 12+): double-tap ➕ and say the transaction, in Indian English or Hinglish; Add Transaction opens filled in. Android's on-device speech recognizer only. <span class="tag">1.6.7 beta</span></li>
             <li><strong>Share a payment screenshot in</strong> (Android): Paytm, Google Pay and PhonePe screenshots are read with on-device Tesseract text recognition. OCR corrections teach it fixes for your screenshots.</li>
             <li><strong>CSV bank statement import</strong> with an optional Category column.</li>
             <li><strong>Templates:</strong> reusable transaction templates; ➕ offers "start from scratch or a template".</li>
@@ -669,6 +675,8 @@
             <li><strong>Archive and restore</strong> categories; delete one that nothing has ever used. A used category cannot be deleted, so past reports never break.</li>
             <li><strong>Category templates:</strong> save your whole structure and switch between saved templates without touching any transaction. Built-in 50/30/20 (Needs, Wants, Goals), share a template as a file and import one, and more at <a href="/templates">xpenc.in/templates</a>. <span class="tag">1.6.6</span></li>
             <li><strong>Tags</strong> cut across categories; <strong>tag groups</strong> bundle tags picked together (for example "Work trip" = Travel + Meals).</li>
+            <li><strong>Smart tags:</strong> a tag like <code>{month} {year}</code> becomes "December 2026" on the transaction's own date, so templates and Auto rules never need editing. <span class="tag">1.6.7 beta</span></li>
+            <li><strong>Move in bulk:</strong> on a category's or tag's page, select transactions and move them to another category. <span class="tag">1.6.7 beta</span></li>
             <li><strong>Payees</strong> are collected automatically from what you type, with net paid vs received and full history. A payee can be connected to a person.</li>
           </ul>
         </section>
@@ -716,6 +724,7 @@
             <li><strong>Export:</strong> CSV for spreadsheets and accounting tools, JSON, and PDF statements.</li>
             <li><strong>Clear all data</strong> wipes the ledger; if it ever fails it says nothing was deleted.</li>
             <li>Backups no longer carry the PIN hash, recovery phrase hash or authenticator secret. <span class="tag">1.6.6</span></li>
+            <li><strong>Encrypted backups</strong> (optional): Backup &amp; Restore → Encrypt backups locks every backup from then on with a password, or with your master recovery phrase (AES-256-GCM, key from PBKDF2-HMAC-SHA256 at 600,000 rounds). Same file name, so automatic backups, Share and CONECTR carry on; anyone else with the file sees scrambled data. The same phone restores without asking; another phone asks once and remembers. The password can't be reset. Turning it on is phone-only, but XPENC web opens encrypted backups. <span class="tag">1.6.7 beta</span></li>
           </ul>
         </section>
 
@@ -726,7 +735,7 @@
             <li><strong>Master recovery phrase:</strong> a 10-word phrase that unlocks after too many wrong PIN tries.</li>
             <li><strong>Screenshot protection</strong> (Android): block screenshots and screen recording app-wide, a lock-screen shortcut for it, and a screenshot reminder.</li>
             <li><strong>Hide from screenshots</strong> per transaction, and <strong>hide amounts</strong> on screen.</li>
-            <li><strong>Permissions:</strong> XPENC never requests internet, SMS, location, microphone or phone access. Notifications, camera (receipt photos) and contacts are optional and can be turned off in Settings → Permissions.</li>
+            <li><strong>Permissions:</strong> XPENC never requests internet, location or phone access, and the stable, Play and F-Droid builds never ask for SMS. Notifications, camera (receipt photos) and contacts are optional and can be turned off in Settings → Permissions. In the 1.6.7 beta the microphone is optional too, used only for voice add, and only the opt-in SMS beta APK asks to read SMS.</li>
             <li><strong>No server, no account, no analytics, no trackers, no ads.</strong> The code is public, so every claim can be checked. Full policy: <a href="/privacy">xpenc.in/privacy</a>.</li>
           </ul>
         </section>
@@ -737,6 +746,8 @@
             <li><strong>Classic</strong> (monochrome, default) and <strong>Noir</strong> (bolder text and outlines), each in light, true-black dark or system mode.</li>
             <li><strong>Glass:</strong> an iOS-style Liquid Glass theme on black — a floating glass tab bar with a sliding droplet, a glass top bar that the large title flies into, sheets and pages that grow out of the tab bar, a quick-actions arc from ➕, frosted amounts when hidden, and refraction on devices with the Impeller renderer.</li>
             <li>Up to the display's full refresh rate (90/120 Hz where available).</li>
+            <li><strong>Tablets:</strong> the tabs sit in a vertical rail in the bottom-right corner, a ☰ menu lists every page, lists read as a centred column and the dashboard goes to two columns. <span class="tag">1.6.7 beta</span></li>
+            <li><strong>Classic is quicker, Noir is bolder:</strong> Classic opens pages with the phone's own transition in about half the time; Noir has heavier text, square-cornered icons and a floating bottom bar. <span class="tag">1.6.7 beta</span></li>
           </ul>
         </section>
 
@@ -744,35 +755,39 @@
           <h2 id="h-conectr">CONECTR: backup and sync for XPENC</h2>
           <p><strong>CONECTR</strong> (also called the Connector app) is XPENC's separate, optional companion app for backup and sync, made by ExoSynk Labs. XPENC stays offline; CONECTR carries the backup.</p>
           <dl class="facts">
-            <dt>Version</dt><dd>1.2.0 (25 October 2026), 56 MB</dd>
+            <dt>Version</dt><dd>1.4.0 (27 November 2026), 57 MB</dd>
             <dt>Platform</dt><dd>Android only, for now</dd>
             <dt>Price</dt><dd>Free</dd>
-            <dt>Download</dt><dd><a href="https://exosynk.com/exosynk-labs#conectr">exosynk.com/exosynk-labs#conectr</a> · <a href="https://github.com/PATILYASHH/conectr-releases/releases/tag/v1.2.0">release notes</a></dd>
-            <dt>Storage</dt><dd>A private repo named <code>XPENC-BACKUP</code> in the user's own GitHub account</dd>
-            <dt>Sign-in</dt><dd>With GitHub, through Supabase</dd>
+            <dt>License</dt><dd>MIT open source. Code at <a href="https://github.com/PATILYASHH/CONECTR">github.com/PATILYASHH/CONECTR</a></dd>
+            <dt>Download</dt><dd><a href="https://github.com/PATILYASHH/CONECTR/releases/latest">GitHub Releases</a> (<code>connector-&lt;version&gt;.apk</code> with <code>SHA256SUMS.txt</code>) · <a href="https://github.com/PATILYASHH/CONECTR/releases/tag/v1.4.0">1.4.0 release notes</a></dd>
+            <dt>Storage</dt><dd>The user's pick, the same for all their phones: <strong>Google Drive</strong> (a visible <code>XPENC Backup</code> folder in their own Drive), <strong>ExoCloud</strong> (kept by ExoSynk Labs, end-to-end encrypted on the phone; free during beta, newest 10 backups) or <strong>GitHub</strong> (a private <code>XPENC-BACKUP</code> repo in their own account, with full history)</dd>
+            <dt>Sign-in</dt><dd>Google, email or GitHub, through Supabase</dd>
           </dl>
           <h3>What it does</h3>
           <ul>
-            <li>Saves the backup file XPENC already makes to the user's private <code>XPENC-BACKUP</code> repo, and brings it back on their other phone. The repo is the user's to open, download or delete.</li>
-            <li>Never opens XPENC's database. It only moves the backup file.</li>
-            <li><strong>Newest first, nothing lost:</strong> each device takes in the newest backup before it sends its own, and a write that races another device is refused, never overwritten.</li>
+            <li>Takes the backup file XPENC already makes to Google Drive, ExoCloud or the user's private <code>XPENC-BACKUP</code> repo, and brings it back on their other phone. Change the place any time in Settings → Backup storage; each phone follows the next time CONECTR opens on it.</li>
+            <li>Never opens XPENC's database. It only moves the backup file. On Google Drive it can only see the files it created (<code>drive.file</code>), never the rest of the Drive.</li>
+            <li><strong>ExoCloud is end-to-end encrypted:</strong> backups are encrypted on the phone (AES-256-GCM) with a key that never leaves the user's phones, so ExoSynk can't read them. The first phone shows a recovery key; the other phones need it, and nobody can recover it.</li>
+            <li><strong>Newest first, nothing lost:</strong> each device takes in the newest backup before it sends its own, a write that races another device is refused, never overwritten, and a phone never pulls an older backup in when the newest one was deleted by hand.</li>
             <li><strong>No file picking:</strong> when CONECTR has pulled a newer backup, XPENC takes it in as it opens, automatically when the phone has no changes of its own since the last sync, otherwise after asking. XPENC saves a copy of the phone's data before every import. <span class="tag">needs XPENC 1.6.6</span></li>
             <li><strong>Tell Connector:</strong> after a manual import, one tap tells CONECTR the import is done; it checks the file's fingerprint.</li>
-            <li><strong>Friends by username:</strong> add friends in CONECTR and link them to people in XPENC.</li>
-            <li><strong>XPENC web</strong> has the Connector built in (Settings → Connector) and syncs through the same repo by the same rules.</li>
+            <li><strong>Auto-sync</strong> in the background, after every XPENC backup or hourly.</li>
+            <li><strong>Friends and shared entries:</strong> add friends in CONECTR by exact username, link them to people in XPENC, and share owes and dues entries that each side accepts. <span class="tag">needs XPENC 1.6.6</span></li>
+            <li><strong>XPENC web</strong> has the Connector built in (Settings → Connector) and syncs through the GitHub option, by the same rules.</li>
           </ul>
           <h3>Set up in three steps</h3>
           <ol>
-            <li>Install CONECTR on your Android phone (Android may ask you to allow installs from your browser).</li>
-            <li>Sign in with GitHub; CONECTR keeps XPENC's backups in a private repo of yours, <code>XPENC-BACKUP</code>.</li>
-            <li>Open XPENC on your other phone — the newest backup comes in by itself. On a computer, turn on Settings → Connector in XPENC web.</li>
+            <li>Install CONECTR on your Android phone from <a href="https://github.com/PATILYASHH/CONECTR/releases/latest">GitHub Releases</a> (Android may ask you to allow installs from your browser).</li>
+            <li>Sign in with Google, email or GitHub, then in Connections → XPENC choose Google Drive, ExoCloud or GitHub, and point CONECTR at XPENC's <code>Download/BACKUP XPENC</code> folder. With ExoCloud, save the recovery key it shows.</li>
+            <li>Open XPENC on your other phone — the newest backup comes in by itself. On a computer, turn on Settings → Connector in XPENC web (GitHub only, for now).</li>
           </ol>
           <h3>Limits</h3>
           <ul>
             <li>XPENC itself still has no internet access. Only CONECTR goes online, and only if installed.</li>
-            <li>The backup in the repo is private but not encrypted.</li>
+            <li>On Google Drive or GitHub the backup is the plain file XPENC writes, unless XPENC's own Encrypt backups is on (1.6.7 beta). ExoCloud is always encrypted.</li>
+            <li>CONECTR 1.3.2 and later are signed with a new key: coming from 1.3.1 or older, uninstall once, then install.</li>
             <li>Automatic import needs XPENC 1.6.6 or later (GitHub or F-Droid build). XPENC from Google Play is not recognised yet; with older XPENC, use Import from file.</li>
-            <li>No iPhone version yet. Shared dues between friends are not built yet.</li>
+            <li>No iPhone version yet. XPENC web can't sync through Google Drive or ExoCloud yet.</li>
           </ul>
         </section>
 
@@ -784,8 +799,8 @@
               <caption>ExoSynk Labs and ExoSynk products</caption>
               <thead><tr><th scope="col">Product</th><th scope="col">What it is</th><th scope="col">Platform</th><th scope="col">Status</th></tr></thead>
               <tbody>
-                <tr><td><strong>XPENC</strong></td><td>Offline-first personal finance — money, tracked honestly. MIT open source.</td><td>Android, iPhone, web</td><td>Available, v1.6.5</td></tr>
-                <tr><td><strong>CONECTR</strong></td><td>Backup and sync for XPENC through the user's own private GitHub repo.</td><td>Android</td><td>Available, v1.2.0</td></tr>
+                <tr><td><strong>XPENC</strong></td><td>Offline-first personal finance — money, tracked honestly. MIT open source.</td><td>Android, iPhone, web</td><td>Available, v1.6.6 (1.6.7 in beta)</td></tr>
+                <tr><td><strong>CONECTR</strong></td><td>Backup and sync for XPENC through Google Drive, ExoCloud or the user's own private GitHub repo. MIT open source. <a href="https://github.com/PATILYASHH/CONECTR">GitHub</a></td><td>Android</td><td>Available, v1.4.0</td></tr>
                 <tr><td><strong>FITNS</strong></td><td>An offline, open-source fitness tracker for training, food and your body, with no sign-up. MIT. <a href="https://github.com/parthmagdum/FITNS">GitHub</a></td><td>—</td><td>Coming soon</td></tr>
                 <tr><td><strong>ExoSynk 2D Lab</strong></td><td>Design electronics in the browser: build a circuit and simulate it. <a href="https://exosynk.com/lab">exosynk.com/lab</a></td><td>Browser</td><td>Available</td></tr>
               </tbody>
@@ -807,12 +822,12 @@
           <p>Stated plainly, so nobody — person or assistant — assumes otherwise:</p>
           <ul>
             <li>No bank account linking, automatic bank feeds, Open Banking, Plaid or Account Aggregator connections.</li>
-            <li>No cloud server and no XPENC account. The only sync is the optional CONECTR app, into the user's own GitHub.</li>
-            <li>No reading of the SMS inbox. The SMS permission was dropped in 1.1.0; messages are shared in by hand.</li>
+            <li>No cloud server and no XPENC account. The only sync is the optional CONECTR app, into the user's own Google Drive or GitHub, or ExoSynk's end-to-end encrypted ExoCloud.</li>
+            <li>No reading of the SMS inbox in the Google Play, F-Droid or stable GitHub builds. The SMS permission was dropped in 1.1.0; messages are shared in by hand. Only the opt-in 1.6.7 SMS beta APK reads bank SMS, to test Auto money tracking.</li>
             <li>No live exchange rates or stock prices, and no investment portfolio tracking (investment maths is in the calculators only).</li>
             <li>Not on the Apple App Store; iPhone installs go through SideStore, AltStore or a sideloaded .ipa.</li>
             <li>No ads, no paid tier, no data sale, no analytics.</li>
-            <li>English only for now.</li>
+            <li>No AI. The on-device Local AI tried in early 1.6.7 betas was removed before any stable release.</li>
           </ul>
         </section>
 
@@ -822,6 +837,7 @@
             <table>
               <thead><tr><th scope="col">Version</th><th scope="col">Date</th><th scope="col">Highlights</th></tr></thead>
               <tbody>
+                <tr><td>1.6.7 <span class="tag">beta</span></td><td>In testing</td><td>Encrypted backups (password or recovery phrase), search everything, smart tags, a Total money page, the dashboard, bottom bar and ➕ menu edited in place, voice add (India), Arabic with right-to-left layout, Calculations in one place, bulk category moves, a tablet layout, quicker Classic and bolder Noir, Auto money tracking in an opt-in SMS test build. <a href="https://github.com/PATILYASHH/XPENC/releases/tag/beta">Beta build</a>.</td></tr>
                 <tr><td>1.6.6</td><td>15 Nov 2026</td><td>The app in your language (Hindi, German, Japanese, Russian built in; language packs), refunds against a budget, Total money vs Available balance, a backup folder of your own, Settle up with a person, XPENC web with PC layout and built-in Connector, Connector auto-import and friends, card statements that pay themselves, multi-level budget alerts, Skip next, cash-flow projection, new share screen with WhatsApp and payment QR, category templates as files.</td></tr>
                 <tr><td>1.6.5</td><td>23 Oct 2026</td><td>Modes, custom currencies, custom colours, archived categories, category pages, goals as pockets, running balance, auto transfers, "Money in / Money out" naming.</td></tr>
                 <tr><td>1.6.4</td><td>10 Oct 2026</td><td>First iPhone build, Liquid Glass theme, customizable dashboard, past-month view, PDF and image sharing, hide from screenshots, country on first run, emoji category icons.</td></tr>
@@ -839,13 +855,13 @@
             <dt>What platforms does XPENC run on?</dt>
             <dd>Android 7.0 and later (Google Play, F-Droid or a direct APK), iPhone on iOS 15 and later (SideStore, AltStore or a sideloaded .ipa, not the App Store), and any current browser at xpenc.in/web. A backup made on one restores on the others.</dd>
             <dt>Does XPENC sync between phones?</dt>
-            <dd>XPENC itself has no internet access. Sync is done by CONECTR, an optional Android companion app from ExoSynk Labs, which saves XPENC's backup file to a private repo in your own GitHub account and brings it back on your other phone. XPENC web has the same Connector built in.</dd>
+            <dd>XPENC itself has no internet access. Sync is done by <a href="#conectr">CONECTR</a>, an optional, open-source Android companion app from ExoSynk Labs, which takes XPENC's backup file to Google Drive, ExoCloud (end-to-end encrypted) or a private repo in your own GitHub account and brings it back on your other phone. XPENC web has the Connector built in and syncs through the GitHub option.</dd>
             <dt>What is the difference between Basic, Medium and Pro in XPENC?</dt>
             <dd>They are app levels, set in Settings → Level &amp; Budgeting. Basic is transactions and people only. Medium, the default, adds accounts, balances, net worth and category budgets. Pro adds Ready to Assign envelope budgeting, budget Rollover and Overflow.</dd>
             <dt>What are Modes in XPENC?</dt>
             <dd>A Mode is a trip or an event you switch on. While it is on, everything you add joins it and the whole app shows only that mode: its budget, limits, accounts, people and spends. When it ends you get a summary you can share as a PDF or an image.</dd>
             <dt>Does XPENC read my SMS?</dt>
-            <dd>No. XPENC does not request the SMS permission. On Android you can share a bank SMS or a payment screenshot into XPENC from the Share sheet, and it is read on the phone.</dd>
+            <dd>No. XPENC from Google Play, F-Droid and GitHub stable releases does not request the SMS permission. On Android you can share a bank SMS or a payment screenshot into XPENC from the Share sheet, and it is read on the phone. Only a separate, opt-in 1.6.7 beta test build reads bank SMS, on the phone, for Auto money tracking.</dd>
             <dt>Can XPENC connect to my bank account?</dt>
             <dd>No. XPENC has no bank connection or automatic bank feed. Transactions come from you, from bank messages or screenshots you share in, from a CSV bank statement, or from Auto rules.</dd>
             <dt>Is XPENC free?</dt>
@@ -861,7 +877,7 @@
             <li>Website: <a href="https://xpenc.in/">xpenc.in</a> · Web app: <a href="https://xpenc.in/web">xpenc.in/web</a> · iPhone: <a href="https://xpenc.in/ios">xpenc.in/ios</a> · Privacy: <a href="https://xpenc.in/privacy">xpenc.in/privacy</a></li>
             <li>Google Play: <a href="https://play.google.com/store/apps/details?id=com.yash.xpenc">com.yash.xpenc</a> · F-Droid: <a href="https://f-droid.org/packages/com.yash.xpenc/">com.yash.xpenc</a> · GitHub Releases: <a href="https://github.com/PATILYASHH/XPENC/releases/latest">latest</a></li>
             <li>Source: <a href="https://github.com/PATILYASHH/XPENC">github.com/PATILYASHH/XPENC</a> · Issues: <a href="https://github.com/PATILYASHH/XPENC/issues">GitHub Issues</a> · Discussions: <a href="https://github.com/PATILYASHH/XPENC/discussions">GitHub Discussions</a></li>
-            <li>CONECTR: <a href="https://exosynk.com/exosynk-labs#conectr">exosynk.com/exosynk-labs#conectr</a> · ExoSynk Labs: <a href="https://exosynk.com/exosynk-labs">exosynk.com/exosynk-labs</a> · <a href="https://github.com/ExoSynkLabs">github.com/ExoSynkLabs</a></li>
+            <li>CONECTR: <a href="https://github.com/PATILYASHH/CONECTR/releases/latest">download</a> · <a href="https://github.com/PATILYASHH/CONECTR">source</a> · ExoSynk Labs: <a href="https://exosynk.com/exosynk-labs">exosynk.com/exosynk-labs</a> · <a href="https://github.com/ExoSynkLabs">github.com/ExoSynkLabs</a></li>
             <li>Contact: <a href="mailto:feedback.yashpatil@gmail.com">feedback.yashpatil@gmail.com</a> · Reddit <a href="https://www.reddit.com/user/XPENC/">u/XPENC</a> · Instagram <a href="https://www.instagram.com/xpenc.in/">@xpenc.in</a> · <a href="https://discord.gg/cCajrhHez">Discord</a></li>
             <li>For AI assistants: <a href="/llms.txt">llms.txt</a> (summary) · <a href="/llms-full.txt">llms-full.txt</a> (this page as plain text)</li>
           </ul>

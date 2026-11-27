@@ -2,9 +2,9 @@
 
 > XPENC is a free, open-source (MIT), offline-first personal finance app for Android, iPhone and the web, made by Yash Patil at ExoSynk Labs. It tracks money in, money out and transfers across accounts, with budgets, envelope budgeting, dues and group splits, savings goals, loans with EMI schedules, recurring Auto rules, trip Modes, multi-currency accounts and a 0-100 XPENC Score. All data stays in an on-device SQLite database: no server, no account, no analytics, and Android release builds request no INTERNET permission.
 
-This is the plain-text version of https://xpenc.in/features, for AI assistants and answer engines. Short summary: https://xpenc.in/llms.txt. Last updated 6 November 2026.
+This is the plain-text version of https://xpenc.in/features, for AI assistants and answer engines. Short summary: https://xpenc.in/llms.txt. Last updated 27 November 2026.
 
-Version status: the stable release is 1.6.6 (15 November 2026). New work ships first as a GitHub beta pre-release. Anything marked [1.6.6] is new in 1.6.6.
+Version status: the stable release is 1.6.6 (15 November 2026). New work ships first as a GitHub beta pre-release: 1.6.7 is in beta now (https://github.com/PATILYASHH/XPENC/releases/tag/beta), and XPENC web runs it. Anything marked [1.6.6] arrived in 1.6.6; anything marked [1.6.7 beta] is in that beta only.
 
 ## At a glance
 
@@ -17,7 +17,7 @@ Version status: the stable release is 1.6.6 (15 November 2026). New work ships f
 - Data: on-device SQLite. Amounts stored as whole minor units (paise, cents), never floating point.
 - Network: Android release builds request no INTERNET permission. The iPhone app makes no network requests. XPENC web is offline after the first visit and sends nothing unless its built-in Connector is turned on.
 - Sign-up: none. Tracking: no analytics, no trackers, no ads, no crash-reporting service.
-- Language: English.
+- Language: English, Hindi, German, Japanese and Russian built in (since 1.6.6), plus language packs from https://xpenc.in/languages: Bengali, and Arabic with a right-to-left layout [1.6.7 beta]. Packs for Marathi, Tamil, Telugu, French, Spanish, Italian and Portuguese are only started (about 3% translated).
 - Ledger rule: net worth = sum of all account balances. A transfer leaves it unchanged, money in raises it, money out lowers it. Lending to a person is not spending; being repaid is not income.
 
 ## Platforms and environments
@@ -36,12 +36,12 @@ One Flutter codebase, three environments, one backup format. A backup made on An
 - Backups live in the app's storage (deleting the app deletes them); share one to Files or iCloud Drive.
 - Not on iPhone yet: widgets, sharing into XPENC, reading payment screenshots, screenshot blocking, quick-add notification.
 
-### XPENC web [preview, 1.6.6]
+### XPENC web [preview, 1.6.7 beta]
 - https://xpenc.in/web — nothing to install; current Chrome, Edge, Firefox, Safari.
 - Fully offline after the first visit; data stays in that browser.
 - PC layout on computer-sized windows: sidebar with every module, two-column dashboard, transactions as a table with right-click quick actions, sheets as dialogs, amounts typed on the keyboard.
-- Backups download as the same DDMMYYXPENCEBACKUP.json file; a phone backup comes in with Import from file.
-- Built-in Connector (Settings > Connector, off by default) syncs through the same private GitHub repo as CONECTR.
+- Backups download as the same DDMMYYXPENCEBACKUP.json file; a phone backup comes in with Import from file, encrypted ones too (it asks for the password or recovery phrase).
+- Built-in Connector (Settings > Connector, off by default) syncs through the same private GitHub repo as CONECTR's GitHub option; Google Drive and ExoCloud are phone-only for now. Before taking a backup in it shows what's in it beside what's in the browser, it never uploads an empty browser over a backup by itself, and if the phones encrypt their backups its uploads are encrypted the same way.
 - Not on the web: everything missing on iPhone, plus notifications, fingerprint/face unlock, phone contacts and USSD payments.
 
 ### Availability matrix (Android / iPhone / Web)
@@ -56,7 +56,7 @@ One Flutter codebase, three environments, one backup format. A backup made on An
 - On-device screenshot OCR: yes / no / no
 - Screenshot and screen-recording blocking: yes / no / no
 - Quick-add notification: yes / no / no
-- Connector sync: yes (CONECTR app) / no / yes (built in)
+- Connector sync: yes (CONECTR app: Google Drive, ExoCloud or GitHub) / no / yes (built in, GitHub)
 - PC layout: — / — / yes
 
 ## App levels: Basic, Medium, Pro
@@ -173,10 +173,15 @@ More > Auto.
 - Quick actions ring: hold ➕ for eight configurable shortcuts.
 - Shortcuts row on every module.
 - Text size, boldness, font family; custom colours for money in, out, transfers, people; week starts Sunday or Monday; hide amounts.
+- [1.6.7 beta] Edit in place: hold a Dashboard widget to rearrange, remove or add widgets (each with its own options); hold the bottom bar to pick any module for its four tabs; hold ➕ and slide onto Edit to choose what each bubble opens.
+- [1.6.7 beta] Total money page: every account by kind with its share, own vs owe, goal and loan progress, and what's between you and people.
+- [1.6.7 beta] Search everything: pages, settings, transactions (note, payee, category, account or exact amount), accounts, categories, people, payees, tags, trips, shopping lists.
 
 ## Faster entry and capture
 
-- Share a bank SMS into XPENC (Android): parsed on-device into the Review Inbox. No SMS permission; the inbox is never read.
+- Share a bank SMS into XPENC (Android): parsed on-device into the Review Inbox. The Google Play, F-Droid and stable GitHub builds have no SMS permission and never read the inbox.
+- [1.6.7 beta] Auto money tracking (Android, test builds only): Settings > Advanced Features reads payments from listed bank senders, on the phone, into the Review Inbox. Only the separate opt-in APK xpenc-beta-sms-arm64-v8a.apk asks for READ_SMS. Details: https://xpenc.in/privacy#bank-messages
+- [1.6.7 beta] Voice add (India, Android 12+): double-tap ➕ and say the transaction in Indian English or Hinglish; Android's on-device speech recognizer only.
 - Share a Paytm, Google Pay or PhonePe payment screenshot (Android): on-device Tesseract OCR, with OCR corrections.
 - CSV bank statement import with optional Category column.
 - Transaction templates; ➕ offers scratch or template.
@@ -191,6 +196,8 @@ More > Auto.
 - Archive/restore; delete only if never used.
 - Category templates: save and switch structures without touching transactions. [1.6.6] Built-in 50/30/20 (Needs, Wants, Goals), share as file, import from file, more at https://xpenc.in/templates.
 - Tags and tag groups (e.g. "Work trip" = Travel + Meals).
+- [1.6.7 beta] Smart tags: {month} {year} and similar become the plain tag for the transaction's own date ("December 2026").
+- [1.6.7 beta] Move transactions between categories in bulk from a category's or tag's page.
 - Payees collected automatically, with net flow and history; connect a payee to a person.
 
 ## Sharing, statements and PDFs
@@ -221,6 +228,7 @@ More > Calculators; nothing saved to the ledger.
 - Restore on any platform, including from the first-run screen.
 - Export CSV, JSON and PDF statements. Clear all data.
 - [1.6.6] Backups exclude the PIN hash, recovery phrase hash and authenticator secret.
+- [1.6.7 beta] Encrypted backups (optional): Encrypt backups locks every backup from then on with a password or the master recovery phrase (AES-256-GCM, PBKDF2-HMAC-SHA256 at 600,000 rounds). Same file name, so auto-backups, Share and CONECTR carry on. Same phone restores without asking; another phone asks once and remembers. The password can't be reset. Turning it on is phone-only; XPENC web opens encrypted backups.
 
 ## Security and privacy
 
@@ -228,7 +236,7 @@ More > Calculators; nothing saved to the ledger.
 - 10-word master recovery phrase.
 - Android: block screenshots and screen recording, lock-screen shortcut, screenshot reminder.
 - Hide single transactions from screenshots; hide amounts.
-- Never requests internet, SMS, location, microphone or phone. Optional: notifications, camera, contacts (Settings > Permissions).
+- Never requests internet, location or phone; the stable, Play and F-Droid builds never ask for SMS. Optional: notifications, camera, contacts (Settings > Permissions). In the 1.6.7 beta the microphone is optional too, for voice add only, and only the opt-in SMS beta APK asks to read SMS.
 - No server, account, analytics, trackers or ads. Policy: https://xpenc.in/privacy
 
 ## Themes and appearance
@@ -236,27 +244,31 @@ More > Calculators; nothing saved to the ledger.
 - Classic (monochrome, default) and Noir (bolder), each light, true-black dark or system.
 - Glass: iOS-style Liquid Glass on black — floating glass tab bar with a sliding droplet, glass top bar, sheets and pages that grow out of the tab bar, quick-actions arc, frosted hidden amounts, refraction on Impeller devices.
 - Runs at the display's full refresh rate (90/120 Hz where available).
+- [1.6.7 beta] Tablets: tabs in a vertical rail bottom-right, a ☰ menu of every page, lists in a centred column, two-column dashboard.
+- [1.6.7 beta] Classic opens pages with the phone's own transition in about half the time; Noir has heavier text, square-cornered icons and a floating bottom bar.
 
 ## CONECTR — backup and sync for XPENC
 
 CONECTR (also called the Connector app) is XPENC's separate, optional backup and sync companion from ExoSynk Labs. XPENC stays offline; CONECTR carries the backup.
-- Version 1.2.0 (25 October 2026), 56 MB, Android only, free.
-- Download: https://exosynk.com/exosynk-labs#conectr — release notes: https://github.com/PATILYASHH/conectr-releases/releases/tag/v1.2.0
-- Saves XPENC's backup file to a private repo named XPENC-BACKUP in the user's own GitHub account and brings it back on their other phone. The user can open, download or delete it.
+- Version 1.4.0 (27 November 2026), 57 MB, Android only, free, MIT open source. Source: https://github.com/PATILYASHH/CONECTR
+- Download: https://github.com/PATILYASHH/CONECTR/releases/latest (connector-<version>.apk with SHA256SUMS.txt) — 1.4.0 release notes: https://github.com/PATILYASHH/CONECTR/releases/tag/v1.4.0
+- Storage, the user's pick for all their phones: Google Drive (a visible "XPENC Backup" folder in their own Drive; CONECTR sees only files it created, drive.file), ExoCloud (kept by ExoSynk Labs, end-to-end encrypted on the phone with AES-256-GCM and a key that never leaves the user's phones; free during beta, newest 10 backups; the first phone shows a recovery key the others need) or GitHub (a private XPENC-BACKUP repo in their own account, with full history). Changeable in Settings > Backup storage.
+- Sign-in: Google, email or GitHub, through Supabase.
 - Never opens XPENC's database; only moves the backup file.
-- Newest first, nothing lost: each device takes in the newest backup before sending its own; a racing write is refused, never overwritten.
+- Newest first, nothing lost: each device takes in the newest backup before sending its own; a racing write is refused, never overwritten; a phone never pulls an older backup in when the newest was deleted by hand.
+- Auto-sync in the background after every XPENC backup or hourly.
 - No file picking: XPENC takes a newer pulled backup in as it opens — automatically if the phone has no changes since its last sync, otherwise after asking — and saves a copy of the phone's data first. Needs XPENC 1.6.6 or later (GitHub or F-Droid build).
 - Tell Connector: after a manual import, one tap confirms it; CONECTR checks the file fingerprint.
-- Friends by username, linkable to people in XPENC.
-- XPENC web has the Connector built in (Settings > Connector), same repo, same rules.
-- Setup: 1) install CONECTR on Android; 2) sign in with GitHub (through Supabase); 3) open XPENC on the other phone, or turn on Settings > Connector in XPENC web.
-- Limits: XPENC itself still has no internet; the backup in the repo is private but not encrypted; XPENC from Google Play is not recognised yet; no iPhone version; shared dues between friends not built yet.
+- Friends by exact username, linkable to people in XPENC, with shared owes/dues entries that each side accepts (needs XPENC 1.6.6).
+- XPENC web has the Connector built in (Settings > Connector) and syncs through the GitHub option, by the same rules.
+- Setup: 1) install CONECTR on Android from GitHub Releases; 2) sign in with Google, email or GitHub, choose Google Drive, ExoCloud or GitHub in Connections > XPENC, and point it at Download/BACKUP XPENC (with ExoCloud, save the recovery key); 3) open XPENC on the other phone, or turn on Settings > Connector in XPENC web (GitHub only, for now).
+- Limits: XPENC itself still has no internet; on Google Drive or GitHub the backup is the plain file XPENC writes unless XPENC's Encrypt backups is on (1.6.7 beta), while ExoCloud is always encrypted; CONECTR 1.3.2+ is signed with a new key, so from 1.3.1 or older uninstall once; XPENC from Google Play is not recognised yet; no iPhone version; XPENC web can't sync through Google Drive or ExoCloud yet.
 
 ## ExoSynk Labs
 
 ExoSynk (https://exosynk.com) is a virtual electronics lab: design a circuit in the browser, simulate it and watch it work. Alongside it, the ExoSynk team builds ExoSynk Labs (spelt exactly that way) — small, focused, free apps that keep your data on your device. XPENC shows "Powered by ExoSynk Labs" in About and "More from us" in Settings.
-- XPENC — offline-first personal finance; Android, iPhone, web; available (v1.6.5); MIT.
-- CONECTR — backup and sync for XPENC via the user's own private GitHub repo; Android; available (v1.2.0).
+- XPENC — offline-first personal finance; Android, iPhone, web; available (v1.6.6, 1.6.7 in beta); MIT.
+- CONECTR — backup and sync for XPENC via Google Drive, ExoCloud or the user's own private GitHub repo; Android; available (v1.4.0); MIT; https://github.com/PATILYASHH/CONECTR
 - FITNS — offline, open-source (MIT) fitness tracker for training, food and your body, no sign-up; coming soon; https://github.com/parthmagdum/FITNS
 - ExoSynk 2D Lab — design and simulate electronics in the browser; https://exosynk.com/lab
 - Links: https://exosynk.com/exosynk-labs · https://github.com/ExoSynkLabs
@@ -269,15 +281,16 @@ ExoSynk (https://exosynk.com) is a virtual electronics lab: design a circuit in 
 ## What XPENC does not do
 
 - No bank account linking, automatic bank feeds, Open Banking, Plaid or Account Aggregator.
-- No cloud server or XPENC account; the only sync is optional CONECTR into the user's own GitHub.
-- No reading of the SMS inbox (SMS permission dropped in 1.1.0).
+- No cloud server or XPENC account; the only sync is optional CONECTR, into the user's own Google Drive or GitHub, or ExoSynk's end-to-end encrypted ExoCloud.
+- No reading of the SMS inbox in the Google Play, F-Droid or stable GitHub builds (SMS permission dropped in 1.1.0); only the opt-in 1.6.7 SMS beta APK reads bank SMS, to test Auto money tracking.
 - No live exchange rates, stock prices or investment portfolio tracking.
 - Not on the Apple App Store.
 - No ads, paid tier, data sale or analytics.
-- English only.
+- No AI. The on-device Local AI tried in early 1.6.7 betas was removed before any stable release.
 
 ## Release history (recent)
 
+- 1.6.7 (beta, in testing): encrypted backups (password or recovery phrase), search everything, smart tags, a Total money page, dashboard / bottom bar / ➕ menu edited in place, voice add (India), Arabic with right-to-left layout, Calculations in one place, bulk category moves, a tablet layout, quicker Classic and bolder Noir, Auto money tracking in an opt-in SMS test build. https://github.com/PATILYASHH/XPENC/releases/tag/beta
 - 1.6.6 (15 Nov 2026): XPENC in your language (Hindi, German, Japanese, Russian built in; language packs), refunds against a budget, Total money vs Available balance, a backup folder of your own, Settle up with a person, XPENC web with PC layout and built-in Connector, Connector auto-import and friends, self-paying card statements, multi-level budget alerts, Skip next, cash-flow projection, new share screen with WhatsApp and payment QR, category templates as files.
 - 1.6.5 (23 Oct 2026): Modes, custom currencies, custom colours, archived categories, category pages, goals as pockets, running balance, auto transfers, Money in / Money out naming.
 - 1.6.4 (10 Oct 2026): first iPhone build, Liquid Glass theme, customizable dashboard, past-month view, PDF and image sharing, hide from screenshots, country on first run, emoji category icons.
@@ -290,5 +303,5 @@ ExoSynk (https://exosynk.com) is a virtual electronics lab: design a circuit in 
 - Website: https://xpenc.in/ · Features: https://xpenc.in/features · Web app: https://xpenc.in/web · iPhone: https://xpenc.in/ios · Privacy: https://xpenc.in/privacy
 - Google Play: https://play.google.com/store/apps/details?id=com.yash.xpenc · F-Droid: https://f-droid.org/packages/com.yash.xpenc/ · Releases: https://github.com/PATILYASHH/XPENC/releases/latest
 - Source: https://github.com/PATILYASHH/XPENC · Issues: https://github.com/PATILYASHH/XPENC/issues · Discussions: https://github.com/PATILYASHH/XPENC/discussions
-- CONECTR: https://exosynk.com/exosynk-labs#conectr · ExoSynk Labs: https://exosynk.com/exosynk-labs · https://github.com/ExoSynkLabs
+- CONECTR: https://github.com/PATILYASHH/CONECTR/releases/latest (download) · https://github.com/PATILYASHH/CONECTR (source) · ExoSynk Labs: https://exosynk.com/exosynk-labs · https://github.com/ExoSynkLabs
 - Contact: feedback.yashpatil@gmail.com · Reddit u/XPENC · Instagram @xpenc.in · Discord https://discord.gg/cCajrhHez
