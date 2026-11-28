@@ -499,9 +499,21 @@ class _WaitingEntry extends ConsumerWidget {
           ),
           const SizedBox(height: 8),
           if (answering)
-            Tr(
-              'Sending your answer…',
-              style: theme.textTheme.bodySmall?.copyWith(color: muted),
+            // Queued in Connector, which sends it when it next syncs —
+            // opening it syncs at once, if this has been sitting a while.
+            Row(
+              children: [
+                Expanded(
+                  child: Tr(
+                    'Sending your answer…',
+                    style: theme.textTheme.bodySmall?.copyWith(color: muted),
+                  ),
+                ),
+                TextButton(
+                  onPressed: () => openConnectorForFriends(context),
+                  child: const Tr('Open Connector'),
+                ),
+              ],
             )
           else
             Row(

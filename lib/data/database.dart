@@ -4907,6 +4907,7 @@ class AppDatabase extends _$AppDatabase {
             remoteEntryId: r.remoteEntryId,
             status: status,
             account: r.sharedAccount,
+            createdAt: r.createdAt,
           ),
     ];
   }

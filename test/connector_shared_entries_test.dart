@@ -43,6 +43,7 @@ void main() {
     List<Map<String, dynamic>> failed = const [],
     List<Map<String, dynamic>> queued = const [],
     String me = 'me',
+    DateTime? syncedAt,
   }) => SharedSnapshot.parse(
     jsonEncode({
       'version': 1,
@@ -50,6 +51,7 @@ void main() {
       'me': me,
       'entries': entries,
       'failed': failed,
+      if (syncedAt != null) 'syncedAt': syncedAt.millisecondsSinceEpoch,
     }),
     jsonEncode(queued),
   );
@@ -61,6 +63,7 @@ void main() {
       String ref = 'ref-1',
       String? remote,
       String? account = 'me',
+      DateTime? createdAt,
     }) => LocalShared(
       entryId: id,
       personId: 7,
@@ -68,6 +71,7 @@ void main() {
       remoteEntryId: remote,
       status: status,
       account: account,
+      createdAt: createdAt,
     );
 
     test('an entry sent from here takes the server\'s status and id', () {
@@ -140,15 +144,54 @@ void main() {
       expect(plan, isEmpty);
     });
 
-    test('another Connector account signed in: its entries aren\'t touched',
-        () {
-      final plan = planSharedMerge(
-        snapshot: snap([], me: 'someone-else'),
-        local: [mine(1, SharedStatus.accepted, remote: 'e1')],
-        personByFriend: {},
-      );
-      expect(plan, isEmpty);
+    group('a send Connector lost (reinstalled, data cleared)', () {
+      final made = DateTime(2026, 11, 20, 9);
+
+      test('marked failed once Connector has synced well since', () {
+        final plan = planSharedMerge(
+          snapshot: snap([], syncedAt: made.add(const Duration(hours: 2))),
+          local: [mine(1, SharedStatus.sending, createdAt: made)],
+          personByFriend: {},
+        );
+        expect((plan.single as SetShared).status, SharedStatus.failed);
+      });
+
+      test('left "sending" while the last sync is from before it', () {
+        final plan = planSharedMerge(
+          snapshot: snap([], syncedAt: made.add(const Duration(minutes: 2))),
+          local: [mine(1, SharedStatus.sending, createdAt: made)],
+          personByFriend: {},
+        );
+        expect(plan, isEmpty);
+      });
+
+      test('left "sending" while it is still queued', () {
+        final plan = planSharedMerge(
+          snapshot: snap(
+            [],
+            syncedAt: made.add(const Duration(hours: 2)),
+            queued: [
+              {'type': 'add', 'clientRef': 'ref-1'},
+            ],
+          ),
+          local: [mine(1, SharedStatus.sending, createdAt: made)],
+          personByFriend: {},
+        );
+        expect(plan, isEmpty);
+      });
     });
+
+    test(
+      'another Connector account signed in: its entries aren\'t touched',
+      () {
+        final plan = planSharedMerge(
+          snapshot: snap([], me: 'someone-else'),
+          local: [mine(1, SharedStatus.accepted, remote: 'e1')],
+          personByFriend: {},
+        );
+        expect(plan, isEmpty);
+      },
+    );
 
     test('a friend\'s accepted entry is recorded once, on their person', () {
       final snapshot = snap([wire('e9', status: 'accepted')]);
@@ -233,43 +276,44 @@ void main() {
       expect(entry.accountId, isNull);
     });
 
-    test('an accepted opening balance sets the balance to what was agreed',
-        () async {
-      final ana = await db.addPerson(
-        'Ana',
-        remoteFriendId: 'ana',
-        remoteUsername: 'ana',
-      );
-      // History from before linking: Ana owes ₹200 here.
-      await db.addPersonEntry(
-        personId: ana,
-        direction: PersonDirection.theyOwe,
-        amount: const Money(20000),
-        date: DateTime(2026, 10, 1),
-      );
-      // Ana's side says it's ₹500.
-      final snapshot = snap([
-        wire(
-          'open1',
-          status: 'accepted',
-          theyOwe: true,
-          amountMinor: 50000,
-          isOpening: true,
-        ),
-      ]);
-      await db.applySharedPlan(
-        planSharedMerge(
-          snapshot: snapshot,
-          local: await db.sharedEntriesForMerge(),
-          personByFriend: await db.personsByFriendId(),
-        ),
-        account: 'me',
-      );
-      expect(await db.watchPersonBalance(ana).first, const Money(50000));
-    });
+    test(
+      'an accepted opening balance sets the balance to what was agreed',
+      () async {
+        final ana = await db.addPerson(
+          'Ana',
+          remoteFriendId: 'ana',
+          remoteUsername: 'ana',
+        );
+        // History from before linking: Ana owes ₹200 here.
+        await db.addPersonEntry(
+          personId: ana,
+          direction: PersonDirection.theyOwe,
+          amount: const Money(20000),
+          date: DateTime(2026, 10, 1),
+        );
+        // Ana's side says it's ₹500.
+        final snapshot = snap([
+          wire(
+            'open1',
+            status: 'accepted',
+            theyOwe: true,
+            amountMinor: 50000,
+            isOpening: true,
+          ),
+        ]);
+        await db.applySharedPlan(
+          planSharedMerge(
+            snapshot: snapshot,
+            local: await db.sharedEntriesForMerge(),
+            personByFriend: await db.personsByFriendId(),
+          ),
+          account: 'me',
+        );
+        expect(await db.watchPersonBalance(ana).first, const Money(50000));
+      },
+    );
 
-    test('an entry sent from here, then unfriended, stays as it was',
-        () async {
+    test('an entry sent from here, then unfriended, stays as it was', () async {
       final ana = await db.addPerson(
         'Ana',
         remoteFriendId: 'ana',
@@ -292,9 +336,7 @@ void main() {
       );
 
       await merge(
-        snap([
-          wire('e1', byMe: true, clientRef: 'ref-1', status: 'accepted'),
-        ]),
+        snap([wire('e1', byMe: true, clientRef: 'ref-1', status: 'accepted')]),
       );
       var entry = (await db.watchPersonEntries(ana).first).single;
       expect(entry.sharedStatus, SharedStatus.accepted.name);

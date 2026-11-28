@@ -138,6 +138,7 @@ class SharedSnapshot {
     this.failed = const [],
     this.queued = const [],
     this.blocked,
+    this.syncedAt,
   });
 
   /// Connector isn't there, or hasn't synced yet.
@@ -149,7 +150,8 @@ class SharedSnapshot {
       me = null,
       entries = const [],
       failed = const [],
-      queued = const [];
+      queued = const [],
+      syncedAt = null;
 
   /// [json]: the snapshot, null when there's none yet. [outbox]: the ops
   /// still queued, as a JSON array.
@@ -180,6 +182,10 @@ class SharedSnapshot {
           FailedOp.fromJson(f as Map<String, dynamic>),
       ],
       queued: queued,
+      syncedAt: switch (map['syncedAt']) {
+        final num ms => DateTime.fromMillisecondsSinceEpoch(ms.toInt()),
+        _ => null,
+      },
     );
   }
 
@@ -195,6 +201,9 @@ class SharedSnapshot {
 
   /// Set when Connector is installed but shares nothing with this XPENC.
   final SharedBlocked? blocked;
+
+  /// When Connector wrote this snapshot — after a round with the server.
+  final DateTime? syncedAt;
 
   bool get ready => signedIn && me != null;
 

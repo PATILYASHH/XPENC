@@ -11,6 +11,7 @@ class LocalShared {
     this.remoteEntryId,
     required this.status,
     this.account,
+    this.createdAt,
   });
 
   final int entryId;
@@ -19,7 +20,14 @@ class LocalShared {
   final String? remoteEntryId;
   final SharedStatus status;
   final String? account;
+
+  /// When the entry was made here — it was handed to Connector then.
+  final DateTime? createdAt;
 }
+
+/// How long after an entry was handed to Connector a snapshot may still
+/// lack any trace of it before it counts as lost.
+const lostSendAfter = Duration(minutes: 10);
 
 sealed class SharedAction {
   const SharedAction();
@@ -123,6 +131,11 @@ List<SharedAction> planSharedMerge({
       if (l.status != SharedStatus.failed) {
         actions.add(SetShared(l.entryId, SharedStatus.failed));
       }
+    } else if (l.status == SharedStatus.sending && _lost(snapshot, l)) {
+      // Not on the server, not queued, no failure recorded — and Connector
+      // has synced well since: the op is gone (Connector reinstalled or
+      // its data cleared). Marked so it can be sent again.
+      actions.add(SetShared(l.entryId, SharedStatus.failed));
     }
     // Otherwise still "sending": Connector deletes a sent op a moment
     // before it rewrites the snapshot, and this read fell in between.
@@ -136,10 +149,19 @@ List<SharedAction> planSharedMerge({
   return actions;
 }
 
+bool _lost(SharedSnapshot snapshot, LocalShared l) {
+  final synced = snapshot.syncedAt;
+  final made = l.createdAt;
+  return synced != null &&
+      made != null &&
+      synced.isAfter(made.add(lostSendAfter));
+}
+
 /// A fresh id for an op or an entry made here: 32 hex characters.
 String newSharedId([Random? random]) {
   final r = random ?? Random.secure();
   return [
-    for (var i = 0; i < 16; i++) r.nextInt(256).toRadixString(16).padLeft(2, '0'),
+    for (var i = 0; i < 16; i++)
+      r.nextInt(256).toRadixString(16).padLeft(2, '0'),
   ].join();
 }

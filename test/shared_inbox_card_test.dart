@@ -42,7 +42,7 @@ void main() {
   late AppDatabase db;
   late _FakeBridge bridge;
 
-  SharedSnapshot pendingFromAna() => SharedSnapshot.parse(
+  SharedSnapshot pendingFromAna({String outbox = '[]'}) => SharedSnapshot.parse(
     jsonEncode({
       'version': 1,
       'signedIn': true,
@@ -67,7 +67,7 @@ void main() {
       ],
       'failed': [],
     }),
-    '[]',
+    outbox,
   );
 
   Future<void> settle(WidgetTester tester) async {
@@ -163,6 +163,29 @@ void main() {
     final ana = (await tester.runAsync(() => db.personByFriendId('ana-id')))!;
     expect(ana.remoteUsername, 'ana');
     expect(bridge.sent.single, containsPair('accept', true));
+    await unmount(tester);
+  });
+
+  testWidgets('an answer still in Connector\'s outbox offers to open it', (
+    tester,
+  ) async {
+    await pumpCard(
+      tester,
+      pendingFromAna(
+        outbox: jsonEncode([
+          {'opId': 'op1', 'type': 'respond', 'entryId': 'e1', 'accept': true},
+        ]),
+      ),
+    );
+    await tester.runAsync(
+      () =>
+          db.addPerson('Ana', remoteFriendId: 'ana-id', remoteUsername: 'ana'),
+    );
+    await settle(tester);
+
+    expect(find.text('Sending your answer…'), findsOneWidget);
+    expect(find.text('Open Connector'), findsOneWidget);
+    expect(find.text('Accept'), findsNothing);
     await unmount(tester);
   });
 
