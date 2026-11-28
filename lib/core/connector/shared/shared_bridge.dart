@@ -14,12 +14,16 @@ class SharedBridge {
   static const _channel = MethodChannel('xpenc/connector');
   static const _changes = EventChannel('xpenc/connector/changes');
 
-  /// [SharedSnapshot.none] when there's no Connector that shares entries.
+  /// [SharedSnapshot.none] when there's no Connector here; one that's
+  /// [SharedSnapshot.blocked] when it's here but shares nothing with us.
   Future<SharedSnapshot> load() async {
     final reply = await _channel.invokeMapMethod<String, Object?>('shared');
     if (reply == null || reply['installed'] != true) return SharedSnapshot.none;
-    if (reply['outdated'] == true || reply['refused'] == true) {
-      return SharedSnapshot.none;
+    if (reply['refused'] == true) {
+      return const SharedSnapshot.blockedBy(SharedBlocked.refused);
+    }
+    if (reply['outdated'] == true) {
+      return const SharedSnapshot.blockedBy(SharedBlocked.outdated);
     }
     return SharedSnapshot.parse(
       reply['json'] as String?,

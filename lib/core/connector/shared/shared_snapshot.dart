@@ -118,6 +118,16 @@ class FailedOp {
   final String error;
 }
 
+/// Why a Connector that is installed shares nothing with this XPENC.
+enum SharedBlocked {
+  /// It didn't recognise this copy of XPENC: another package name, or a
+  /// signing certificate its `XpencProvider` doesn't list (Play's, say).
+  refused,
+
+  /// Too old to share entries.
+  outdated,
+}
+
 /// Everything Connector shares about entries with friends: its last
 /// snapshot (`xpenc/shared.json`) and what's still queued to go out.
 class SharedSnapshot {
@@ -127,10 +137,19 @@ class SharedSnapshot {
     this.entries = const [],
     this.failed = const [],
     this.queued = const [],
+    this.blocked,
   });
 
   /// Connector isn't there, or hasn't synced yet.
   static const none = SharedSnapshot(signedIn: false);
+
+  /// Connector is there but won't share with this XPENC ([blocked] says why).
+  const SharedSnapshot.blockedBy(SharedBlocked this.blocked)
+    : signedIn = false,
+      me = null,
+      entries = const [],
+      failed = const [],
+      queued = const [];
 
   /// [json]: the snapshot, null when there's none yet. [outbox]: the ops
   /// still queued, as a JSON array.
@@ -173,6 +192,9 @@ class SharedSnapshot {
 
   /// Ops XPENC sent that Connector hasn't delivered yet.
   final List<Map<String, dynamic>> queued;
+
+  /// Set when Connector is installed but shares nothing with this XPENC.
+  final SharedBlocked? blocked;
 
   bool get ready => signedIn && me != null;
 

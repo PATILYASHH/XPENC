@@ -235,7 +235,9 @@ class SharedEntriesController extends AsyncNotifier<SharedSnapshot> {
       'accept': accept,
       'version': entry.version,
     });
-    await refresh();
+    // The answer is queued either way; a failed read-back mustn't turn
+    // that into an error.
+    await refresh().catchError((Object _) {});
     return ok;
   }
 
@@ -286,6 +288,19 @@ String? sharedLabel(PersonEntryRow entry, String? username) {
   };
 }
 
+/// Why nothing friends share shows here, when Connector is installed but
+/// won't share with this XPENC; null otherwise.
+String? sharedBlockedMessage(SharedBlocked? blocked) => switch (blocked) {
+  null => null,
+  SharedBlocked.refused => tr(
+    "Connector doesn't recognise this copy of XPENC yet, so entries your "
+    "friends share can't be answered here.",
+  ),
+  SharedBlocked.outdated => tr(
+    'Update the Connector app to answer entries your friends share.',
+  ),
+};
+
 String _remoteMoney(RemoteEntry e) {
   try {
     return NumberFormat.simpleCurrency(
@@ -325,9 +340,10 @@ class SharedFriendCard extends ConsumerWidget {
       return _CardShell(
         children: [
           Text(
-            tr('Sign in to the Connector app to share entries with {0}.', [
-              who,
-            ]),
+            sharedBlockedMessage(snapshot.blocked) ??
+                tr('Sign in to the Connector app to share entries with {0}.', [
+                  who,
+                ]),
             style: theme.textTheme.bodySmall?.copyWith(color: muted),
           ),
         ],
@@ -415,11 +431,20 @@ class _WaitingEntry extends ConsumerWidget {
     required this.entry,
     required this.who,
     required this.snapshot,
+    this.showFrom = true,
+    this.linkFirst,
   });
 
   final RemoteEntry entry;
   final String who;
   final SharedSnapshot snapshot;
+
+  /// "@ana shared" above it — not needed under Ana's own row.
+  final bool showFrom;
+
+  /// For a friend not linked to a person yet: runs before Accept, so the
+  /// accepted entry has a person to land on. False stops the Accept.
+  final Future<bool> Function(BuildContext context)? linkFirst;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -440,11 +465,13 @@ class _WaitingEntry extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            tr('{0} shared', [who]),
-            style: theme.textTheme.labelMedium?.copyWith(color: muted),
-          ),
-          const SizedBox(height: 2),
+          if (showFrom) ...[
+            Text(
+              tr('{0} shared', [who]),
+              style: theme.textTheme.labelMedium?.copyWith(color: muted),
+            ),
+            const SizedBox(height: 2),
+          ],
           Row(
             children: [
               Expanded(
@@ -500,10 +527,13 @@ class _WaitingEntry extends ConsumerWidget {
     WidgetRef ref, {
     required bool accept,
   }) async {
+    // Read before anything is awaited: a sheet on the way can take this
+    // row out of the tree.
     final messenger = ScaffoldMessenger.of(context);
-    final ok = await ref
-        .read(sharedEntriesProvider.notifier)
-        .respond(entry, accept: accept);
+    final shared = ref.read(sharedEntriesProvider.notifier);
+    final link = linkFirst;
+    if (accept && link != null && !await link(context)) return;
+    final ok = await shared.respond(entry, accept: accept);
     messenger
       ..hideCurrentSnackBar()
       ..showSnackBar(
@@ -587,9 +617,10 @@ Future<void> confirmShareOpening(
     );
 }
 
-/// On the Persons list: friends' entries waiting for an answer. A linked
-/// friend's open their person; an unlinked friend's ask which person they
-/// are first.
+/// On the Persons list: friends' entries waiting for an answer, each with
+/// Accept and Reject right there. A linked friend's row opens their person;
+/// an unlinked friend's Accept asks which person they are first (Reject
+/// needs no person).
 class SharedInboxCard extends ConsumerWidget {
   const SharedInboxCard({super.key});
 
@@ -597,9 +628,7 @@ class SharedInboxCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     if (ref.watch(sharedBridgeProvider) == null) return const SizedBox.shrink();
     final snapshot = ref.watch(sharedEntriesProvider).valueOrNull;
-    if (snapshot == null || !snapshot.ready) return const SizedBox.shrink();
-    final waiting = snapshot.waiting;
-    if (waiting.isEmpty) return const SizedBox.shrink();
+    if (snapshot == null) return const SizedBox.shrink();
 
     final persons = [
       ...?ref.watch(personsProvider).valueOrNull,
@@ -609,96 +638,196 @@ class SharedInboxCard extends ConsumerWidget {
       for (final p in persons)
         if (p.remoteFriendId != null) p.remoteFriendId!: p,
     };
+    final theme = Theme.of(context);
+
+    if (!snapshot.ready) {
+      // Connector is here but shares nothing with this XPENC: say so where
+      // someone with linked friends would look for their entries.
+      final blocked = sharedBlockedMessage(snapshot.blocked);
+      if (blocked == null || byFriend.isEmpty) return const SizedBox.shrink();
+      return _InboxShell(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+            child: Text(
+              blocked,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
+    final waiting = snapshot.waiting;
+    if (waiting.isEmpty) return const SizedBox.shrink();
     final lookup = ref.watch(connectorFriendsProvider).valueOrNull;
     final friends = {
       if (lookup case FriendsLoaded(:final friends))
         for (final f in friends) f.id: f,
     };
-    final theme = Theme.of(context);
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-      child: AppCard(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
-                child: Tr(
-                  'SHARED WITH YOU',
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 1.1,
-                  ),
-                ),
-              ),
-              for (final MapEntry(key: friendId, value: entries)
-                  in waiting.entries)
-                _InboxRow(
-                  person: byFriend[friendId],
-                  friend: friends[friendId],
-                  count: entries.length,
-                ),
-            ],
+    return _InboxShell(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+          child: Tr(
+            'SHARED WITH YOU',
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1.1,
+            ),
           ),
         ),
-      ),
+        for (final MapEntry(key: friendId, value: entries) in waiting.entries)
+          _InboxFriend(
+            person: byFriend[friendId],
+            friend: friends[friendId],
+            entries: entries,
+            snapshot: snapshot,
+          ),
+      ],
     );
   }
 }
 
-class _InboxRow extends ConsumerWidget {
-  const _InboxRow({
+class _InboxShell extends StatelessWidget {
+  const _InboxShell({required this.children});
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+    child: AppCard(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: children,
+        ),
+      ),
+    ),
+  );
+}
+
+/// One friend in the inbox: who, then each of their entries to answer.
+class _InboxFriend extends ConsumerWidget {
+  const _InboxFriend({
     required this.person,
     required this.friend,
-    required this.count,
+    required this.entries,
+    required this.snapshot,
   });
 
   final PersonRow? person;
   final ConnectorFriend? friend;
-  final int count;
+  final List<RemoteEntry> entries;
+  final SharedSnapshot snapshot;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final linked = person;
-    final name = linked?.name ?? friend?.name ?? tr('A friend');
-    final username = linked?.remoteUsername ?? friend?.username;
-    return AppListTile(
-      leading: const AppIcon(Icons.mark_email_unread_outlined),
-      title: Text(name),
-      subtitle: Text(
-        tr(
-          '{0}{1} to answer',
-          [
-            username == null ? '' : '@$username · ',
-            plural(count, '1 entry', '{0} entries'),
-          ],
+    final known = friend;
+    final name = linked?.name ?? known?.name ?? tr('A friend');
+    final username = linked?.remoteUsername ?? known?.username;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        AppListTile(
+          leading: const AppIcon(Icons.mark_email_unread_outlined),
+          title: Text(name),
+          subtitle: Text(
+            tr('{0}{1} to answer', [
+              username == null ? '' : '@$username · ',
+              plural(entries.length, '1 entry', '{0} entries'),
+            ]),
+          ),
+          trailing: linked != null
+              ? const AppIcon(Icons.chevron_right_rounded)
+              : known != null
+              ? TextButton(
+                  onPressed: () => _linkFriend(context, ref, known),
+                  child: const Tr('Link'),
+                )
+              // Not in the friends list XPENC last read: Connector has
+              // the fresh one.
+              : TextButton(
+                  onPressed: () => openConnectorForFriends(context),
+                  child: const Tr('Open Connector'),
+                ),
+          onTap: linked == null
+              ? null
+              : () => pushZoom(context, '/person/${linked.id}'),
         ),
-      ),
-      trailing: linked == null
-          ? TextButton(
-              onPressed: friend == null
+        for (final entry in entries)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+            child: _WaitingEntry(
+              entry: entry,
+              who: username == null ? name : '@$username',
+              snapshot: snapshot,
+              showFrom: false,
+              linkFirst: linked != null
                   ? null
-                  : () => _linkFriend(context, ref, friend!),
-              child: const Tr('Link'),
-            )
-          : const AppIcon(Icons.chevron_right_rounded),
-      onTap: linked == null
-          ? null
-          : () => pushZoom(context, '/person/${linked.id}'),
+                  : (context) => _linkBeforeAccept(context, ref, known),
+            ),
+          ),
+      ],
     );
   }
 }
 
-/// "Which of your people is @ana?" — an unlinked one, or a new person.
+/// Accepting an unlinked friend's entry: link them to a person first, so
+/// the entry lands on someone. False when that didn't happen.
+Future<bool> _linkBeforeAccept(
+  BuildContext context,
+  WidgetRef ref,
+  ConnectorFriend? friend,
+) async {
+  if (friend == null) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(
+            tr(
+              'Open Connector once so XPENC can see who this is, then '
+              'accept.',
+            ),
+          ),
+        ),
+      );
+    return false;
+  }
+  return await _pickPersonFor(context, ref, friend) != null;
+}
+
+/// Link: "Who is @ana?", then their person's page.
 Future<void> _linkFriend(
   BuildContext context,
   WidgetRef ref,
   ConnectorFriend friend,
 ) async {
+  final personId = await _pickPersonFor(context, ref, friend);
+  if (personId != null && context.mounted) {
+    pushZoom(context, '/person/$personId');
+  }
+}
+
+/// "Which of your people is @ana?" — an unlinked one, or a new person.
+/// Links them and returns that person's id; null when nothing was picked.
+Future<int?> _pickPersonFor(
+  BuildContext context,
+  WidgetRef ref,
+  ConnectorFriend friend,
+) async {
+  // Read before the sheet: it can take the row that opened it out of the
+  // tree, and its ref with it.
+  final db = ref.read(dbProvider);
+  final shared = ref.read(sharedEntriesProvider.notifier);
   final unlinked = [
     for (final p
         in ref.read(personsProvider).valueOrNull ?? const <PersonRow>[])
@@ -738,8 +867,7 @@ Future<void> _linkFriend(
       ),
     ),
   );
-  if (picked == null) return;
-  final db = ref.read(dbProvider);
+  if (picked == null) return null;
   final int personId;
   if (picked is PersonRow) {
     await db.linkPersonFriend(
@@ -755,6 +883,6 @@ Future<void> _linkFriend(
       remoteUsername: friend.username,
     );
   }
-  await ref.read(sharedEntriesProvider.notifier).refresh();
-  if (context.mounted) pushZoom(context, '/person/$personId');
+  await shared.refresh();
+  return personId;
 }
